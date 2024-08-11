@@ -28,11 +28,11 @@ code = '0625'
 subject = 'IG_phy' # actual name for images filename
 subject2 = 'physics'
 numOfQuestions = 1547
-paperNumber = 'p2'
+paperNumber = 'p1'
 model = 'IGphy'
 level = "IGCSE"
 startChapter = 1 #Default is 1 when AS but not 1 when A2
-paperNumber2 = 2
+paperNumber2 = 1
 level2 = 'IGCSE' # used only for paths
 
 
@@ -55,24 +55,24 @@ for i in range(len(pdf_files)):
     pdf_files[i] = string
 
 
-f = open(f'{jsonPath}\{subject}_{paperNumber}_db.json', 'w')
+f = open(f'{jsonPath}\{subject}_{paperNumber}_db_test.json', 'w')
 f.write("[")
 
+pdfName = pdf_files[index]
+answers = MS2.extract_answers_from_pdf(code, pdfName)
+print(pdfName, answers)
 
 while (qnumber) < (numOfQuestions + 1):
-    pdfName = pdf_files[index]
-    answers = MS2.getAnswers(code, pdfName)
     
-
-    if os.path.isfile(f'{path}\{subject}_{paperNumber}_{qnumber}.jpg')==True:
+    imagePath = f"{path}\{subject}_{paperNumber}_{qnumber}.jpg"
+    if os.path.isfile(imagePath)==True:
         if (type(questionNumber) == int):
             if (questionNumber % numOfQuestionsInPaper) == 0 and (qnumber > 20) and (questionNumber != 0):
                 index += 1
                 pdfName = pdf_files[index]
-                answers = MS2.getAnswers(code, pdfName)
-        QuestionName=f'{subject}_{paperNumber}_{qnumber}.jpg'
-        path2 = f"{path}\{QuestionName}"   
-        img = cv2.imread(path2)
+                answers = MS2.extract_answers_from_pdf(code, pdfName)
+                print(pdfName, answers)
+        img = cv2.imread(imagePath)
         questionText = pytesseract.image_to_string(img, config=custom_config)
         questionNumber = questionText[:2]
         questionNumber = re.sub(r'[^\w\s]', '', questionNumber)
@@ -95,12 +95,13 @@ while (qnumber) < (numOfQuestions + 1):
                     chapterPath = os.path.join(f"D:/python_projects/teachmegcse/images/sorted/{level2}/{subject2}/{paperNumber}", str(chapterNum))
 
                     if not os.path.exists(chapterPath):
-                        os.makedirs(chapterPath)
-                    shutil.copy2(f'{path}/{QuestionName}', os.path.join(chapterPath, QuestionName))
+                        pass
+                        #os.makedirs(chapterPath)
+                    #shutil.copy2(f'{path}/{QuestionName}', os.path.join(chapterPath, QuestionName))
 
         if (questionAnswer != '') and (questionNumber != ''):
             answerObject = {
-            "questionName" : f"{QuestionName}",
+            "questionName" : f"{subject}_{paperNumber}_{qnumber}.jpg",
             "Answer": f"{questionAnswer}",
             "pdfName":f"{pdfName1}",
             "questionText":f"{questionText}",
