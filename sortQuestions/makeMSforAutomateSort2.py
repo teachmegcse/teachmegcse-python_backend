@@ -27,12 +27,12 @@ numOfQuestionsInPaper = 40
 code = '0625'
 subject = 'IG_phy' # actual name for images filename
 subject2 = 'physics'
-numOfQuestions = 1547
-paperNumber = 'p1'
+numOfQuestions = 1993
+paperNumber = 'p2'
 model = 'IGphy'
 level = "IGCSE"
 startChapter = 1 #Default is 1 when AS but not 1 when A2
-paperNumber2 = 1
+paperNumber2 = 2
 level2 = 'IGCSE' # used only for paths
 
 
@@ -55,12 +55,12 @@ for i in range(len(pdf_files)):
     pdf_files[i] = string
 
 
-f = open(f'{jsonPath}\{subject}_{paperNumber}_db_test.json', 'w')
+f = open(f'{jsonPath}\{subject}_{paperNumber}_db.json', 'w')
 f.write("[")
 
 pdfName = pdf_files[index]
 answers = MS2.extract_answers_from_pdf(code, pdfName)
-print(pdfName, answers)
+print(pdfName, answers, len(answers))
 
 while (qnumber) < (numOfQuestions + 1):
     
@@ -71,7 +71,7 @@ while (qnumber) < (numOfQuestions + 1):
                 index += 1
                 pdfName = pdf_files[index]
                 answers = MS2.extract_answers_from_pdf(code, pdfName)
-                print(pdfName, answers)
+                print(pdfName, answers, len(answers))
         img = cv2.imread(imagePath)
         questionText = pytesseract.image_to_string(img, config=custom_config)
         questionNumber = questionText[:2]
@@ -95,9 +95,8 @@ while (qnumber) < (numOfQuestions + 1):
                     chapterPath = os.path.join(f"D:/python_projects/teachmegcse/images/sorted/{level2}/{subject2}/{paperNumber}", str(chapterNum))
 
                     if not os.path.exists(chapterPath):
-                        pass
-                        #os.makedirs(chapterPath)
-                    #shutil.copy2(f'{path}/{QuestionName}', os.path.join(chapterPath, QuestionName))
+                        os.makedirs(chapterPath)
+                    shutil.copy2(f'{path}/{f"{subject}_{paperNumber}_{qnumber}.jpg"}', os.path.join(chapterPath, f"{subject}_{paperNumber}_{qnumber}.jpg"))
 
         if (questionAnswer != '') and (questionNumber != ''):
             answerObject = {
