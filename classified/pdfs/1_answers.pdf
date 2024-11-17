@@ -1,74 +1,71 @@
 %PDF-1.3
+3 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/Contents 4 0 R>>
+endobj
+4 0 obj
+<</Filter /FlateDecode /Length 170>>
+stream
+xœÒ;‚@à_1¥$æ¼=Ø»ƒ|¶^iB¡P˜øÂş¾Ú¬ØÉµS|™Ù¬Á6ÑŠ†¤Xl9+­:¬Ã'òFù†r«ø1£}
+T—ÇĞö%ê9°»>ûC[B[ÃÍ™\s¿5dR„Ó¯¡fl,§ZŒll¬ş7¨ÈÄÈ#··bğØ¨&®ÃÆöpFyS²,†íÁ^Œ"¶Ó÷Çô4äª8´U
+endstream
+endobj
 1 0 obj
-<<
+<</Type /Pages
+/Kids [3 0 R ]
 /Count 1
-/Kids [3 0 R]
 /MediaBox [0 0 1600.00 2260.00]
-/Type /Pages
+>>
+endobj
+5 0 obj
+<</Type /Font
+/BaseFont /Helvetica-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
 >>
 endobj
 2 0 obj
 <<
-/OpenAction [3 0 R /FitH null]
-/PageLayout /OneColumn
-/Pages 1 0 R
-/Type /Catalog
+/ProcSet [/PDF /Text /ImageB /ImageC /ImageI]
+/Font <<
+/F1 5 0 R
 >>
-endobj
-3 0 obj
-<<
-/Contents 4 0 R
-/Parent 1 0 R
-/Resources 6 0 R
-/Type /Page
+/XObject <<
 >>
-endobj
-4 0 obj
-<<
-/Filter /FlateDecode
-/Length 227
->>
-stream
-xœÒ»
-1…áŞ§˜RAÖœl²Iì¼¶n)lá¥¼#¾¾h‘Y•œvŠäğkZtTa=:ãšs±…RTïhV¿N^¾$mŞçu±ê·Çö:¤QŸhyº_×Û!§ts€k.çºGõşÓP6Zh øh”mcüh©áM4lÛ˜üa8Jl¨h8é¦U/İÃVÑRÃnLI1­P!EJ.©NŸB4§Š\«i„[…É|'‰€cE®Ö$¢¸VärM#œ+œ	œ+r½†„á9W„Ì;¾Œ'l?R/
-endstream
-endobj
-5 0 obj
-<<
-/BaseFont /Helvetica-Bold
-/Encoding /WinAnsiEncoding
-/Subtype /Type1
-/Type /Font
 >>
 endobj
 6 0 obj
 <<
-/Font <</F1 5 0 R>>
-/ProcSet [/PDF /Text /ImageB /ImageC /ImageI]
+/Producer (PyFPDF 1.7.2 http://pyfpdf.googlecode.com/)
+/CreationDate (D:20241112151026)
 >>
 endobj
 7 0 obj
 <<
-/CreationDate (D:20231018091320Z09'13')
+/Type /Catalog
+/Pages 1 0 R
+/OpenAction [3 0 R /FitH null]
+/PageLayout /OneColumn
 >>
 endobj
 xref
 0 8
 0000000000 65535 f 
+0000000327 00000 n 
+0000000517 00000 n 
 0000000009 00000 n 
-0000000098 00000 n 
-0000000201 00000 n 
-0000000281 00000 n 
-0000000580 00000 n 
-0000000682 00000 n 
-0000000769 00000 n 
+0000000087 00000 n 
+0000000416 00000 n 
+0000000621 00000 n 
+0000000730 00000 n 
 trailer
 <<
 /Size 8
-/Root 2 0 R
-/Info 7 0 R
-/ID [<D57BD4F4DD5FB6B5BC4F9D1413F6EECD><D57BD4F4DD5FB6B5BC4F9D1413F6EECD>]
+/Root 7 0 R
+/Info 6 0 R
 >>
 startxref
-830
+833
 %%EOF

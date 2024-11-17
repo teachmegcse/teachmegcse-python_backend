@@ -11,10 +11,11 @@ start = 1
 subject = 'phy'
 subject2 = 'physics'
 level = 'A2'
-db = open(f'{subject}_db_p{paperNumber}.json', 'w')
+level2 = 'A-level'
+db = open(f"D:\\python_projects\\teachmegcse\\json_files\\{subject}_db_p{paperNumber}.json", 'w')
 db.write("[")
 
-current_question_num = 1
+current_question_num = 0
 
 root = Tk()
 filetypes = [("PDF Files", "*.pdf")]
@@ -24,6 +25,7 @@ startPixel = 180  # Default is 180
 files = filedialog.askopenfilenames(filetypes=filetypes)
 pdf_files = list(files)
 output1Path = r"D:\python_projects\teachmegcse\python_files\makep1\testImages"
+finalOutputPath = r"D:\python_projects\teachmegcse\images\unsorted"
 heightsArr = [0 for _ in range(100)]
 
 
@@ -66,7 +68,7 @@ def clean_images():
                 if flag:
                     break
         cleaned_image = im.crop((0, 0, 1500, y))
-        cleaned_image.save(f"{output1Path}/questions/{questions[i]}")
+        cleaned_image.save(f"{finalOutputPath}/{level2}/{subject2}/p{paperNumber}/{questions[i]}")
 
 
 def merge_all_images(folder_num):
@@ -117,24 +119,23 @@ for m in range(len(files)):
         end_y = get_dimensions(f"final{m}.jpg", current_y, stop_value)
         take_screenshot(current_y, end_y, current_question_num, f"final{m}.jpg")
         current_y = end_y
-        if os.path.isfile(f"D:\\python_projects\\teachmegcse\\python_files\\makep1\\testimages\\questions\\{subject}_{current_question_num}.jpg") == True:
+        if os.path.isfile(f"{finalOutputPath}/{level2}/{subject2}/p{paperNumber}/{subject}_{current_question_num}.jpg"):
             answerObject = {
-            "questionName" : f"{subject}_{current_question_num}",
-            "questionNum" : current_question_num - start + 1,
-            "Subject":subject2,
-            "Level":level,
-            "paperNumber":paperNumber,
-            "pdfName":files[m][-18:]
+                "questionName" : f"{subject}_{current_question_num}.jpg",
+                "questionNum" : current_question_num - start + 1,
+                "Subject":subject2,
+                "Level":level,
+                "paperNumber":paperNumber,
+                "pdfName":files[m][-18:]
             }
             answerObjectFormatted = json.dumps(answerObject)
             db.write(answerObjectFormatted)
-            db.write(""",
-""")
-            current_question_num += 1
+            db.write(",\n")
+        current_question_num += 1
     start = current_question_num
 
     questions_array = os.listdir(f"{output1Path}/questions")
-    #clean_images()
+    clean_images()
 
 db.write("]")
 db.close()
