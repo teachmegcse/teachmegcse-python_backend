@@ -5,6 +5,7 @@ from tkinter import *
 from tkinter import filedialog
 import os
 import json
+from p4_ms_maker import make_question_ms
 
 paperNumber = 4
 start = 1
@@ -14,6 +15,11 @@ level = 'A2'
 level2 = 'A-level'
 db = open(f"D:\\python_projects\\teachmegcse\\json_files\\{subject}_db_p{paperNumber}.json", 'w')
 db.write("[")
+
+# Create an empty mark scheme database file
+ms_db = open(f"D:\\python_projects\\teachmegcse\\json_files\\{subject}_db_ms_p{paperNumber}.json", 'w')
+ms_db.write("[]")
+ms_db.close()
 
 current_question_num = 0
 
@@ -109,7 +115,10 @@ def take_screenshot(y1, y2, current_question_num, file_name):
 
 for m in range(len(files)):
     makeImages(output1Path, files[m], m)
-
+    # Process mark scheme first so the images are ready
+    ms_filename = files[m][-18:].replace('qp', 'ms')
+    make_question_ms(ms_filename, subject2, 9702)
+    
     strip_images(m)
     merge_all_images(m)
 

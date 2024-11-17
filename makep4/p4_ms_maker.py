@@ -123,7 +123,7 @@ def combine_array_images(image_array: List[Image.Image], save_path: str) -> None
 
 # Configuration constants
 OUTPUT_DIRECTORY = r"D:\python_projects\teachmegcse\images\unsorted"
-JSON_FILE_LOCATION = r"D:\python_projects\teachmegcse\python_files\classified\testp4.json"
+JSON_FILE_LOCATION = r"D:\python_projects\teachmegcse\json_files\phy_db_ms_p4.json"
 pytesseract.pytesseract.tesseract_cmd = r"D:\python_projects\Tesseract-OCR\tesseract.exe"
 
 def make_question_ms(ms_pdf: str, subject_name: str, subject_code: int) -> None:
@@ -254,4 +254,4 @@ def make_question_ms(ms_pdf: str, subject_name: str, subject_code: int) -> None:
         except OSError as e:
             print(f"Error deleting temporary file {temp_file}: {e}")
 
-make_question_ms("9702_m21_ms_42.pdf", 'physics', 9702)
+# make_question_ms("9702_m21_ms_42.pdf", 'physics', 9702)
