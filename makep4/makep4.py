@@ -93,6 +93,11 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, fina
     current_file = file_path[-18:]
     file_question_counts[current_file] = 0
     
+    # Extract paper number from filename
+    paper_num = extract_paper_number(current_file)
+    if paper_num is None:
+        paper_num = paperNumber  # fallback to passed parameter
+    
     # Clear the questions directory before processing new file
     questions_dir = f"{output1Path}/questions"
     if os.path.exists(questions_dir):
@@ -140,9 +145,9 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, fina
                         "questionNum": question_count,
                         "Subject": subject2,
                         "Level": level2,
-                        "paperNumber": paperNumber,
                         "pdfName": current_file,
-                        "year": year
+                        "year": year,
+                        "paperNumber": paper_num
                     }
                     answerObjectFormatted = json.dumps(answerObject)
                     db.write(answerObjectFormatted + ",\n")
@@ -152,10 +157,17 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, fina
 def process_mark_scheme(ms_filename, subject_name, subject_code):
     make_question_ms(ms_filename, subject_name, subject_code)
 
+def extract_paper_number(filename):
+    # Extract paper number from filename (e.g., from '9702_s22_qp_41.pdf' get 4)
+    try:
+        paper_variant = filename.split('_')[-1].split('.')[0]  # gets '41'
+        paper_number = int(paper_variant[0])     # gets 4
+        return paper_number
+    except:
+        return None
+
 if __name__ == '__main__':
     # Initialize constants
-    paperNumber = 4
-    start = 1
     subject = 'phy'
     subject2 = 'physics'
     level = 'A2'
@@ -163,13 +175,13 @@ if __name__ == '__main__':
     output1Path = r"D:\python_projects\teachmegcse\python_files\makep1\testImages"
     finalOutputPath = r"D:\python_projects\teachmegcse\images\unsorted"
     heightsArr = [0 for _ in range(100)]
-    db_path = f"D:\\python_projects\\teachmegcse\\json_files\\{subject}_db_p{paperNumber}.json"
+    db_path = f"D:\\python_projects\\teachmegcse\\json_files\\{subject}_db_theory.json"
     
     # Initialize database files
     with open(db_path, 'w') as db:
         db.write("[")
     
-    with open(f"D:\\python_projects\\teachmegcse\\json_files\\{subject}_db_ms_p{paperNumber}.json", 'w') as ms_db:
+    with open(f"D:\\python_projects\\teachmegcse\\json_files\\{subject}_db_ms_theory.json", 'w') as ms_db:
         ms_db.write("[]")
     
     # Get files from user
@@ -179,11 +191,17 @@ if __name__ == '__main__':
     file_question_counts = multiprocessing.Manager().dict()
     
     for m in range(len(files)):
+        current_file = files[m][-18:]
+        paper_number = extract_paper_number(current_file)
+        if paper_number is None:
+            print(f"Warning: Could not extract paper number from {current_file}, skipping...")
+            continue
+        
         # Create processes for both question paper and mark scheme
         qp_process = multiprocessing.Process(
             target=process_question_paper,
             args=(files[m], m, file_question_counts, output1Path, finalOutputPath, 
-                  subject, subject2, level2, paperNumber, heightsArr, db_path)
+                  subject, subject2, level2, paper_number, heightsArr, db_path)
         )
         
         ms_process = multiprocessing.Process(
@@ -201,6 +219,5 @@ if __name__ == '__main__':
     
     # Finalize the database file
     with open(db_path, 'rb+') as db:
-        db.seek(-2, 2)  # Go to 2 bytes before the end
-        db.truncate()   # Remove the last comma
-        db.write(b']')  # Add the closing bracket
+        db.seek(0, 2)  # Go to end of file
+        db.write(b']')
