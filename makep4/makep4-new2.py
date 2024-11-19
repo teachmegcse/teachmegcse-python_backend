@@ -132,13 +132,17 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, fina
                     # Clean and save the image
                     clean_single_image(temp_path, final_path)
                     
+                    # Extract year from filename (e.g., m15 -> 2015)
+                    year = "20" + current_file.split("_")[1][1:3]
+                    
                     answerObject = {
                         "questionName": f"{unique_filename}.jpg",
                         "questionNum": question_count,
                         "Subject": subject2,
                         "Level": level2,
                         "paperNumber": paperNumber,
-                        "pdfName": current_file
+                        "pdfName": current_file,
+                        "year": year
                     }
                     answerObjectFormatted = json.dumps(answerObject)
                     db.write(answerObjectFormatted + ",\n")
