@@ -22,10 +22,10 @@ def makeImages(output_path, pdf_path, i):
     path = f"{output_path}/{i}"
     if not os.path.exists(path):
         os.makedirs(path)
-    for x in range(2, number_of_pages):
+    for x in range(1, number_of_pages):
         reader = PdfReader(pdf_path)
         page = reader.pages[x]
-        if x >= 2:
+        if x >= 1:
             if page.extract_text().find("BLANK PAGE") == -1:
                 images[x].save(f"{output_path}/{i}/{x}.jpg", 'JPEG')
 
@@ -33,20 +33,20 @@ def strip_images(folder_num, output_path):
     pages = os.listdir(f"{output_path}/{folder_num}")
     for i in range(len(pages)):
         with PIL.Image.open(f"{output_path}/{folder_num}/{pages[i]}") as im:
-            im_crop = im.crop((0, 180, 1654, 2200))
+            im_crop = im.crop((0, 150, 1654, 2200))
             im_crop.save(f"{output_path}/{folder_num}/{pages[i]}")
 
 def merge_all_images(folder_num, output_path, heightsArr):
     pages = os.listdir(f"{output_path}/{folder_num}")
     pages = sorted(pages, key=lambda x: int(x.split(".")[0]))
-    height = (len(pages) - 1) * (2200 - 180)
+    height = (len(pages) - 1) * (2200 - 150)
     dst = PIL.Image.new('RGB', (1654, height), color='black')
     current_height = 0
-    for i in range(1, len(pages)):
+    for i in range(0, len(pages)):
         image_path = f"{output_path}/{folder_num}/{pages[i]}"
         image = PIL.Image.open(image_path)
-        dst.paste(image, (0, current_height, 1654, current_height + (2200 - 180)), mask=None)
-        current_height += (2200 - 180)
+        dst.paste(image, (0, current_height, 1654, current_height + (2200 - 150)), mask=None)
+        current_height += (2200 - 150)
     dst.save(f"{output_path}/final/final{folder_num}.jpg")
     heightsArr[folder_num] = current_height
 
@@ -172,6 +172,7 @@ if __name__ == '__main__':
     subject2 = 'physics'
     level = 'A2'
     level2 = 'A-level'
+    subject_code = 9701
     output1Path = r"D:\python_projects\teachmegcse\python_files\makep1\testImages"
     finalOutputPath = r"D:\python_projects\teachmegcse\images\unsorted"
     heightsArr = [0 for _ in range(100)]
@@ -206,7 +207,7 @@ if __name__ == '__main__':
         
         ms_process = multiprocessing.Process(
             target=process_mark_scheme,
-            args=(files[m][-18:].replace('qp', 'ms'), subject2, 9702)
+            args=(files[m][-18:].replace('qp', 'ms'), subject2, subject_code)
         )
         
         # Start both processes
