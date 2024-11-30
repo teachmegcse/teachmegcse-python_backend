@@ -145,44 +145,53 @@ def preprocess_image_for_ocr(pil_image):
     # Convert back to PIL
     return Image.fromarray(thresh)
 
-def extract_question_number(page_image, page_text):
-    # Enhance the image
-    enhanced_image = preprocess_image_for_ocr(page_image)
+def extract_question_number(page_image, expected_number=None):
+    # Crop the image to 150x150 from top-left corner
+    crop_size = 150
+    region = page_image.crop((0, 0, min(crop_size, page_image.width), min(crop_size, page_image.height)))
+    
+    # Enhance the cropped image
+    enhanced_image = preprocess_image_for_ocr(region)
     
     # Configure Tesseract for digits
-    custom_config = r'--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789AB'
+    custom_config = r'--oem 3 --psm 6'
     
     # Try to get text from enhanced image
     enhanced_text = pytesseract.image_to_string(enhanced_image, config=custom_config)
     
     # Get first non-empty line
     lines = [line.strip() for line in enhanced_text.split('\n') if line.strip()]
-    if not lines:
-        lines = [line.strip() for line in page_text.split('\n') if line.strip()]
+
+    # Extract first token that could be a number
+    potential_numbers = []
+    for line in lines[:3]:  # Check first 3 lines
+        tokens = line.split()
+        if tokens:
+            potential_numbers.append(tokens[0])
     
-    if not lines:
+    if not potential_numbers:  # If no numbers found
+        enhanced_image.save(f"enhanced_empty.jpg")
         return None
-        
-    # Extract first character/number
-    first_token = lines[0].split()[0] if lines[0].split() else ''
-    
+
     # Handle common OCR mistakes
     ocr_corrections = {
         '|': '1', '@': '1', 'M': '1',
         'l': '1', 'I': '1', '[': '1',
-        'O': '0', 'o': '0',
-        'A': '4', 'B': '6', 'F': '2'
+        'O': '0', 'o': '0'
     }
     
-    first_char = first_token[0] if first_token else ''
+    first_char = potential_numbers[0][0] if potential_numbers[0] else ''
     if first_char in ocr_corrections:
         first_char = ocr_corrections[first_char]
+
+    # Save enhanced image for debugging
+    enhanced_image.save(f"enhanced_{first_char}.jpg")
     
     # Check for double-digit numbers
-    if len(first_token) >= 2 and first_token[:2].isdigit():
-        return first_token[:2]
+    if potential_numbers[0] and len(potential_numbers[0]) >= 2 and potential_numbers[0][:2].isdigit():
+        return potential_numbers[0][:2]
     
-    return first_char if first_char.isdigit() or first_char in ['A', 'B', 'F'] else None
+    return first_char if first_char.isdigit() else None
 
 # Configuration constants
 OUTPUT_DIRECTORY = r"D:\python_projects\teachmegcse\images\unsorted"
@@ -241,25 +250,22 @@ def make_question_ms(ms_pdf: str, subject_name: str, subject_code: int) -> None:
 
         for page, page_num in ms_pages:
             try:
-                page_text = pytesseract.image_to_string(page)
-                first_num = extract_question_number(page, page_text)
+                first_num = extract_question_number(page)
                 
                 if first_num is None:
                     print(f"Could not extract question number on page {page_num}, skipping...")
                     continue
-                    
+                                    
+                try:
+                    if int(first_num) > 13:
+                        first_num = first_num[0]
+                except ValueError:
+                    # If conversion fails, skip this page
+                    print(f"Invalid number format on page {page_num}, skipping...")
+                    continue
+                
                 print(f"Question number: {first_num} on page {page_num}")
-                
-                # Convert letter grades to numbers if they weren't handled in extract_question_number
-                if first_num == "A": first_num = "4"
-                if first_num == "B": first_num = "6"
-                if first_num == "F": first_num = "2"
-                
-                # Handle double-digit question numbers
-                if int(first_num) == 1 and question_number > 7:
-                    first_num = page_text[:2]
-                    print("Double-digit question number")
-                
+
                 if question_number != int(first_num):
                     output_file = f"{output_folder}/{subject_name}_ms_{current_file_number}.jpg"
                     combine_array_images(current_question, output_file)
