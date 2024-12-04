@@ -212,11 +212,11 @@ if __name__ == '__main__':
         
         # Start both processes
         qp_process.start()
-        ms_process.start()
+        #ms_process.start()
         
         # Wait for both processes to complete before moving to next file
         qp_process.join()
-        ms_process.join()
+        #ms_process.join()
     
     # Finalize the database file
     with open(db_path, 'rb+') as db:
