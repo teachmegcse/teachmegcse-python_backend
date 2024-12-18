@@ -23,6 +23,7 @@ def makeImages(output_path, pdf_path, i):
     path = f"{output_path}/{i}"
     if not os.path.exists(path):
         os.makedirs(path)
+    current_index = 1
     for x in range(1, number_of_pages):
         reader = PdfReader(pdf_path)
         page = reader.pages[x]
@@ -30,9 +31,10 @@ def makeImages(output_path, pdf_path, i):
         text = text.lower()
         if x >= 1:
             # Skip if page contains any of these strings
-            skip_strings = ["blank page", "important values", "periodic table"]
+            skip_strings = ["blank page", "important values", "periodic table", "next page"]
             if not any(s in text for s in skip_strings):
-                images[x].save(f"{output_path}/{i}/{x}.jpg", 'JPEG')
+                images[x].save(f"{output_path}/{i}/{current_index}.jpg", 'JPEG')
+                current_index += 1
 
 def strip_images(folder_num, output_path):
     pages = os.listdir(f"{output_path}/{folder_num}")
@@ -80,7 +82,7 @@ def get_all_page_coordinates(folder_num, output_path):
                 first_box = bounding_boxes[0]
                 y1 = first_box[1]  # Top y coordinate only
                 x1 = first_box[0]
-                if x1 > 200:
+                if x1 > 150:
                     continue
                 else:
                     print(f"Using y-coordinate {y1} from first box on page {page_file}")
@@ -170,23 +172,24 @@ def clean_single_image(input_path, output_path):
 
 def extract_paper_number(filename):
     try:
-        # Extract the paper number from the filename (assuming format like "0625_s19_qp_42")
-        parts = filename.split('_')
+        base_name = filename.split('.')[0]
+        
+        parts = base_name.split('_')
+        
         if len(parts) >= 4:
-            return parts[3]
-    except:
-        pass
+            return int(parts[3][0])
+    except Exception as e:
+        print(f"Error: {e}")
     return None
 
-def process_question_paper(file_path, m, file_question_counts, output1Path, finalOutputPath, subject, subject2, level2, paperNumber, heightsArr, db_path):
+def process_question_paper(file_path, m, file_question_counts, output1Path, finalOutputPath, subject2, level2, heightsArr, db_path):
+    global unique_num
     print(f"Starting to process question paper: {file_path}")
     current_file = file_path[-18:]
     file_question_counts[current_file] = 0
     
     # Extract paper number from filename
     paper_num = extract_paper_number(current_file)
-    if paper_num is None:
-        paper_num = paperNumber
     
     # Process the paper
     print("Converting PDF to images...")
@@ -212,7 +215,7 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, fina
                 current_question_num = i + 1
                 
                 print(f"Processing question {current_question_num} with coordinates y1={y1}, y2={y2}")
-                unique_filename = f"{subject}_{subject2}_{level2}_p{paper_num}_q{current_question_num}"
+                unique_filename = f"{subject2}_{unique_num}"
                 take_screenshot(y1, y2, current_question_num, f"final{m}.jpg", output1Path, subject, unique_filename)
                 
                 # Clean the cropped image
@@ -221,7 +224,6 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, fina
                 if os.path.exists(input_path):
                     clean_single_image(input_path, output_path)
                     file_question_counts[current_file] += 1
-                    print(f"Saved question {current_question_num}")
                     
                     # Extract year from filename (e.g., m15 -> 2015)
                     year = "20" + current_file.split("_")[1][1:3]
@@ -237,6 +239,8 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, fina
                     }
                     answerObjectFormatted = json.dumps(answerObject)
                     db.write(answerObjectFormatted + ",\n")
+
+                    unique_num += 1
                 
     except Exception as e:
         print(f"Error in processing: {str(e)}")
@@ -248,13 +252,13 @@ def process_mark_scheme(ms_filename, subject_name, subject_code):
 if __name__ == '__main__':
     print("Starting script...")
     # Initialize constants
-    subject = 'phy'
-    subject2 = 'physics'
-    level2 = 'igcse'
-    paperNumber = '4'
+    subject = 'chem'
+    subject2 = 'chemistry'
+    level2 = 'A-level'
+    unique_num = 1
     
     # Create necessary directories
-    output1Path = "output1"
+    output1Path = r"D:\python_projects\teachmegcse\python_files\makep1\testImages"
     finalOutputPath = "final_output"
     db_path = "db.json"
     
@@ -287,10 +291,10 @@ if __name__ == '__main__':
         if file_path.find("ms") == -1:
             try:
                 process_question_paper(file_path, m, file_question_counts, output1Path, finalOutputPath, 
-                                    subject, subject2, level2, paperNumber, heightsArr, db_path)
+                                     subject2, level2, heightsArr, db_path)
                 print(f"Finished processing file {m + 1}")
             except Exception as e:
                 print(f"Error processing file {file_path}: {str(e)}")
         else:
             print("Processing mark scheme...")
-            process_mark_scheme(file_path, subject2, subject)
+            process_mark_scheme(file_path, subject2, 9701)

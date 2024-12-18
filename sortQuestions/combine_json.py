@@ -80,7 +80,8 @@ def combineJSON(MSjson, QPjson, jsonDirectory):
                 "Subject" : qp_entry["Subject"],
                 "Level" : qp_entry["Level"],
                 "Chapter" : chapter_num,
-                "paperNumber" : int(paperNumber[1:])
+                "paperNumber" : int(paperNumber[1:]),
+                "type" : "long"
             })
     
     print(f"Found {matches_found} matching pairs")

@@ -5,6 +5,8 @@ from typing import List, Tuple
 import cv2
 import numpy as np
 from PIL import Image, ImageEnhance
+import easyocr
+import re
 
 # Third-party imports
 from PIL import Image
@@ -146,52 +148,73 @@ def preprocess_image_for_ocr(pil_image):
     return Image.fromarray(thresh)
 
 def extract_question_number(page_image, expected_number=None):
-    # Crop the image to 150x150 from top-left corner
-    crop_size = 150
+    # Crop the image to 125x125 from top-left corner
+    crop_size = 125
     region = page_image.crop((0, 0, min(crop_size, page_image.width), min(crop_size, page_image.height)))
     
     # Enhance the cropped image
     enhanced_image = preprocess_image_for_ocr(region)
-    
-    # Configure Tesseract for digits
-    custom_config = r'--oem 3 --psm 6'
-    
+        
     # Try to get text from enhanced image
-    enhanced_text = pytesseract.image_to_string(enhanced_image, config=custom_config)
+    reader = easyocr.Reader(['en'])
+    lines = reader.readtext(np.array(enhanced_image), detail=0)
+    print(f"OCR lines detected: {lines}")
     
-    # Get first non-empty line
-    lines = [line.strip() for line in enhanced_text.split('\n') if line.strip()]
-
     # Extract first token that could be a number
     potential_numbers = []
-    for line in lines[:3]:  # Check first 3 lines
-        tokens = line.split()
-        if tokens:
-            potential_numbers.append(tokens[0])
     
-    if not potential_numbers:  # If no numbers found
-        enhanced_image.save(f"enhanced_empty.jpg")
-        return None
-
-    # Handle common OCR mistakes
+    # Common OCR corrections
     ocr_corrections = {
         '|': '1', '@': '1', 'M': '1',
         'l': '1', 'I': '1', '[': '1',
-        'O': '0', 'o': '0'
+        'O': '0', 'o': '0', 's': '5', 'S': '5',
+        '}': ')', # Handle curly brace typo
     }
-    
-    first_char = potential_numbers[0][0] if potential_numbers[0] else ''
-    if first_char in ocr_corrections:
-        first_char = ocr_corrections[first_char]
 
-    # Save enhanced image for debugging
-    enhanced_image.save(f"enhanced_{first_char}.jpg")
+    for line in lines[:3]:  # Check first 3 lines
+        # Convert to string if not already
+        line = str(line)
+        
+        # Apply OCR corrections to the start of the line first
+        if line and line[0] in ocr_corrections:
+            line = ocr_corrections[line[0]] + line[1:]
+        
+        # First try to match mark scheme specific patterns
+        # Handles formats like "5(a)", "5(b)iv", "5(b}v"
+        ms_pattern = re.match(r'(\d+)\s*[\(\{][a-z].*', line.lower())
+        if ms_pattern:
+            potential_numbers.append(ms_pattern.group(1))
+            continue
+            
+        # Then try standard question number patterns
+        main_number_match = re.match(r'(\d+)\s*\([a-z]', line.lower())
+        if main_number_match:
+            potential_numbers.append(main_number_match.group(1))
+            continue
+            
+        # Finally look for any word containing digits
+        tokens = re.findall(r'\b\w+\b', line)
+        potential_numbers.extend([t for t in tokens if any(c.isdigit() for c in t)])
     
-    # Check for double-digit numbers
-    if potential_numbers[0] and len(potential_numbers[0]) >= 2 and potential_numbers[0][:2].isdigit():
-        return potential_numbers[0][:2]
+    if not potential_numbers:
+        print(f"Warning: No potential numbers found in OCR text. Using expected number: {expected_number}")
+        return expected_number
     
-    return first_char if first_char.isdigit() else None
+    # Get the first number found
+    first_number = potential_numbers[0]
+    
+    # Extract just the numeric part if it's mixed with letters
+    numeric_part = re.search(r'\d+', str(first_number))
+    if numeric_part:
+        first_number = numeric_part.group(0)
+    
+    try:
+        result = int(first_number)
+        print(f"Successfully extracted question number: {result}")
+        return result
+    except ValueError:
+        print(f"Warning: Could not convert '{first_number}' to integer. Using expected number: {expected_number}")
+        return expected_number
 
 # Configuration constants
 OUTPUT_DIRECTORY = r"D:\python_projects\teachmegcse\images\unsorted"
@@ -201,13 +224,12 @@ pytesseract.pytesseract.tesseract_cmd = r"D:\python_projects\Tesseract-OCR\tesse
 def make_question_ms(ms_pdf: str, subject_name: str, subject_code: int) -> None:
     try:
         print(f"Processing mark scheme: {ms_pdf}")
-        pdf_directory = f"D:/python_projects/teachmegcse/full_pdfs/{subject_code}"
+        total_pages = convert_from_path(ms_pdf, poppler_path=r"D:\python_projects\poppler-23.05.0\Library\bin")
         output_folder = f"{OUTPUT_DIRECTORY}/A-level/{subject_name}/p4"
         temp_files = []  # Keep track of temporary files for cleanup
         
         question_number = 1
         end_of_question = False
-        total_pages = convert_from_path(f"{pdf_directory}/{ms_pdf}", poppler_path=r"D:\python_projects\poppler-23.05.0\Library\bin")
         current_question = []
         ms_pages = []
         first_json = True
@@ -267,62 +289,91 @@ def make_question_ms(ms_pdf: str, subject_name: str, subject_code: int) -> None:
                 print(f"Question number: {first_num} on page {page_num}")
 
                 if question_number != int(first_num):
-                    output_file = f"{output_folder}/{subject_name}_ms_{current_file_number}.jpg"
-                    combine_array_images(current_question, output_file)
-                    
-                    if first_json:
-                        ms_data = [{"fileName": f"{subject_name}_ms_{current_file_number}.jpg", 
-                                  "questionNumber": question_number, 
-                                  "paperCode": ms_pdf}]
-                        first_json = False
-                    else:
-                        ms_data.append({"fileName": f"{subject_name}_ms_{current_file_number}.jpg", 
+                    if current_question:  # Only combine if we have images to combine
+                        output_file = f"{output_folder}/{subject_name}_ms_{current_file_number}.jpg"
+                        combine_array_images(current_question, output_file)
+                        
+                        if first_json:
+                            ms_data = [{"fileName": f"{subject_name}_ms_{current_file_number}.jpg", 
                                       "questionNumber": question_number, 
-                                      "paperCode": ms_pdf})
-                    
-                    current_file_number += 1
-                    question_number += 1
+                                      "paperCode": ms_pdf}]
+                            first_json = False
+                        else:
+                            ms_data.append({"fileName": f"{subject_name}_ms_{current_file_number}.jpg", 
+                                          "questionNumber": question_number, 
+                                          "paperCode": ms_pdf})
+                        
+                        current_file_number += 1
+                    question_number = int(first_num)
                     end_of_question = False
                     current_question = []
 
-                # Check for question boundaries using pixel analysis
-                pixel = page.load()
-                y = 0
-                pixel_color = pixel[0, y]
-                
-                while pixel_color != (255, 255, 255) and y < page.height:
-                    pixel_color = pixel[0, y]
-                    if pixel_color == (255, 255, 255):
-                        pixel_color = pixel[0, y + 1]
-                        if pixel_color == (255, 255, 255):
-                            end_of_question = True
+                # Convert image to RGB mode if it isn't already
+                if page.mode != 'RGB':
+                    page = page.convert('RGB')
+
+                try:
+                    # Check for question boundaries using pixel analysis
+                    pixel = page.load()
+                    y = 0
+                    white_count = 0  # Count consecutive white pixels
+                    required_white = 3  # Number of consecutive white pixels required
+                    
+                    while y < page.height:
+                        try:
+                            pixel_color = pixel[0, y]
+                            
+                            # Check if pixel is white (allowing for some variation)
+                            is_white = all(c > 250 for c in pixel_color)
+                            
+                            if is_white:
+                                white_count += 1
+                                if white_count >= required_white:
+                                    end_of_question = True
+                                    break
+                            else:
+                                white_count = 0
+                                
+                        except IndexError:
+                            print(f"Warning: Could not access pixel at y={y}")
                             break
-                    y += 1
+                            
+                        y += 1
 
-                if end_of_question:
-                    current_question.append(page.crop((0, 0, page.width, y)))
-                    output_file = f"{output_folder}/{subject_name}_ms_{current_file_number}.jpg"
-                    combine_array_images(current_question, output_file)
-                    
-                    if first_json:
-                        ms_data = [{"fileName": f"{subject_name}_ms_{current_file_number}.jpg", 
-                                  "questionNumber": question_number, 
-                                  "paperCode": ms_pdf}]
-                        first_json = False
+                    if end_of_question:
+                        # Ensure we have a valid crop region
+                        crop_y = max(0, min(y, page.height))
+                        cropped = page.crop((0, 0, page.width, crop_y))
+                        if cropped.height > 0:  # Only append if we have a valid crop
+                            current_question.append(cropped)
+                            
+                        if current_question:  # Only combine if we have images
+                            output_file = f"{output_folder}/{subject_name}_ms_{current_file_number}.jpg"
+                            combine_array_images(current_question, output_file)
+                            
+                            if first_json:
+                                ms_data = [{"fileName": f"{subject_name}_ms_{current_file_number}.jpg", 
+                                          "questionNumber": question_number, 
+                                          "paperCode": ms_pdf}]
+                                first_json = False
+                            else:
+                                ms_data.append({"fileName": f"{subject_name}_ms_{current_file_number}.jpg", 
+                                              "questionNumber": question_number, 
+                                              "paperCode": ms_pdf})
+                            
+                            current_file_number += 1
+                            question_number += 1
+                            end_of_question = False
+                            current_question = []
                     else:
-                        ms_data.append({"fileName": f"{subject_name}_ms_{current_file_number}.jpg", 
-                                      "questionNumber": question_number, 
-                                      "paperCode": ms_pdf})
-                    
-                    question_number += 1
-                    current_file_number += 1
-                    
-                    if y < page.height:
-                        current_question = [page.crop((0, y + 114, page.width, page.height))]
-                        end_of_question = False
-                else:
+                        # If no end found, just append the whole page
+                        current_question.append(page)
+                        
+                except Exception as e:
+                    print(f"Error processing page content: {str(e)}")
+                    # If error occurs, just append the whole page
                     current_question.append(page)
-
+                    continue
             except Exception as e:
                 print(f"Error processing page content: {str(e)}")
                 continue
