@@ -1,5 +1,4 @@
 import PIL.Image
-from numpy import take
 from pdf2image import convert_from_path
 import PIL
 from PyPDF2 import PdfReader
@@ -9,6 +8,7 @@ import os
 import easyocr
 import requests
 from io import BytesIO
+import json
 
 def select_files():
     root = Tk()
@@ -87,8 +87,8 @@ def extract_question_number(im, current_question_num, output_path):
 
                 if text_in_box.isdigit():
                     if int(text_in_box) == current_question_num + 1:
-                        returnArray.append(box[1])
-                        print(f"Question number {current_question_num} found at y1: {box[1]}")
+                        returnArray.append(int(box[1]))
+                        print(f"Question number {current_question_num} found at y1: {int(box[1])}")
                         current_question_num += 1
         print(f"returnArray: {returnArray} at iteration {current_question_num}")
         return returnArray
@@ -135,8 +135,16 @@ def take_screenshot(y1, y2, file_name, output_path, unique_filename, current_que
 
 if __name__ == "__main__":
     files = select_files()
+    files = [file for file in files if 'ms' in file.lower()]
     output_path = r"D:\python_projects\teachmegcse\python_files\makep1\testImages"
+    JSON_FILE_LOCATION = r"D:\python_projects\teachmegcse\json_files\phy_db_ms_p4.json"
+    with open(JSON_FILE_LOCATION, 'r') as json_file:
+        ms_data = json.load(json_file)
+
     for i in range(len(files)):
+        filename = files[i].split('/')[-1]
+        filename = filename.replace('.pdf', '')
+        print(f"Processing PDF: {filename}")
         makeImages(output_path, files[i], i)
         strip_images(output_path, i)
         merge_all_images(i, output_path)
@@ -158,8 +166,20 @@ if __name__ == "__main__":
                     # Loop through each detected question Y-coordinate
                     for y1 in y_coordinates:
                         take_screenshot(previous_y, y1 + (j) * 1300 + 10,  # Include a small buffer below
-                                         i, output_path, f"{i}_{currentQuestionNum}", currentQuestionNum)
+                                         i, output_path, f"{i}_ms_{currentQuestionNum}", currentQuestionNum)
+
+                        ms_data.append({"fileName": f"{i}_ms_{currentQuestionNum}.jpg", 
+                                          "questionNumber": currentQuestionNum, 
+                                          "paperCode": filename})
                         previous_y = y1 + (j) * 1300
                         currentQuestionNum += 1
         
-        take_screenshot(previous_y, (len(number_of_pages)) * 1300, i, output_path, f"{i}_{currentQuestionNum}", currentQuestionNum)
+        take_screenshot(previous_y, (len(number_of_pages)) * 1300, i, output_path, f"{i}_ms_{currentQuestionNum}", currentQuestionNum)
+        ms_data.append({"fileName": f"{i}_ms_{currentQuestionNum}.jpg", 
+                                          "questionNumber": currentQuestionNum, 
+                                          "paperCode": filename})
+        try:
+            with open(JSON_FILE_LOCATION, 'w') as json_file:
+                json.dump(ms_data, json_file, indent=1)
+        except Exception as e:
+            print(f"Error saving JSON data: {str(e)}")

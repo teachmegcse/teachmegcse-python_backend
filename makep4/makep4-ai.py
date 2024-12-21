@@ -6,7 +6,6 @@ from tkinter import filedialog
 import os
 import json
 import requests
-from p4_ms_maker import make_question_ms
 import multiprocessing
 
 def select_files():
@@ -182,8 +181,10 @@ def extract_paper_number(filename):
         print(f"Error: {e}")
     return None
 
-def process_question_paper(file_path, m, file_question_counts, output1Path, finalOutputPath, subject2, level2, heightsArr, db_path):
+def process_question_paper(file_path, m, file_question_counts, output1Path, finalOutputPath, subject2, heightsArr, db_path):
     global unique_num
+    ASpapers = [2, 3]
+    A2papers = [4, 5]
     print(f"Starting to process question paper: {file_path}")
     current_file = file_path[-18:]
     file_question_counts[current_file] = 0
@@ -215,7 +216,7 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, fina
                 current_question_num = i + 1
                 
                 print(f"Processing question {current_question_num} with coordinates y1={y1}, y2={y2}")
-                unique_filename = f"{subject2}_{unique_num}"
+                unique_filename = f"{subject2}_p{paper_num}_q{unique_num}_{current_question_num}"
                 take_screenshot(y1, y2, current_question_num, f"final{m}.jpg", output1Path, subject, unique_filename)
                 
                 # Clean the cropped image
@@ -227,13 +228,15 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, fina
                     
                     # Extract year from filename (e.g., m15 -> 2015)
                     year = "20" + current_file.split("_")[1][1:3]
+                    current_file2 = current_file.replace(".pdf", "")
+                    level2 = "AS" if paper_num in ASpapers else "A2"
                     
                     answerObject = {
                         "questionName": f"{unique_filename}.jpg",
                         "questionNum": current_question_num,
                         "Subject": subject2,
                         "Level": level2,
-                        "pdfName": current_file,
+                        "pdfName": current_file2,
                         "year": year,
                         "paperNumber": paper_num
                     }
@@ -246,21 +249,17 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, fina
         print(f"Error in processing: {str(e)}")
         raise e
 
-def process_mark_scheme(ms_filename, subject_name, subject_code):
-    make_question_ms(ms_filename, subject_name, subject_code)
-
 if __name__ == '__main__':
     print("Starting script...")
     # Initialize constants
     subject = 'chem'
     subject2 = 'chemistry'
-    level2 = 'A-level'
     unique_num = 1
     
     # Create necessary directories
     output1Path = r"D:\python_projects\teachmegcse\python_files\makep1\testImages"
     finalOutputPath = "final_output"
-    db_path = "db.json"
+    db_path = r"D:\python_projects\teachmegcse\json_files\phy_db_theory.json"
     
     # Initialize database file
     with open(db_path, 'w') as db:
@@ -291,10 +290,9 @@ if __name__ == '__main__':
         if file_path.find("ms") == -1:
             try:
                 process_question_paper(file_path, m, file_question_counts, output1Path, finalOutputPath, 
-                                     subject2, level2, heightsArr, db_path)
+                                     subject2, heightsArr, db_path)
                 print(f"Finished processing file {m + 1}")
             except Exception as e:
                 print(f"Error processing file {file_path}: {str(e)}")
         else:
-            print("Processing mark scheme...")
-            process_mark_scheme(file_path, subject2, 9701)
+            pass
