@@ -1,8 +1,4 @@
-# Data Generation Scripts
-
-This bundle includes two Python scripts designed for generating structured datasets from predefined parameters for various academic subjects. These scripts are tailored for use with TeachMeGCSE/Exceed.
-
-## Files Description
+# Files Description
 
 ### 1. `6.py`
 - **Purpose**:
