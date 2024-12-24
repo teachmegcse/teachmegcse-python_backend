@@ -32,11 +32,3 @@ This bundle includes two Python scripts designed for generating structured datas
 - **Output**:
   - A comprehensive `data.json` file with structured metadata for all configured subjects.
 
-## Shared Features
-- Both scripts generate formatted JSON objects and write them to a `data.json` file.
-- Include metadata fields like `slug`, `src`, `msSrc`, and other essential attributes for organizing academic papers.
-
-## Future Improvements
-- Add logging for better tracking of generated outputs.
-- Optimize loops for handling edge cases and improving runtime.
-- Modularize shared functionalities to improve code reuse and maintainability.
