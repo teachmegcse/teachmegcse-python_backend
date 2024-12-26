@@ -19,12 +19,16 @@ a2Labels = ['Chemical energetics', 'Electrochemistry',
                'Hydrocarbons', 'Halogen compounds', 'Hydroxy compounds', 'Carboxylic acids and derivatives','Nitrogen compounds',
                'Polymerisation','Organic synthesis','Analytical techniques']
 
+IGLabels = ['States of matter', 'Atoms, elements and compounds', 
+             'Stoichiometry', 'Electrochemistry', 'Chemical energetics', 'Chemical reactions', 'Acids, bases and salts',
+               'The Periodic Table', 'Metals', 'Chemistry of the environment', 'Organic chemistry', 'Experimental techniques and chemical analysis']
+
 # Directories
 jsondirectory = r"D:\python_projects\teachmegcse\python_files\makep4\phy_db_final_p4.json"
 MSjsonDirectory = r"D:\python_projects\teachmegcse\json_files\phy_db_ms_p4.json"
 QuestionJsonDirectory = r"D:\python_projects\teachmegcse\json_files\phy_db_theory.json"
-UNSORTED_DIR = r"D:\python_projects\teachmegcse\images\unsorted\A-level\chemistry\long"
-SORTED_DIR = r"D:\python_projects\teachmegcse\images\sorted\A-level\chemistry\long"
+UNSORTED_DIR = r"D:\python_projects\teachmegcse\images\unsorted\IGCSE\chemistry\long"
+SORTED_DIR = r"D:\python_projects\teachmegcse\images\sorted\IGCSE\chemistry\long"
 TESSERACT_CMD = r"D:\python_projects\Tesseract-OCR\tesseract.exe"
 CUSTOM_CONFIG = r'--oem 3 --psm 6'
 MODEL_PATH_TEMPLATE = "D:/python_projects/teachmegcse/python_files/sci-kit/{model}.joblib"
@@ -69,15 +73,17 @@ def copy_files_to_chapter_folders(question_name, ms_name, chapter_num):
 
 def process_entry(args):
     """Process a single entry."""
-    qp_entry, ms_lookup, asLabels, a2Labels, UNSORTED_DIR, CUSTOM_CONFIG = args
+    qp_entry, ms_lookup, asLabels, a2Labels, IGLabels, UNSORTED_DIR, CUSTOM_CONFIG = args
 
     qp_code = normalize_paper_code(qp_entry["pdfName"])
     key = (qp_entry["questionNum"], qp_code)
     if key not in ms_lookup:
         return None  # Skip if no match
 
-    model = "aschem" if qp_entry["Level"] == "AS" else "a2chem"
-    start_chapter = 0 if model == "aschem" else len(asLabels)
+    #model = "aschem" if qp_entry["Level"] == "AS" else "a2chem"
+    model = "IGchem"
+    #start_chapter = 0 if model == "aschem" else len(asLabels)
+    start_chapter = 0
 
     # Paths and processing
     question_name = qp_entry["questionName"]
@@ -86,7 +92,8 @@ def process_entry(args):
 
     question_text = process_image(os.path.join(UNSORTED_DIR, question_name), CUSTOM_CONFIG).lower().strip()
     chapter = predict(question_text, model)
-    chapter_num = (asLabels.index(chapter) + 1 if model == "aschem" else a2Labels.index(chapter) + 1)
+    #chapter_num = (asLabels.index(chapter) + 1 if model == "aschem" else a2Labels.index(chapter) + 1)
+    chapter_num = IGLabels.index(chapter) + 1
 
     # Copy files to chapter folder
     copy_files_to_chapter_folders(question_name, ms_name, chapter_num + start_chapter)
@@ -127,7 +134,7 @@ def combineJSON(MSjson, QPjson, jsonDirectory):
     # Use multiprocessing to process entries
     with Pool(processes=cpu_count()) as pool:
         results = pool.map(process_entry, [
-            (qp_entry, ms_lookup, asLabels, a2Labels, UNSORTED_DIR, CUSTOM_CONFIG) 
+            (qp_entry, ms_lookup, asLabels, a2Labels, IGLabels, UNSORTED_DIR, CUSTOM_CONFIG) 
             for qp_entry in QPData
         ])
 

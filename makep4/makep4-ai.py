@@ -149,26 +149,6 @@ def take_screenshot(y1, y2, current_question_num, file_name, output_path, subjec
     else:
         print(f"Skipping question {current_question_num} - too small ({y2 - y1} pixels)")
 
-def clean_single_image(input_path, output_path):
-    with PIL.Image.open(input_path) as im:
-        pix = im.load()
-        y = im.height - 2
-        
-        # Find the actual content bottom
-        for curr_y in range(im.height - 2, 1, -2):
-            found_content = False
-            for x in range(im.width - 2, 1, -2):
-                if pix[x, curr_y] != (255, 255, 255):
-                    y = curr_y
-                    found_content = True
-                    break
-            if found_content:
-                break
-        
-        # Crop and save
-        cleaned_image = im.crop((0, 0, 1500, y))
-        cleaned_image.save(output_path)
-
 def extract_paper_number(filename):
     try:
         base_name = filename.split('.')[0]
@@ -223,13 +203,12 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, fina
                 input_path = f"{output1Path}/questions/{unique_filename}.jpg"
                 output_path = f"{finalOutputPath}/{unique_filename}.jpg"
                 if os.path.exists(input_path):
-                    clean_single_image(input_path, output_path)
                     file_question_counts[current_file] += 1
                     
                     # Extract year from filename (e.g., m15 -> 2015)
                     year = "20" + current_file.split("_")[1][1:3]
                     current_file2 = current_file.replace(".pdf", "")
-                    level2 = "AS" if paper_num in ASpapers else "A2"
+                    level2 = "IGCSE"
                     
                     answerObject = {
                         "questionName": f"{unique_filename}.jpg",

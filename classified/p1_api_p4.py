@@ -11,6 +11,7 @@ from zipfile import ZipFile
 import uvicorn
 import os
 from typing import Optional
+import numpy as np
 
 # Set up logger
 logger = logging.getLogger("uvicorn")
@@ -46,6 +47,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+def is_all_white(image):
+    """
+    Checks if an image is all white.
+
+    Args:
+        image: A PIL Image object.
+
+    Returns:
+        True if the image is all white, False otherwise.
+    """
+    image_array = np.array(image)  # Convert image to a numpy array
+    return np.all(image_array == (255, 255, 255))  # Check if all pixels are white (RGB value)
 
 def create_zip_archive(files, output_dir, zip_filename):  # as fastapi does not allow FileResponse with multiple files so we're combining them into 1
     zip_path = os.path.join(output_dir, zip_filename)
@@ -166,26 +179,33 @@ async def generate_pdf(questionData: QuestionsList):
                 while True:
                     if (currentIndex + 1) * modifier > currentImage.height:
                         currentCroppedImage = currentImage.crop((0, currentIndex * modifier, currentImage.width, currentImage.height))
-                        classifiedPdf.add_page()
-                        classifiedPdf.set_xy(questionNumX, currentYClassified)
-                        classifiedPdf.cell(w=10, txt=f"{currentQuestionNum})")
-                        temp_image_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
-                        temp_files.append(temp_image_path.name)
-                        currentCroppedImage.save(temp_image_path.name, format="JPEG")
-                        classifiedPdf.image(temp_image_path.name, questionImageX, currentYClassified, 1420, currentCroppedImage.height)
-                        temp_image_path.close()
-                        currentQuestionNum += 1
+
+                        # Check if the cropped image is all white
+                        if not is_all_white(currentCroppedImage):
+                            classifiedPdf.add_page()
+                            classifiedPdf.set_xy(questionNumX, currentYClassified)
+                            classifiedPdf.cell(w=10, txt=f"{currentQuestionNum})")
+                            temp_image_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+                            temp_files.append(temp_image_path.name)
+                            currentCroppedImage.save(temp_image_path.name, format="JPEG")
+                            classifiedPdf.image(temp_image_path.name, questionImageX, currentYClassified, 1420, currentCroppedImage.height)
+                            temp_image_path.close()
+                            currentQuestionNum += 1
                         break
                     else:
                         currentCroppedImage = currentImage.crop((0, currentIndex * modifier, currentImage.width, (currentIndex + 1) * modifier))
-                        classifiedPdf.add_page()
-                        classifiedPdf.set_xy(questionNumX, currentYClassified)
-                        classifiedPdf.cell(w=10, txt=f"{currentQuestionNum})")
-                        temp_image_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
-                        temp_files.append(temp_image_path.name)
-                        currentCroppedImage.save(temp_image_path.name, format="JPEG")
-                        classifiedPdf.image(temp_image_path.name, questionImageX, currentYClassified, 1420, currentCroppedImage.height)
-                        temp_image_path.close()
+
+                        # Check if the cropped image is all white
+                        if not is_all_white(currentCroppedImage):
+                            classifiedPdf.add_page()
+                            classifiedPdf.set_xy(questionNumX, currentYClassified)
+                            classifiedPdf.cell(w=10, txt=f"{currentQuestionNum})")
+                            temp_image_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+                            temp_files.append(temp_image_path.name)
+                            currentCroppedImage.save(temp_image_path.name, format="JPEG")
+                            classifiedPdf.image(temp_image_path.name, questionImageX, currentYClassified, 1420, currentCroppedImage.height)
+                            temp_image_path.close()
+                            currentQuestionNum += 1
                         currentIndex += 1
             else:
                 classifiedPdf.add_page()
@@ -202,7 +222,8 @@ async def generate_pdf(questionData: QuestionsList):
                 mcqAnswers.append(answer)
             else:
                 longAnswers.append(answer)
-        answerPdf.add_page()
+        if (len(mcqAnswers) > 0):
+            answerPdf.add_page()
         answerPdf.set_font("helvetica", size=45, style="B")
         for answer in range(len(mcqAnswers)):
             currentAnswerObject = mcqAnswers[answer]
@@ -244,7 +265,6 @@ async def generate_pdf(questionData: QuestionsList):
             finally:
                 try:
                     os.remove(temp_image_path.name)
-                    logger.info(f"Deleted temporary file: {temp_image_path.name}")
                 except FileNotFoundError:
                     pass # File may have been deleted already
                 except Exception as e:
