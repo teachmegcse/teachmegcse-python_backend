@@ -190,7 +190,6 @@ async def generate_pdf(questionData: QuestionsList):
                             currentCroppedImage.save(temp_image_path.name, format="JPEG")
                             classifiedPdf.image(temp_image_path.name, questionImageX, currentYClassified, 1420, currentCroppedImage.height)
                             temp_image_path.close()
-                            currentQuestionNum += 1
                         break
                     else:
                         currentCroppedImage = currentImage.crop((0, currentIndex * modifier, currentImage.width, (currentIndex + 1) * modifier))
@@ -205,14 +204,13 @@ async def generate_pdf(questionData: QuestionsList):
                             currentCroppedImage.save(temp_image_path.name, format="JPEG")
                             classifiedPdf.image(temp_image_path.name, questionImageX, currentYClassified, 1420, currentCroppedImage.height)
                             temp_image_path.close()
-                            currentQuestionNum += 1
                         currentIndex += 1
             else:
                 classifiedPdf.add_page()
                 classifiedPdf.set_xy(questionNumX, currentYClassified)
                 classifiedPdf.cell(w=10, txt=f"{currentQuestionNum})")
                 classifiedPdf.image(currentImagePath, questionImageX, currentYClassified, 1420, currentImage.height)
-                currentQuestionNum += 1
+            currentQuestionNum += 1
 
         logger.info("Generating answers PDF")
         mcqAnswers = []
@@ -225,18 +223,19 @@ async def generate_pdf(questionData: QuestionsList):
         if (len(mcqAnswers) > 0):
             answerPdf.add_page()
         answerPdf.set_font("helvetica", size=45, style="B")
+        currentQuestionNum = 1
         for answer in range(len(mcqAnswers)):
             currentAnswerObject = mcqAnswers[answer]
             if currentYAnswers + 100 > maxHeight:
                 answerPdf.add_page()
 
             answerPdf.set_xy(questionNumX, currentYAnswers)
-            answerPdf.cell(w=10, txt=f"{currentAnswerObject['questionNum']})  Answer: {currentAnswerObject['Answer']},  Source: {currentAnswerObject['Source']}")
+            answerPdf.cell(w=10, txt=f"{currentQuestionNum})  Answer: {currentAnswerObject['Answer']},  Source: {currentAnswerObject['Source']}")
             currentYAnswers += 70
+            currentQuestionNum += 1
         
         currentYAnswers = 100
-        logger.info(longAnswers)
-        for answer_index, currentAnswerObject in enumerate(longAnswers):  # Use enumerate for index
+        for index, currentAnswerObject in enumerate(longAnswers):
             currentAnswerPath = f"{imagelocation}/long/{currentAnswerObject['Answer']}"
 
             if not os.path.exists(currentAnswerPath):
@@ -256,10 +255,10 @@ async def generate_pdf(questionData: QuestionsList):
                 # Add the rotated image and question number to the PDF
                 answerPdf.add_page()
                 answerPdf.set_xy(questionImageX, currentYAnswers - 30)
-                answerPdf.cell(w=10, txt=f"{answer_index + 1})")  # Print answer number, adjust w to align with question number
+                answerPdf.cell(w=10, txt=f"{currentQuestionNum})")  # Print answer number, adjust w to align with question number
 
                 answerPdf.image(temp_image_path.name, questionImageX, currentYAnswers + 10, 1420, rotated_image.height)
-
+                currentQuestionNum += 1
             except Exception as e:
                 logger.error(f"Error processing answer image {currentAnswerPath}: {e}")
             finally:
