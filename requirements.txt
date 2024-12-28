@@ -5,7 +5,7 @@ fpdf2
 pydantic
 PyPDF2
 pdf2image
-tkinter
+tk
 requests
 easyocr
 opencv-python
