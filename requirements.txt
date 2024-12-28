@@ -1,0 +1,15 @@
+fastapi
+pillow
+fpdf
+fpdf2
+pydantic
+PyPDF2
+pdf2image
+tk
+requests
+easyocr
+opencv-python
+numpy
+pytesseract
+joblib
+nltk
