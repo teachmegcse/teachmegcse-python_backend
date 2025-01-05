@@ -10,7 +10,6 @@ from zipfile import ZipFile
 import uvicorn
 import os
 from typing import Optional
-from io import BytesIO
 import numpy as np
 
 # Set up logger
@@ -68,8 +67,8 @@ async def generate_pdf(questionData: QuestionsList):
     logger.info(f"Received request to generate PDF for {len(questionData.questionData)} questions")
     questionData = questionData.questionData
     maxHeight = 2260
-    basePath = r"D:\python_projects\teachmegcse"
-    outputdirectory = f"{basePath}/python_files/classified/pdfs"
+    basePath = "."
+    outputdirectory = f"{basePath}/pdfs"
 
     classifiedPdf = FPDF("portrait", "pt", [1600, maxHeight])
     answerPdf = FPDF("portrait", "pt", [1600, maxHeight])
@@ -82,7 +81,7 @@ async def generate_pdf(questionData: QuestionsList):
     subject = questionData[0].Subject
     level = questionData[0].Level
     level2 = "A-level" if level in ["A2", "AS"] else "IGCSE"
-    imagelocation = f"{basePath}/images/unsorted/{level2}/{subject}"
+    imagelocation = f"{basePath}/unsorted/{level2}/{subject}"
 
     classifiedPdf.set_font("helvetica", size=45, style="B")
 
@@ -109,12 +108,10 @@ async def generate_pdf(questionData: QuestionsList):
         classifiedPdf.set_xy(questionNumX, currentYClassified)
         classifiedPdf.cell(w=10, txt=f"{currentQuestionNum})")
 
-        # Save image to BytesIO and add to PDF
-        image_buffer = BytesIO()
-        currentImageCropped.save(image_buffer, format="JPEG")
-        image_buffer.seek(0)
-        classifiedPdf.image(image_buffer, questionImageX, currentYClassified, 1420, currentImageCropped.height)
-        image_buffer.close()
+        temp_image_path = f"{basePath}/temp_{currentQuestionNum}.jpg"
+        currentImageCropped.save(temp_image_path, format="JPEG")
+        classifiedPdf.image(temp_image_path, questionImageX, currentYClassified, 1420, currentImageCropped.height)
+        os.remove(temp_image_path)
 
         Answers.append({"questionNum": currentQuestionNum, "Answer": currentQuestionObject.Answer, "Source": currentQuestionObject.pdfName, "type": "MCQ"})
         currentYClassified += currentImageCropped.height + 100
@@ -139,11 +136,11 @@ async def generate_pdf(questionData: QuestionsList):
                             classifiedPdf.add_page()
                             classifiedPdf.set_xy(questionNumX, currentYClassified)
                             classifiedPdf.cell(w=10, txt=f"{currentQuestionNum})")
-                            image_buffer = BytesIO()
-                            croppedImage.save(image_buffer, format="JPEG")
-                            image_buffer.seek(0)
-                            classifiedPdf.image(image_buffer, questionImageX, currentYClassified, 1420, croppedImage.height)
-                            image_buffer.close()
+
+                            temp_image_path = f"{basePath}/temp_{currentQuestionNum}_part.jpg"
+                            croppedImage.save(temp_image_path, format="JPEG")
+                            classifiedPdf.image(temp_image_path, questionImageX, currentYClassified, 1420, croppedImage.height)
+                            os.remove(temp_image_path)
                         break
                     else:
                         croppedImage = currentImage.crop((0, currentIndex * modifier, currentImage.width, (currentIndex + 1) * modifier))
@@ -151,21 +148,22 @@ async def generate_pdf(questionData: QuestionsList):
                             classifiedPdf.add_page()
                             classifiedPdf.set_xy(questionNumX, currentYClassified)
                             classifiedPdf.cell(w=10, txt=f"{currentQuestionNum})")
-                            image_buffer = BytesIO()
-                            croppedImage.save(image_buffer, format="JPEG")
-                            image_buffer.seek(0)
-                            classifiedPdf.image(image_buffer, questionImageX, currentYClassified, 1420, croppedImage.height)
-                            image_buffer.close()
+
+                            temp_image_path = f"{basePath}/temp_{currentQuestionNum}_part_{currentIndex}.jpg"
+                            croppedImage.save(temp_image_path, format="JPEG")
+                            classifiedPdf.image(temp_image_path, questionImageX, currentYClassified, 1420, croppedImage.height)
+                            os.remove(temp_image_path)
                         currentIndex += 1
             else:
                 classifiedPdf.add_page()
                 classifiedPdf.set_xy(questionNumX, currentYClassified)
                 classifiedPdf.cell(w=10, txt=f"{currentQuestionNum})")
-                image_buffer = BytesIO()
-                currentImage.save(image_buffer, format="JPEG")
-                image_buffer.seek(0)
-                classifiedPdf.image(image_buffer, questionImageX, currentYClassified, 1420, currentImage.height)
-                image_buffer.close()
+
+                temp_image_path = f"{basePath}/temp_{currentQuestionNum}.jpg"
+                currentImage.save(temp_image_path, format="JPEG")
+                classifiedPdf.image(temp_image_path, questionImageX, currentYClassified, 1420, currentImage.height)
+                os.remove(temp_image_path)
+
             currentQuestionNum += 1
     logger.info("Generating answers PDF")
     mcqAnswers = []
@@ -214,21 +212,20 @@ async def generate_pdf(questionData: QuestionsList):
             # Rotate the image 90 degrees counter-clockwise
             rotated_image = currentAnswerImage.rotate(90, expand=True)
 
-            # Save the rotated image to a BytesIO buffer
-            image_buffer = BytesIO()
-            rotated_image.save(image_buffer, format="JPEG")
-            image_buffer.seek(0)
+            # Save the rotated image to a temporary file
+            temp_image_pSath = f"{imagelocation}/temp_rotated_image_{currentQuestionNum}.jpg"
+            rotated_image.save(temp_image_path, format="JPEG")
 
             # Add the rotated image and question number to the PDF
             answerPdf.add_page()
             answerPdf.set_xy(questionImageX, currentYAnswers - 30)
             answerPdf.cell(w=10, txt=f"{currentQuestionNum})")  # Print answer number
 
-            answerPdf.image(image_buffer, questionImageX, currentYAnswers + 10, 1420, rotated_image.height)
+            answerPdf.image(temp_image_path, questionImageX, currentYAnswers + 10, 1420, rotated_image.height)
             currentQuestionNum += 1
 
-            # Close the image buffer
-            image_buffer.close()
+            # Remove the temporary file
+            os.remove(temp_image_path)
         except Exception as e:
             logger.error(f"Error processing answer image {currentAnswerPath}: {e}")
 
