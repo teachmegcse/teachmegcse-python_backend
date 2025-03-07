@@ -1,4 +1,4 @@
-# Exam Processing Automation
+# CIE A-level and IGCSE Exam Processing Automation
 
 This repository contains a collection of Python scripts that automate the classification, processing, and generation of exam materials, including questions, answers, and structured PDFs. It supports AI-assisted workflows, OCR-based text extraction, and machine learning-driven classification for efficient academic content management.
 
