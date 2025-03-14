@@ -9,6 +9,7 @@ from typing import List
 from zipfile import ZipFile
 import os
 import uvicorn
+from pathConst import basePath
 
 class Question(BaseModel):
     Level: str
@@ -53,7 +54,6 @@ async def generate_pdf(questionData: QuestionsList):
     Answers = [] # contains the Question object which has the answer, source and questionNum
     questionData = questionData.questionData
     maxHeight = 2260
-    basePath = r"D:\python_projects\teachmegcse"
     outputdirectory=f"{basePath}/python_files/classified/pdfs"
 
     classifiedPdf = FPDF("portrait","pt",[1600, maxHeight])

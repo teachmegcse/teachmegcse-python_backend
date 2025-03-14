@@ -7,6 +7,7 @@ import os
 import json
 import requests
 import multiprocessing
+from pathConst import basePath, popplerPath
 
 def select_files():
     root = Tk()
@@ -16,7 +17,7 @@ def select_files():
     return list(files)
 
 def makeImages(output_path, pdf_path, i):
-    images = convert_from_path(pdf_path, poppler_path=r"D:\python_projects\poppler-23.05.0\Library\bin")
+    images = convert_from_path(pdf_path, poppler_path=popplerPath)
     reader = PdfReader(pdf_path)
     number_of_pages = len(reader.pages)
     path = f"{output_path}/{i}"
@@ -236,9 +237,9 @@ if __name__ == '__main__':
     unique_num = 1
     
     # Create necessary directories
-    output1Path = r"D:\python_projects\teachmegcse\python_files\makep1\testImages"
+    output1Path = f"{basePath}/python_files/makep1/testImages"
     finalOutputPath = "final_output"
-    db_path = r"D:\python_projects\teachmegcse\json_files\phy_db_theory.json"
+    db_path = f"{basePath}/json_files/phy_db_theory.json"
     
     # Initialize database file
     with open(db_path, 'w') as db:
