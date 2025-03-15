@@ -201,13 +201,16 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, fina
                 
                 # Clean the cropped image
                 input_path = f"{output1Path}/questions/{unique_filename}.jpg"
-                output_path = f"{finalOutputPath}/{unique_filename}.jpg"
                 if os.path.exists(input_path):
                     file_question_counts[current_file] += 1
                     
                     # Extract year from filename (e.g., m15 -> 2015)
                     year = "20" + current_file.split("_")[1][1:3]
                     current_file2 = current_file.replace(".pdf", "")
+                    if paper_num in ASpapers:
+                        level2 = "AS"
+                    elif paper_num in A2papers:
+                        level2 = "A2"
                     level2 = "IGCSE"
                     
                     answerObject = {
@@ -231,8 +234,8 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, fina
 if __name__ == '__main__':
     print("Starting script...")
     # Initialize constants
-    subject = 'chem'
-    subject2 = 'chemistry'
+    subject = 'phy'
+    subject2 = 'physics'
     unique_num = 1
     
     # Create necessary directories
@@ -245,7 +248,7 @@ if __name__ == '__main__':
         db.write("[")
     
     print("Creating directories...")
-    for dir_path in [output1Path, f"{output1Path}/final", f"{output1Path}/questions", finalOutputPath]:
+    for dir_path in [output1Path, f"{output1Path}/final", f"{output1Path}/questions"]:
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
     

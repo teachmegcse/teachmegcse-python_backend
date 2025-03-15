@@ -8,27 +8,27 @@ from multiprocessing import Pool, Manager, cpu_count
 import getFormattedTextfromPdf
 
 # Labels
-asLabels = ['Atomic structure', 'Atoms, molecules and stoichiometry', 
-             'Chemical bonding', 'States of matter', 'Chemical energetics', 'Electrochemistry', 'Equilibria',
-               'Reaction kinetics', 'The Periodic Table: chemical periodicity', 'Group 2', 'Group 17', 'Nitrogen and sulfur', 'introduction to AS Level organic chemistry', 
-               'Hydrocarbons', 'Halogen compounds', 'Hydroxy compounds', 'Carbonyl compounds', 'Carboxylic acids and derivatives', 'Nitrogen compounds', 'Polymerisation',
-                 'Organic synthesis', 'Analytical techniques']
+asLabels = ['Physical quantities and units', 'Kinematics', 
+             'Dynamics', 'Forces, density and pressure', 'Work, energy and power', 'Deformation of solids', 'Waves',
+               'Superposition', 'Electricity', 'D.C. circuits', 'Particle physics']
 
-a2Labels = ['Chemical energetics', 'Electrochemistry', 
-             'Equilibria', 'Reaction kinetics', 'Group 2', 'Chemistry of transition elements', 'An introduction to A Level organic chemistry',
-               'Hydrocarbons', 'Halogen compounds', 'Hydroxy compounds', 'Carboxylic acids and derivatives','Nitrogen compounds',
-               'Polymerisation','Organic synthesis','Analytical techniques']
+a2Labels = ['Motion in a circle', 'Gravitational fields', 
+             'Temperature', 'Ideal gases', 'Thermodynamics', 'Oscillations', 'Electric fields',
+               'Capacitance', 'Magnetic fields', 'Alternating currents', 'Quantum physics', 'Nuclear physics',
+               'Medical physics', 'Astronomy and cosmology']
 
-IGLabels = ['States of matter', 'Atoms, elements and compounds', 
-             'Stoichiometry', 'Electrochemistry', 'Chemical energetics', 'Chemical reactions', 'Acids, bases and salts',
-               'The Periodic Table', 'Metals', 'Chemistry of the environment', 'Organic chemistry', 'Experimental techniques and chemical analysis']
+IGLabels = ['Characteristics and classification of living organisms', 'Organisation of the organism', 
+             'Movement into and out of cells', 'Biological molecules', 'Enzymes', 'Plant nutrition', 'Human nutrition',
+               'Transport in plants', 'Transport in animals', 'Diseases and immunity', 'Gas exchange in humans','Respiration',
+               'Excretion in humans','Coordination and response','Drugs','Reproduction','Inheritance','Variation and selection',
+               'Organisms and their environment','Human influences on ecosystems','Biotechnology and genetic modification']
 
 # Directories
 jsondirectory = r"D:\python_projects\teachmegcse\python_files\makep4\phy_db_final_p4.json"
 MSjsonDirectory = r"D:\python_projects\teachmegcse\json_files\phy_db_ms_p4.json"
 QuestionJsonDirectory = r"D:\python_projects\teachmegcse\json_files\phy_db_theory.json"
-UNSORTED_DIR = r"D:\python_projects\teachmegcse\images\unsorted\IGCSE\chemistry\long"
-SORTED_DIR = r"D:\python_projects\teachmegcse\images\sorted\IGCSE\chemistry\long"
+UNSORTED_DIR = r"D:\python_projects\teachmegcse\images\unsorted\A-level\physics\long"
+SORTED_DIR = r"D:\python_projects\teachmegcse\images\sorted\A-level\physics\long"
 TESSERACT_CMD = r"D:\python_projects\Tesseract-OCR\tesseract.exe"
 CUSTOM_CONFIG = r'--oem 3 --psm 6'
 MODEL_PATH_TEMPLATE = "D:/python_projects/teachmegcse/python_files/sci-kit/{model}.joblib"
@@ -80,10 +80,10 @@ def process_entry(args):
     if key not in ms_lookup:
         return None  # Skip if no match
 
-    #model = "aschem" if qp_entry["Level"] == "AS" else "a2chem"
-    model = "IGchem"
-    #start_chapter = 0 if model == "aschem" else len(asLabels)
-    start_chapter = 0
+    model = "asphy" if qp_entry["Level"] == "AS" else "a2phy"
+    #model = "IGbio"
+    start_chapter = 0 if model == "asphy" else len(asLabels)
+    #start_chapter = 0
 
     # Paths and processing
     question_name = qp_entry["questionName"]
@@ -92,8 +92,8 @@ def process_entry(args):
 
     question_text = process_image(os.path.join(UNSORTED_DIR, question_name), CUSTOM_CONFIG).lower().strip()
     chapter = predict(question_text, model)
-    #chapter_num = (asLabels.index(chapter) + 1 if model == "aschem" else a2Labels.index(chapter) + 1)
-    chapter_num = IGLabels.index(chapter) + 1
+    chapter_num = (asLabels.index(chapter) + 1 if model == "asphy" else a2Labels.index(chapter) + 1)
+    #chapter_num = IGLabels.index(chapter) + 1
 
     # Copy files to chapter folder
     copy_files_to_chapter_folders(question_name, ms_name, chapter_num + start_chapter)
