@@ -4,6 +4,7 @@ from PyPDF2 import PdfReader
 from tkinter import *
 from tkinter import filedialog
 import os
+from pathConst import basePath, popplerPath
 
 subject = 'IG_phy'
 paper_number = 'p2'
@@ -16,11 +17,11 @@ startPage = 1 # Default is 1
 startPixel = 150  # Default is 150
 
 files = filedialog.askopenfilenames(filetypes=filetypes)
-output1Path = r"D:\python_projects\teachmegcse\python_files\makep1\testImages"
+output1Path = f"{basePath}/python_files/makep1/testImages"
 
 
 def makeImages(output_path, pdf_path, i):
-    images = convert_from_path(pdf_path, poppler_path=r"D:\python_projects\poppler-23.05.0\Library\bin")
+    images = convert_from_path(pdf_path, poppler_path=popplerPath)
     reader = PdfReader(pdf_path)
     number_of_pages = len(reader.pages)
     path = f"{output_path}/{i}"

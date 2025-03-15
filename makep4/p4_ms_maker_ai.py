@@ -9,7 +9,7 @@ import easyocr
 import requests
 from io import BytesIO
 import json
-import shutil
+from pathConst import basePath, popplerPath
 
 def select_files():
     root = Tk()
@@ -28,10 +28,9 @@ def strip_images(output_path, i):
                 im_crop.save(image_path)
 
 def makeImages(output_path, pdf_path, i):
-    images = convert_from_path(pdf_path, poppler_path=r"D:\python_projects\poppler-23.05.0\Library\bin")
+    images = convert_from_path(pdf_path, poppler_path=popplerPath)
     reader = PdfReader(pdf_path)
     number_of_pages = len(reader.pages)
-    print(f"Number of pages: {number_of_pages}")
     
     # Create output directory for this PDF
     pdf_output_path = os.path.join(output_path, str(i))
@@ -48,13 +47,10 @@ def makeImages(output_path, pdf_path, i):
         text = text.lower()
         if x >= 1:
             # Skip if page contains any of these strings
-            skip_strings = ["blank page", "important values", "periodic table", "next page", "marking principle", "irrelevant", "examiner", "responses", "credit", "awarded"]
+            skip_strings = ["blank page", "important values", "periodic table", "next page", "guidance", "marking principle"]
             if not any(s in text for s in skip_strings):
-                print(f"Processing page {x}")
                 images[x].save(f"{pdf_output_path}/{current_index}.jpg", 'JPEG')
                 current_index += 1
-            else:
-                print(f"Skipping page {x} - contains skip string")
 
 
 def extract_question_number(im, current_question_num, output_path):
@@ -82,7 +78,7 @@ def extract_question_number(im, current_question_num, output_path):
         for box in bounding_boxes:
             current_box = im.crop((box[0], box[1], box[2], box[3]))
             current_box.save(f"{output_path}/questions/temp.jpg")
-            text_in_box = easyocr.Reader(['en'], gpu=True).readtext(f"{output_path}/questions/temp.jpg")
+            text_in_box = easyocr.Reader(['en']).readtext(f"{output_path}/questions/temp.jpg")
 
             if text_in_box:
                 text_in_box = text_in_box[0][1]
@@ -107,9 +103,6 @@ def extract_question_number(im, current_question_num, output_path):
 def merge_all_images(folder_num, output_path):
     pages = os.listdir(f"{output_path}/{folder_num}")
     pages = sorted(pages, key=lambda x: int(x.split(".")[0]))
-    if not pages:
-        print(f"No images found in folder: {output_path}/{folder_num}")
-        return
     
     # First pass to get total height
     total_height = 0
@@ -144,8 +137,8 @@ def take_screenshot(y1, y2, file_name, output_path, unique_filename, current_que
 if __name__ == "__main__":
     files = select_files()
     files = [file for file in files if 'ms' in file.lower()]
-    output_path = r"D:\python_projects\teachmegcse\python_files\makep1\testImages"
-    JSON_FILE_LOCATION = r"D:\python_projects\teachmegcse\json_files\phy_db_ms_p4.json"
+    output_path = f"{basePath}/python_files/makep1/testImages"
+    JSON_FILE_LOCATION = f"{basePath}/json_files/phy_db_ms_p4.json"
     with open(JSON_FILE_LOCATION, 'r') as json_file:
         ms_data = json.load(json_file)
 
@@ -153,8 +146,6 @@ if __name__ == "__main__":
         filename = files[i].split('/')[-1]
         filename = filename.replace('.pdf', '')
         print(f"Processing PDF: {filename}")
-        if i > 0:
-            shutil.rmtree(f"{output_path}/{i - 1}")
         makeImages(output_path, files[i], i)
         strip_images(output_path, i)
         merge_all_images(i, output_path)

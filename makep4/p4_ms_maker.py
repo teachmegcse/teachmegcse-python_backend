@@ -12,6 +12,7 @@ import re
 from PIL import Image
 import pytesseract
 from pdf2image import convert_from_path
+from pathConst import basePath, popplerPath, tesseractPath
 
 def search_in_x(
     img: Image.Image,
@@ -217,14 +218,14 @@ def extract_question_number(page_image, expected_number=None):
         return expected_number
 
 # Configuration constants
-OUTPUT_DIRECTORY = r"D:\python_projects\teachmegcse\images\unsorted"
-JSON_FILE_LOCATION = r"D:\python_projects\teachmegcse\json_files\phy_db_ms_p4.json"
-pytesseract.pytesseract.tesseract_cmd = r"D:\python_projects\Tesseract-OCR\tesseract.exe"
+OUTPUT_DIRECTORY = f"{basePath}/images/unsorted"
+JSON_FILE_LOCATION = f"{basePath}/json_files/phy_db_ms_p4.json"
+pytesseract.pytesseract.tesseract_cmd = tesseractPath
 
 def make_question_ms(ms_pdf: str, subject_name: str, subject_code: int) -> None:
     try:
         print(f"Processing mark scheme: {ms_pdf}")
-        total_pages = convert_from_path(ms_pdf, poppler_path=r"D:\python_projects\poppler-23.05.0\Library\bin")
+        total_pages = convert_from_path(ms_pdf, poppler_path=popplerPath)
         output_folder = f"{OUTPUT_DIRECTORY}/A-level/{subject_name}/p4"
         temp_files = []  # Keep track of temporary files for cleanup
         
