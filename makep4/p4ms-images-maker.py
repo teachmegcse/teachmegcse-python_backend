@@ -4,7 +4,7 @@ from PyPDF2 import PdfReader
 from tkinter import *
 from tkinter import filedialog
 import os
-from pathConst import basePath, popplerPath, tesseractPath
+from pathConst import BASE_PATH, POPPLER_PATH, TESSERACT_PATH
 
 def select_files():
     root = Tk()
@@ -23,7 +23,7 @@ def strip_images(output_path):
                 im_crop.save(image_path)
 
 def makeImages(output_path, pdf_path, i):
-    images = convert_from_path(pdf_path, poppler_path=popplerPath)
+    images = convert_from_path(pdf_path, poppler_path=POPPLER_PATH)
     reader = PdfReader(pdf_path)
     number_of_pages = len(reader.pages)
     if not os.path.exists(output_path):
@@ -43,7 +43,7 @@ def makeImages(output_path, pdf_path, i):
 
 if __name__ == "__main__":
     files = select_files()
-    output_path = f"{basePath}/python_files/makep1/testImages"
+    output_path = f"{BASE_PATH}/python_files/makep1/testImages"
     for i in range(len(files)):
         makeImages(output_path, files[i], i)
     strip_images(output_path)

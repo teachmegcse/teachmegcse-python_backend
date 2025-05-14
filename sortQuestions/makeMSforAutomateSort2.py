@@ -8,12 +8,12 @@ from tkinter import Tk, filedialog
 from joblib import load
 import getFormattedTextfromPdf
 import shutil
-from pathConst import basePath, tesseractPath
+from pathConst import BASE_PATH, TESSERACT_PATH
 
 # Constants
-TESSERACT_CMD = tesseractPath
+TESSERACT_CMD = TESSERACT_PATH
 CUSTOM_CONFIG = r'--oem 3 --psm 6'
-JSON_PATH = rf"{basePath}\json_files"
+JSON_PATH = rf"{BASE_PATH}\json_files"
 IMAGE_PATH_TEMPLATE = "D:/python_projects/teachmegcse/images/unsorted/{level2}/{subject2}/{paperNumber}/{subject}_{paperNumber}_{qnumber}.jpg"
 SORTED_PATH_TEMPLATE = "D:/python_projects/teachmegcse/images/sorted/{level2}/{subject2}/{paperNumber}/{chapterNum}"
 MODEL_PATH_TEMPLATE = "D:/python_projects/teachmegcse/python_files/sci-kit/{model}.joblib"

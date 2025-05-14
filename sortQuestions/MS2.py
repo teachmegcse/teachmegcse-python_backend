@@ -1,7 +1,8 @@
 import PyPDF2
+from pathConst import PDF_PATH
 
 def extract_answers_from_pdf(code, pdfName):
-    pdfPath = f"D:/python_projects/teachmegcse/full_pdfs/{code}/{pdfName}.pdf"
+    pdfPath = f"{PDF_PATH}/{code}/{pdfName}.pdf"
     pdf_reader = PyPDF2.PdfReader(open(pdfPath, "rb"))
     text = ""
     for page_num in range(len(pdf_reader.pages)):

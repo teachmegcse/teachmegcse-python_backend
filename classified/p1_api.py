@@ -12,7 +12,7 @@ import os
 from typing import Optional
 from io import BytesIO
 import numpy as np
-from pathConst import basePath
+from pathConst import BASE_PATH
 
 # Set up logger
 logger = logging.getLogger("uvicorn")
@@ -69,7 +69,7 @@ async def generate_pdf(questionData: QuestionsList):
     logger.info(f"Received request to generate PDF for {len(questionData.questionData)} questions")
     questionData = questionData.questionData
     maxHeight = 2260
-    outputdirectory = f"{basePath}/python_files/classified/pdfs"
+    outputdirectory = f"{BASE_PATH}/python_files/classified/pdfs"
 
     classifiedPdf = FPDF("portrait", "pt", [1600, maxHeight])
     answerPdf = FPDF("portrait", "pt", [1600, maxHeight])
@@ -82,7 +82,7 @@ async def generate_pdf(questionData: QuestionsList):
     subject = questionData[0].Subject
     level = questionData[0].Level
     level2 = "A-level" if level in ["A2", "AS"] else "IGCSE"
-    imagelocation = f"{basePath}/images/unsorted/{level2}/{subject}"
+    imagelocation = f"{BASE_PATH}/images/unsorted/{level2}/{subject}"
 
     classifiedPdf.set_font("helvetica", size=45, style="B")
 

@@ -6,7 +6,7 @@ import pytesseract
 from joblib import load
 from multiprocessing import Pool, Manager, cpu_count
 import getFormattedTextfromPdf
-from pathConst import basePath, popplerPath, tesseractPath
+from pathConst import BASE_PATH, TESSERACT_PATH
 
 # Labels
 asLabels = ['Atomic structure', 'Atoms, molecules and stoichiometry', 
@@ -25,12 +25,12 @@ IGLabels = ['States of matter', 'Atoms, elements and compounds',
                'The Periodic Table', 'Metals', 'Chemistry of the environment', 'Organic chemistry', 'Experimental techniques and chemical analysis']
 
 # Directories
-jsondirectory = rf"{basePath}\python_files\makep4\phy_db_final_p4.json"
-MSjsonDirectory = rf"{basePath}\json_files\phy_db_ms_p4.json"
-QuestionJsonDirectory = rf"{basePath}\json_files\phy_db_theory.json"
-UNSORTED_DIR = rf"{basePath}\teachmegcse\images\unsorted\IGCSE\chemistry\long"
-SORTED_DIR = rf"{basePath}\images\sorted\IGCSE\chemistry\long"
-TESSERACT_CMD = tesseractPath
+jsondirectory = rf"{BASE_PATH}\python_files\makep4\phy_db_final_p4.json"
+MSjsonDirectory = rf"{BASE_PATH}\json_files\phy_db_ms_p4.json"
+QuestionJsonDirectory = rf"{BASE_PATH}\json_files\phy_db_theory.json"
+UNSORTED_DIR = rf"{BASE_PATH}\teachmegcse\images\unsorted\IGCSE\chemistry\long"
+SORTED_DIR = rf"{BASE_PATH}\images\sorted\IGCSE\chemistry\long"
+TESSERACT_CMD = TESSERACT_PATH
 CUSTOM_CONFIG = r'--oem 3 --psm 6'
 MODEL_PATH_TEMPLATE = "D:/python_projects/teachmegcse/python_files/sci-kit/{model}.joblib"
 

@@ -7,7 +7,7 @@ import os
 import json
 from p4_ms_maker import make_question_ms
 import multiprocessing
-from pathConst import basePath, popplerPath
+from pathConst import BASE_PATH, POPPLER_PATH
 
 def select_files():
     root = Tk()
@@ -17,7 +17,7 @@ def select_files():
     return list(files)
 
 def makeImages(output_path, pdf_path, i):
-    images = convert_from_path(pdf_path, poppler_path=popplerPath)
+    images = convert_from_path(pdf_path, poppler_path=POPPLER_PATH)
     reader = PdfReader(pdf_path)
     number_of_pages = len(reader.pages)
     path = f"{output_path}/{i}"
@@ -174,8 +174,8 @@ if __name__ == '__main__':
     level = 'A2'
     level2 = 'A-level'
     subject_code = 9701
-    output1Path = f"{basePath}/python_files/makep1/testImages"
-    finalOutputPath = f"{basePath}/images/unsorted"
+    output1Path = f"{BASE_PATH}/python_files/makep1/testImages"
+    finalOutputPath = f"{BASE_PATH}/images/unsorted"
     heightsArr = [0 for _ in range(100)]
     db_path = f"D:\\python_projects\\teachmegcse\\json_files\\{subject}_db_theory.json"
     
