@@ -6,4 +6,4 @@ classified/pdfs/multiple_files.zip
 makep4/phy_db_final_p4.json
 classified/pdfs/questions.pdf
 
-pathConst.py
+./pathConst.py
