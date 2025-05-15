@@ -1,8 +1,15 @@
+import sys
+import os
+
+# Add the directory two levels up to sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+
 import PyPDF2
 from pathConst import PDF_PATH
 
 def extract_answers_from_pdf(code, pdfName):
-    pdfPath = f"{PDF_PATH}/{code}/{pdfName}.pdf"
+    pdfPath = rf"{PDF_PATH}\{code}\{pdfName}.pdf"
     pdf_reader = PyPDF2.PdfReader(open(pdfPath, "rb"))
     text = ""
     for page_num in range(len(pdf_reader.pages)):
@@ -20,3 +27,5 @@ def extract_answers_from_pdf(code, pdfName):
             answers.append(answer)
     
     return answers
+
+print(extract_answers_from_pdf(9702, "9702_w22_ms_12"))
