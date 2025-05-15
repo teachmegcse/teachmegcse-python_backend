@@ -1,14 +1,21 @@
+import sys
+import os
+
+# Add the directory two levels up to sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 
 from PIL import Image
 import json
 from fpdf import FPDF #fpdf2 is required
 from PyPDF2 import PdfMerger
+from pathConst import BASE_PATH
 subject="physics"
 subjectcode="9702"
-jsondirectory=f"D:/python_projects/teachmegcse/json_files/physics_db.json"
-ChapterNamesJson="D:/python_projects/teachmegcse/json_files/chapters.json"
-imagelocation=f"D:/python_projects/teachmegcse/images/unsorted/{subject}/p1/"
-outputdirectory=f"D:/python_projects/teachmegcse/python_files/classified/pdfs"
+jsondirectory=f"{BASE_PATH}/json_files/physics_db.json"
+ChapterNamesJson=f"{BASE_PATH}/json_files/chapters.json"
+imagelocation=f"{BASE_PATH}/images/unsorted/{subject}/p1/"
+outputdirectory=f"{BASE_PATH}/python_files/classified/pdfs"
 def MakeClassified(jsondirectory, chapterjson, outputdirectory, imagelocation, subject, subjectcode, hasIndex=True, hasAd=True, hasChapterPages=True, hasMS=True):
     listofimages=[""]*10 #temporary image list
     i=0 #total counter
@@ -18,7 +25,7 @@ def MakeClassified(jsondirectory, chapterjson, outputdirectory, imagelocation, s
     tempi=0 #temp counter
     totaly=0 #records y
     yinpage=0
-    VerticalLine=Image.open("D:/python_projects/teachmegcse/images/verticalline.png").resize((30,2000)) #importing verticalline, and resizing to fit whole page
+    VerticalLine=Image.open(f"{BASE_PATH}/images/verticalline.png").resize((30,2000)) #importing verticalline, and resizing to fit whole page
     FirstPage=True
     Flag=True #flag that records whether the json file has ended
     chapteri=0 #an index that traverses the chapter json file, to find the specific subject needed

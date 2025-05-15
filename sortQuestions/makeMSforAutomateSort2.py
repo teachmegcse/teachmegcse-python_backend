@@ -1,3 +1,10 @@
+import sys
+import os
+
+# Add the directory two levels up to sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+
 import cv2
 import pytesseract
 import os

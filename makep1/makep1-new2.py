@@ -1,3 +1,10 @@
+import sys
+import os
+
+# Add the directory two levels up to sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+
 from pdf2image import convert_from_path
 import PIL
 from PyPDF2 import PdfReader
