@@ -3,45 +3,43 @@ import os
 
 # Add the directory two levels up to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-TESSERACT_CMD = TESSERACT_PATH
 CUSTOM_CONFIG = r'--oem 3 --psm 6'
-MODEL_PATH_TEMPLATE = f"{BASE_PATH}/python_files/sci-kit/{model}.joblib"
 
 from pdf2image import convert_from_path
-import PIL
+from PIL import Image
 from PyPDF2 import PdfReader
-from tkinter import *
-from tkinter import filedialog
-import os
-from pathConst import BASE_PATH, POPPLER_PATH, TESSERACT_PATH
+from tkinter import filedialog, Tk
+from pathConst import BASE_PATH, POPPLER_PATH, TESSERACT_PATH, PDF_PATH
 import requests
 from joblib import load
-from ..sortQuestions.getFormattedTextfromPdf import getFormattedTextfromPdf
-from ..sortQuestions import MS2
 import cv2
 import pytesseract
 import shutil
 import json
+import re
+from nltk.stem import PorterStemmer
+from nltk.tokenize import word_tokenize
+import io
 
-ALL_LABELS = ['Utility', 'Indifference curves and budget lines', 
-             'Efficiency and market failure', 'Private costs and benefits, externalities and social costs and benefits ',
-               'Types of cost, revenue and profit, short-run and long-run production',
-               'market structures', 'Growth and survival of firms',
-               'objectives and policies of firms', 'Government policies to achieve efficient resource allocation',
-                'Equity and redistribution of income and wealth', 'Labour market forces and government intervention', 'The circular flow of income',
-               'Economic growth and sustainability', 'Employment/unemployment', 'Money and banking', 'Government macroeconomic policy objectives',
-               'balance of payments', 'Economic development', 'levels of development']
+
+ALL_LABELS = ['Characteristics and classification of living organisms', 'Organisation of the organism', 
+             'Movement into and out of cells', 'Biological molecules', 'Enzymes', 'Plant nutrition', 'Human nutrition',
+               'Transport in plants', 'Transport in animals', 'Diseases and immunity', 'Gas exchange in humans','Respiration',
+               'Excretion in humans','Coordination and response','Drugs','Reproduction','Inheritance','Variation and selection',
+               'Organisms and their environment','Human influences on ecosystems','Biotechnology and genetic modification']
 
 subject = 'IG_bio'
 paper_number = 'p1'
 code = '0610'
 start_chapter = 1
-model = 'igbio'
-level = "A2"
-level2 = 'A-level' # A-level or IGCSE
+model = 'IGbio'
+level = "IGCSE"
+level2 = 'IGCSE' # A-level or IGCSE
 subject2 = 'biology'
+num_of_questions = 40
 
 
+MODEL_PATH_TEMPLATE = f"{BASE_PATH}/python_files/sci-kit/{model}.joblib"
 current_question_num = 1
 root = Tk()
 filetypes = [("PDF Files", "*.pdf")]
@@ -61,32 +59,42 @@ def makeImages(output_path, pdf_path, i):
     if not os.path.exists(path):
         os.makedirs(path)
     for x in range(number_of_pages):
-        reader = PdfReader(pdf_path)
         page = reader.pages[x]
         if x >= startPage:
             if page.extract_text().find("BLANK PAGE") == -1:
                 images[x].save(f"{output_path}/{i}/{x}.jpg", 'JPEG')
 
 def get_y_coordinates(file_name, folderNum):
-    with PIL.Image.open(f"{output1Path}/{folderNum}/{file_name}") as im:
-        files = {'file': im}
-        response = requests.post('http://127.0.0.1:8000/predict', files=files)
-        y_coordinates = response.json()
-        return y_coordinates
+    image_path = f"{output1Path}/{folderNum}/{file_name}"
+    im = Image.open(image_path)
+    # Convert the image to a byte stream
+    img_byte_arr = io.BytesIO()
+    im.save(img_byte_arr, format='JPEG')  # or 'PNG' depending on your image format
+    img_byte_arr.seek(0)
+
+    # Prepare files payload with the correct content
+    files = {'file': ('image.jpg', img_byte_arr, 'image/jpeg')}
+    
+    response = requests.post('http://127.0.0.1:8000/predict', files=files)
+    response.raise_for_status()  # This raises an error for bad responses (4xx, 5xx)
+
+    y_coordinates = response.json()
+    return y_coordinates
 
 
 def strip_images(folder_num):
-    pages = os.listdir(f"{output1Path}/{folder_num}")
+    pages = os.listdir(rf"{output1Path}/{folder_num}")
     for i in range(len(pages)):
-        with PIL.Image.open(f"{output1Path}/{folder_num}/{pages[i]}") as im:
+        img_path = os.path.join(output1Path, str(folder_num), pages[i])
+        with Image.open(img_path) as im:
             im_crop = im.crop((0, startPixel, 1654, 2200))
-            im_crop.save(f"{output1Path}/{folder_num}/{pages[i]}")
+            im_crop.save(img_path)
 
 
 def clean_images():
     questions = os.listdir(f"{output1Path}/questions")
     for i in range(len(questions)):
-        im = PIL.Image.open(f"{output1Path}/questions/{questions[i]}")
+        im = Image.open(f"{output1Path}/questions/{questions[i]}")
         pix = im.load()
         flag = False
         if flag == False:
@@ -107,21 +115,74 @@ def clean_images():
 def take_screenshot(y1, y2, file_name, folderNum):
     global current_question_num
     if (y2 - y1) > 150 :
-        with PIL.Image.open(f"{output1Path}/{folderNum}/{file_name}") as im:
+        with Image.open(f"{output1Path}/{folderNum}/{file_name}") as im:
             im_crop = im.crop((100, y1, 1600, y2))
-            im_crop.save(f"{output1Path}/questions/{subject}_{paper_number}_{current_question_num}.jpg")
+            im_crop.save(f"{output1Path}/questions/{subject}_{paper_number}_{current_question_num + (folderNum * num_of_questions)}.jpg")
     else :
         current_question_num -= 1
 
 def predict(data, model):
     pipeline = load(MODEL_PATH_TEMPLATE.format(model=model))
-    data = getFormattedTextfromPdf.formatText(data)
+    data = formatText(data)
     predicted_labels = pipeline.predict([data])
     return predicted_labels[0]
 
 def process_image(image_path, custom_config):
+    pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
     img = cv2.imread(image_path)
     return pytesseract.image_to_string(img, config=custom_config)
+
+def extract_answers_from_pdf(code, pdfName):
+    pdfName = pdfName.replace('qp', 'ms')
+    pdfPath = rf"{PDF_PATH}\{code}\{pdfName}"
+    pdf_reader = PdfReader(open(pdfPath, "rb"))
+    text = ""
+    for page_num in range(len(pdf_reader.pages)):
+        page = pdf_reader.pages[page_num]
+        text += page.extract_text()
+    
+    lines = text.split('\n')
+    answers = []
+    for line in lines:
+        line = line.strip()
+        parts = line.split()
+        # Check if the line contains a question number followed by an answer
+        if len(parts) >= 2 and parts[0].isdigit() and len(parts[1]) == 1 and parts[1].isalpha():
+            answer = parts[1]
+            answers.append(answer)
+    
+    return answers
+
+def formatText(text):
+    stemmer=PorterStemmer()
+
+    # Convert all text to lowercase
+    text = text.lower()
+
+    # Remove punctuation, digits, and non-alphabetic characters
+    text = re.sub(r'[^\w\s]', '', text)
+    text = re.sub(r'\d+', '', text)
+    
+    # Remove Cambridge command words
+    text = text.replace("analyse",""); text = text.replace("assess",""); text = text.replace("calculate","")
+    text = text.replace("comment",""); text = text.replace("compare",""); text = text.replace("consider","")
+    text = text.replace("contrast",""); text = text.replace("define",""); text = text.replace("describe","")
+    text = text.replace("develop",""); text = text.replace("discuss",""); text = text.replace("evaluate","")
+    text = text.replace("explain",""); text = text.replace("give",""); text = text.replace("identify","")
+    text = text.replace("justify",""); text = text.replace("outline",""); text = text.replace("predict","")
+    text = text.replace("sketch",""); text = text.replace("state",""); text = text.replace("suggest","")
+    text = text.replace("summarise",""); text = text.replace("benefit",""); text = text.replace("drawback","")
+    text = text.replace("advantage",""); text = text.replace("disadvantage",""); text = text.replace("understand","")
+    text = text.replace("use",""); text = text.replace("notes and guidance",""); text = text.replace("candidates should be able to","")
+    text = text.replace("show",""); text = text.replace("understanding","")
+
+    # Tokenize text into words
+    words = word_tokenize(text)
+    # Stem words
+    words = [stemmer.stem(w) for w in words]
+
+    # Join the processed words back into a single string
+    return ' '.join(words)
 
 
 for m in range(len(files)):
@@ -129,33 +190,40 @@ for m in range(len(files)):
 
     strip_images(m)
     pages = os.listdir(f"{output1Path}/{m}")
-    sorted_files = sorted(pages, key=lambda x: int(x.split('.')[0]))
-
-    answers = MS2.extract_answers_from_pdf(code, files[m])
+    current_file = files[m].rsplit('/', 1)[-1]
+    answers = extract_answers_from_pdf(code, current_file)
     current_question_num = 1
     for k in range(len(pages)):
-        y_coordinates = get_y_coordinates(sorted_files[k], m)
-        if len(y_coordinates) > 1:
-            for j in range(len(y_coordinates) - 1):
-                take_screenshot(y_coordinates[j], y_coordinates[j + 1], sorted_files[k], m)
+        if current_question_num >= num_of_questions:
+            continue
+        y_coordinates = get_y_coordinates(f"{k + 1}.jpg", m)
+        # Filter boxes where x1 < 250 and extract their y2 (i.e. box[1])
+        y2_list = sorted(box[1] for box in y_coordinates if box[0] < 250)
+        if len(y2_list):
+            for j in range(len(y2_list)):
+                if j == len(y2_list) - 1:
+                    take_screenshot(y2_list[j], 2050, f"{k + 1}.jpg", m)
+                else:
+                    take_screenshot(y2_list[j], y2_list[j + 1], f"{k + 1}.jpg", m)
                 question_text = process_image(f"{output1Path}/questions/{subject}_{paper_number}_{current_question_num}.jpg", CUSTOM_CONFIG).lower().strip()
                 chapter = predict(question_text, model)
                 chapter_num = start_chapter + ALL_LABELS.index(chapter)
-                shutil.copy(f"{output1Path}/questions/{subject}_{paper_number}_{current_question_num}.jpg", f"{BASE_PATH}/images/sorted/{level2}/{subject2}/{chapter_num}/{subject}_{paper_number}_{current_question_num}.jpg")
+                shutil.copy(f"{output1Path}/questions/{subject}_{paper_number}_{current_question_num}.jpg", f"{BASE_PATH}/images/sorted/{level2}/{subject2}/{paper_number}/{chapter_num}/{subject}_{paper_number}_{current_question_num}.jpg")
+                print (f"length of answers: {len(answers)}, current question number: {current_question_num}")
                 answer_object = {
                         "questionName": f"{subject}_{paper_number}_{current_question_num}.jpg",
-                        "Answer": answers[current_question_num],
-                        "pdfName": m,
+                        "Answer": answers[current_question_num - 1],
+                        "pdfName": current_file,
                         "questionText": question_text,
-                        "Chapter": str(chapter_num),
+                        "Chapter": chapter_num,
                         "Level": level,
-                        "paperNumber": paper_number[1:],
+                        "paperNumber": int(paper_number[1:]),
                         "Subject": subject2
                     }
                 questionObjects.append(answer_object)
                 current_question_num += 1
 
-with open(f"{BASE_PATH}/python_files/makep1/{subject}_{paper_number}_db.json", 'w') as f:
+with open(f"{BASE_PATH}/python_files/makep1/db.json", 'w') as f:
     f.write("[\n")
     for obj in questionObjects:
         f.write(json.dumps(obj) + ",\n")
