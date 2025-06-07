@@ -92,24 +92,26 @@ def strip_images(folder_num):
 
 
 def clean_images():
-    questions = os.listdir(f"{output1Path}/questions")
-    for i in range(len(questions)):
-        im = Image.open(f"{output1Path}/questions/{questions[i]}")
-        pix = im.load()
-        flag = False
-        if flag == False:
-            for y in range(im.height - 2, 1, -2):
-                for x in range(im.width - 2, 1, -2):
-                    value = pix[x, y]
-                    if value != (255, 255, 255):
-                        value2 = pix[x+1,y]
-                        if value2 != (255, 255, 255):
-                            flag = True
-                            break
-                if flag:
-                    break
-        cleaned_image = im.crop((0, 0, 1500, y + 10))
-        cleaned_image.save(f"{output1Path}/questions/{questions[i]}")
+    folders = os.listdir(f"{BASE_PATH}/images/sorted/{level2}/{subject2}/{paper_number}")
+    for folder in folders:
+        questions = os.listdir(f"{BASE_PATH}/images/sorted/{level2}/{subject2}/{paper_number}/{folder}")
+        for i in range(len(questions)):
+            im = Image.open(f"{BASE_PATH}/images/sorted/{level2}/{subject2}/{paper_number}/{folder}/{questions[i]}")
+            pix = im.load()
+            flag = False
+            if flag == False:
+                for y in range(im.height - 2, 1, -2):
+                    for x in range(im.width - 2, 1, -2):
+                        value = pix[x, y]
+                        if value != (255, 255, 255):
+                            value2 = pix[x+1,y]
+                            if value2 != (255, 255, 255):
+                                flag = True
+                                break
+                    if flag:
+                        break
+            cleaned_image = im.crop((0, 0, 1500, y + 10))
+            cleaned_image.save(f"{BASE_PATH}/images/sorted/{level2}/{subject2}/{paper_number}/{folder}/{questions[i]}")
 
 
 def take_screenshot(y1, y2, file_name, folderNum):
@@ -198,29 +200,37 @@ for m in range(len(files)):
             continue
         y_coordinates = get_y_coordinates(f"{k + 1}.jpg", m)
         # Filter boxes where x1 < 250 and extract their y2 (i.e. box[1])
-        y2_list = sorted(box[1] for box in y_coordinates if box[0] < 250)
+        raw_y2_list  = sorted(box[1] for box in y_coordinates if box[0] < 180)
+        threshold = 10  # adjust as needed depending on your use case
+        y2_list = []
+        for y2 in raw_y2_list:
+            if not y2_list or abs(y2 - y2_list[-1]) > threshold:
+                y2_list.append(y2)
         if len(y2_list):
             for j in range(len(y2_list)):
                 if j == len(y2_list) - 1:
                     take_screenshot(y2_list[j], 2050, f"{k + 1}.jpg", m)
                 else:
                     take_screenshot(y2_list[j], y2_list[j + 1], f"{k + 1}.jpg", m)
-                question_text = process_image(f"{output1Path}/questions/{subject}_{paper_number}_{current_question_num}.jpg", CUSTOM_CONFIG).lower().strip()
-                chapter = predict(question_text, model)
-                chapter_num = start_chapter + ALL_LABELS.index(chapter)
-                shutil.copy(f"{output1Path}/questions/{subject}_{paper_number}_{current_question_num}.jpg", f"{BASE_PATH}/images/sorted/{level2}/{subject2}/{paper_number}/{chapter_num}/{subject}_{paper_number}_{current_question_num}.jpg")
-                print (f"length of answers: {len(answers)}, current question number: {current_question_num}")
-                answer_object = {
-                        "questionName": f"{subject}_{paper_number}_{current_question_num}.jpg",
-                        "Answer": answers[current_question_num - 1],
-                        "pdfName": current_file,
-                        "questionText": question_text,
-                        "Chapter": chapter_num,
-                        "Level": level,
-                        "paperNumber": int(paper_number[1:]),
-                        "Subject": subject2
-                    }
-                questionObjects.append(answer_object)
+                if os.path.exists(f"{output1Path}/questions/{subject}_{paper_number}_{current_question_num + (m * num_of_questions)}.jpg"):
+                    question_text = process_image(f"{output1Path}/questions/{subject}_{paper_number}_{current_question_num + (m * num_of_questions)}.jpg", CUSTOM_CONFIG).lower().strip()
+                    chapter = predict(question_text, model)
+                    chapter_num = start_chapter + ALL_LABELS.index(chapter)
+                    if not os.path.exists(f"{BASE_PATH}/images/sorted/{level2}/{subject2}/{paper_number}/{chapter_num}"):
+                        os.makedirs(f"{BASE_PATH}/images/sorted/{level2}/{subject2}/{paper_number}/{chapter_num}")
+                    shutil.copy(f"{output1Path}/questions/{subject}_{paper_number}_{current_question_num + (m * num_of_questions)}.jpg", f"{BASE_PATH}/images/sorted/{level2}/{subject2}/{paper_number}/{chapter_num}/{subject}_{paper_number}_{current_question_num + (m * num_of_questions)}.jpg")
+                    print (f"length of answers: {len(answers)}, current question number: {current_question_num}")
+                    answer_object = {
+                            "questionName": f"{subject}_{paper_number}_{current_question_num + (m * num_of_questions)}.jpg",
+                            "Answer": answers[current_question_num - 1],
+                            "pdfName": current_file,
+                            "questionText": question_text,
+                            "Chapter": chapter_num,
+                            "Level": level,
+                            "paperNumber": int(paper_number[1:]),
+                            "Subject": subject2
+                        }
+                    questionObjects.append(answer_object)
                 current_question_num += 1
 
 with open(f"{BASE_PATH}/python_files/makep1/db.json", 'w') as f:
