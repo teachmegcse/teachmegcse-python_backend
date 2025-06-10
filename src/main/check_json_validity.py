@@ -3,14 +3,7 @@ import json
 import os
 from PyPDF2 import PdfReader
 
-if len(sys.argv) < 2:
-    print("Usage: python check_json_validity.py <json_file>")
-    sys.exit(1)
-json_file = sys.argv[1]
-with open(json_file, 'r') as f:
-    json_object = json.load(f)
-
-def check_json_validity(json_object):
+def check_json_validity(json_object, pdf_dir, question_count):
     flag = True
     past_id = 0
     for record in json_object:
@@ -22,7 +15,7 @@ def check_json_validity(json_object):
             missing_count = id - past_id - 1
             for missing in range(1, missing_count + 1):
                 missing_id = past_id + missing
-                print(f"missing ID: {missing_id}, question number: {(missing_id) % 40}, paper: {past_paper}")
+                print(f"missing ID: {missing_id}, question number: {(missing_id) % question_count}, paper: {past_paper}")
         past_id = id
         past_paper = paper
         
@@ -36,9 +29,9 @@ def check_json_validity(json_object):
             if file_name == prev_file_name:
                 count += 1
             else:
-                if count != 40:
+                if count != question_count:
                     flag = False
-                    print(f"Invalid question count for paper {prev_file_name}: {count}")
+                    print(f"Invalid question count for paper in json file. {prev_file_name}: {count}")
                 prev_file_name = file_name
                 count = 1
     
@@ -46,7 +39,6 @@ def check_json_validity(json_object):
     current_pdf_name = None
     ms_text = None
     ms_answers = dict()
-    pdf_dir = "pdfs"
     for record in json_object:
         qp_pdf_name = record["pdfName"]
         ms_pdf_name = qp_pdf_name.replace("qp", "ms")
@@ -68,18 +60,33 @@ def check_json_validity(json_object):
                     qnum = int(match.group(1))
                     ans = match.group(2)
                     ms_answers[qnum] = ans
+                if len(ms_answers) != question_count:
+                    print(f"MS PDF {ms_pdf_name} does not have {question_count} answers, Only able to read {len(ms_answers)}")
             except Exception as e:
                 print(f"Error reading {ms_pdf_name}: {e}")
                 ms_answers = dict()
             current_pdf_name = ms_pdf_name
         # Now compare the answer
-        if len(ms_answers) != 40:
-            print(f"MS PDF {ms_pdf_name} does not have 40 answers, found {len(ms_answers)}")
         qid = int(record["questionName"].split('_')[3].split('.')[0])
-        qnum = qid % 40 if qid % 40 != 0 else 40
+        qnum = qid % question_count if qid % question_count != 0 else question_count
         json_answer = record["Answer"]
         ms_answer = ms_answers.get(qnum)
         if ms_answer and json_answer and ms_answer != json_answer:
             print(f"Contradiction in {ms_pdf_name}, {record["questionName"]}, Q{qnum}: JSON='{json_answer}' vs MS='{ms_answer}'")
 
-check_json_validity(json_object)
+def main():
+    # Make JSON path location independent (relative to this script)
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+    if len(sys.argv) < 2:
+        print("Usage: python check_json_validity.py <json_file>")
+        sys.exit(1)
+    json_name = sys.argv[1]
+    QUESTION_COUNT = int(sys.argv[2]) if len(sys.argv) > 2 else 40
+    json_file = os.path.join(SCRIPT_DIR, "..", "resources", "json", json_name)
+    with open(json_file, 'r') as f:
+        json_object = json.load(f)
+    pdf_directory = os.path.join(SCRIPT_DIR, "..", "resources", "pdfs", json_object[0]["Level"].lower(), json_object[0]["Subject"])
+    check_json_validity(json_object, pdf_directory, QUESTION_COUNT)
+
+if __name__ == "__main__":
+    main()

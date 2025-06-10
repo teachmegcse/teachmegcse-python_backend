@@ -1,10 +1,10 @@
-
+.env
 classified/multiple_files.zip
 classified/pdfs/answers.pdf
 classified/pdfs/multiple_files.zip
 /classified/pdfs
 makep4/phy_db_final_p4.json
 classified/pdfs/questions.pdf
-
+src/resources/images/
 ./pathConst.py
 pathConst.py

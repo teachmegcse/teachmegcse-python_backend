@@ -14,4 +14,7 @@ pytesseract==0.3.13
 Requests==2.32.3
 scikit_learn==1.6.0
 uvicorn==0.34.0
-pycriptodome==3.23.0
+pycryptodome==3.23.0
+dotenv
+google-generativeai
+pillow
