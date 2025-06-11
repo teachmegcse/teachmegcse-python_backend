@@ -25,12 +25,9 @@ This repository contains a collection of Python scripts that automate the classi
 
 ### 3. **Image Processing & Question Extraction**
 
-- **`makep1-new2.py`**: Extracts question images from PDFs, cleans and crops them, and saves them in a structured format.
-- **`makep4.py`**: Extracts images from exam PDFs, removes irrelevant sections, and saves structured question images.
-- **`makep4-ai.py`**: Enhances `makep4.py` using AI to detect and crop question regions dynamically.
-- **`p4_ms_maker.py`**: Processes mark schemes to extract question-specific sections using OCR.
+- **`makep1Final.py`**: Extracts question images from PDFs, cleans and crops them, and saves them in a structured format.
+- **`makep4-ai.py`**: Uses AI to detect and crop question regions dynamically.
 - **`p4_ms_maker_ai.py`**: Uses AI to improve mark scheme question detection and extraction.
-- **`p4ms-images-maker.py`**: Cleans and preprocesses mark scheme images.
 
 ### 4. **Machine Learning & NLP Processing**
 
@@ -44,8 +41,6 @@ This repository contains a collection of Python scripts that automate the classi
 
 - **`combine_json.py`**: Merges question and mark scheme data into structured chapter-based directories.
 - **`format-json.py`**: Cleans and merges JSON data for consistent formatting.
-- **`makeMSforAutomateSort2.py`**: Extracts answers from mark schemes and organizes them using OCR and ML.
-- **`MS2.py`**: Extracts answers from mark scheme PDFs using text pattern analysis.
 
 ## Output Structure
 
@@ -60,7 +55,7 @@ This repository contains a collection of Python scripts that automate the classi
 ## Usage
 
 1. Run `p1_api.py` to serve the PDF generation API.
-2. Use `makep1-new2.py` or `makep4.py` to extract question images from PDFs.
+2. Use `makep1Final.py` or `makep4-ai.py` to extract question images from PDFs.
 3. Use `6.py` and `7.py` to generate JSON metadata.
 4. Train or use ML models with `trainModels.py` and `predictData.py`.
 5. Organize and format JSON data with `combine_json.py` and `format-json.py`.

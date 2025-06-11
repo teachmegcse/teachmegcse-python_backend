@@ -1,4 +1,4 @@
-# Script: makep1-new2.py
+# Script: makep1Final.py
 
 This Python script automates the process of extracting images from PDF files, cropping the images, and generating question images. It is designed for use with Exceed.
 
