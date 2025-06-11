@@ -1,21 +1,57 @@
+"""
+p1_images_to_classified.py
+
+This module provides functionality to generate classified PDF documents for exam questions and mark schemes
+from a structured JSON database and corresponding image files. The PDFs are organized by chapters and can
+optionally include an index and mark scheme. The module is tailored for Cambridge International A Level Physics
+(9702), but can be adapted for other subjects with similar data structures.
+
+Main Functions:
+---------------
+- MakeClassified: Generates a classified PDF of questions, with optional index and mark scheme, organized by chapters.
+- MakeP1Ms: Creates a mark scheme PDF from the JSON database.
+
+Key Parameters:
+---------------
+- jsondirectory: Path to the JSON file containing question data.
+- chapterjson: Path to the JSON file containing chapter names and metadata.
+- outputdirectory: Directory where the generated PDFs will be saved.
+- imagelocation: Directory containing question images.
+- subject: Subject name (e.g., "physics").
+- subjectcode: Subject code (e.g., "9702").
+- hasIndex: Whether to include an index page in the output PDF.
+- hasAd: Whether to include an advertisement page.
+- hasChapterPages: Whether to include chapter title pages.
+- hasMS: Whether to generate and merge the mark scheme PDF.
+
+Dependencies:
+-------------
+- Python Imaging Library (PIL)
+- fpdf2
+- PyPDF2
+
+Usage:
+------
+Call `MakeClassified` with appropriate arguments to generate the classified PDF(s).
+"""
+
+
 import sys
 import os
-
-# Add the directory two levels up to sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-
 from PIL import Image
 import json
 from fpdf import FPDF #fpdf2 is required
 from PyPDF2 import PdfMerger
-from pathConst import BASE_PATH
+
+BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
+
 subject="physics"
 subjectcode="9702"
-jsondirectory=f"{BASE_PATH}/json_files/physics_db.json"
-ChapterNamesJson=f"{BASE_PATH}/json_files/chapters.json"
-imagelocation=f"{BASE_PATH}/images/unsorted/{subject}/p1/"
-outputdirectory=f"{BASE_PATH}/python_files/classified/pdfs"
+jsondirectory=f"{BASE_PATH}/resources/json/physics_db.json"
+ChapterNamesJson=f"{BASE_PATH}/resources/json/chapters.json"
+imagelocation=f"{BASE_PATH}/resources/images/{subject}/p1/"
+outputdirectory=f"{BASE_PATH}/resources/pdfs/classified"
+
 def MakeClassified(jsondirectory, chapterjson, outputdirectory, imagelocation, subject, subjectcode, hasIndex=True, hasAd=True, hasChapterPages=True, hasMS=True):
     listofimages=[""]*10 #temporary image list
     i=0 #total counter

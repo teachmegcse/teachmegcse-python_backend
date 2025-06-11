@@ -18,7 +18,7 @@ def generate_explanation_for_question(record, model, subject, code, level, image
     response = None
     while not answerGenerated:
         try:
-            response = model.send_message([
+            response = model.generate_content([
                 img,
                     f"""
                     Your task is to clearly explain why the answer {record["Answer"]} is correct and why each of the other options is incorrect.
@@ -41,7 +41,7 @@ def generate_explanation_for_question(record, model, subject, code, level, image
                 answerGenerated = True
         except Exception as e:
             print(f"""failed, trying again {record["questionName"]} error code: {e}""")
-            time.sleep(0.2)
+            time.sleep(0.5)
     record["Explanation"] = response.text
     print(response.text)
 
@@ -69,7 +69,7 @@ def generate_explanations_for_all_questions(json_name):
     
     for record in question_data:
         question_path = f"{image_path}/{record["Chapter"]}"
-        generate_explanation_for_question(record, model, subject, code, level, question_path)
+        generate_explanation_for_question(record, model, subject, code, level, image_path)
     json.dump(question_data, open(json_path, "w"))
 
 if __name__ == "__main__":

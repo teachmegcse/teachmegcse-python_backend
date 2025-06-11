@@ -74,8 +74,8 @@ async def generate_pdf(questionData: QuestionsList):
     logger.info(f"Received request to generate PDF for {len(questionData.questionData)} questions")
     questionData = questionData.questionData
     maxHeight = 2260
-    basePath = "."
-    outputdirectory = f"{basePath}/pdfs"
+    basePath = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
+    outputdirectory = f"{basePath}/resources/pdfs/classified"
 
     classifiedPdf = FPDF("portrait", "pt", [1600, maxHeight])
     answerPdf = FPDF("portrait", "pt", [1600, maxHeight])
@@ -88,7 +88,7 @@ async def generate_pdf(questionData: QuestionsList):
     subject = questionData[0].Subject
     level = questionData[0].Level
     level2 = "A-level" if level in ["A2", "AS"] else "IGCSE"
-    imagelocation = f"{basePath}/unsorted/{level2}/{subject}"
+    imagelocation = f"{basePath}/resources/images/{level2}/{subject}"
 
     classifiedPdf.set_font("helvetica", size=45, style="B")
 
@@ -115,7 +115,7 @@ async def generate_pdf(questionData: QuestionsList):
         classifiedPdf.set_xy(questionNumX, currentYClassified)
         classifiedPdf.cell(w=10, txt=f"{currentQuestionNum})")
 
-        temp_image_path = f"{basePath}/temp_{currentQuestionNum}.jpg"
+        temp_image_path = f"{basePath}/resources/images/temp/temp_{currentQuestionNum}.jpg"
         currentImageCropped.save(temp_image_path, format="JPEG")
         classifiedPdf.image(temp_image_path, questionImageX, currentYClassified, 1420, currentImageCropped.height)
         os.remove(temp_image_path)
@@ -144,7 +144,7 @@ async def generate_pdf(questionData: QuestionsList):
                             classifiedPdf.set_xy(questionNumX, currentYClassified)
                             classifiedPdf.cell(w=10, txt=f"{currentQuestionNum})")
 
-                            temp_image_path = f"{basePath}/temp_{currentQuestionNum}_part.jpg"
+                            temp_image_path = f"{basePath}resources/images/temp/temp_{currentQuestionNum}_part.jpg"
                             croppedImage.save(temp_image_path, format="JPEG")
                             classifiedPdf.image(temp_image_path, questionImageX, currentYClassified, 1420, croppedImage.height)
                             os.remove(temp_image_path)
@@ -156,7 +156,7 @@ async def generate_pdf(questionData: QuestionsList):
                             classifiedPdf.set_xy(questionNumX, currentYClassified)
                             classifiedPdf.cell(w=10, txt=f"{currentQuestionNum})")
 
-                            temp_image_path = f"{basePath}/temp_{currentQuestionNum}_part_{currentIndex}.jpg"
+                            temp_image_path = f"{basePath}/resources/images/temp/temp_{currentQuestionNum}_part_{currentIndex}.jpg"
                             croppedImage.save(temp_image_path, format="JPEG")
                             classifiedPdf.image(temp_image_path, questionImageX, currentYClassified, 1420, croppedImage.height)
                             os.remove(temp_image_path)
@@ -166,7 +166,7 @@ async def generate_pdf(questionData: QuestionsList):
                 classifiedPdf.set_xy(questionNumX, currentYClassified)
                 classifiedPdf.cell(w=10, txt=f"{currentQuestionNum})")
 
-                temp_image_path = f"{basePath}/temp_{currentQuestionNum}.jpg"
+                temp_image_path = f"{basePath}/resources/images/temp/temp_{currentQuestionNum}.jpg"
                 currentImage.save(temp_image_path, format="JPEG")
                 classifiedPdf.image(temp_image_path, questionImageX, currentYClassified, 1420, currentImage.height)
                 os.remove(temp_image_path)

@@ -16,7 +16,8 @@ from typing import List
 from zipfile import ZipFile
 import os
 import uvicorn
-from pathConst import BASE_PATH
+
+BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
 
 class Question(BaseModel):
     Level: str
@@ -61,7 +62,7 @@ async def generate_pdf(questionData: QuestionsList):
     Answers = [] # contains the Question object which has the answer, source and questionNum
     questionData = questionData.questionData
     maxHeight = 2260
-    outputdirectory=f"{BASE_PATH}/python_files/classified/pdfs"
+    outputdirectory=f"{BASE_PATH}/resources/pdfs/classified"
 
     classifiedPdf = FPDF("portrait","pt",[1600, maxHeight])
     answerPdf = FPDF("portrait","pt",[1600, maxHeight])
@@ -75,10 +76,10 @@ async def generate_pdf(questionData: QuestionsList):
     level = questionData[0].Level
     paperNumber = questionData[0].paperNumber
     if level == "A2" or level == "AS":
-        level2 = "A-level"
+        level2 = "a-level"
     else :
-        level2 = "IGCSE"
-    imagelocation=f"{BASE_PATH}/images/unsorted/{level2}/{subject}/p{paperNumber}/"
+        level2 = "igcse"
+    imagelocation=f"{BASE_PATH}/resources/images/{level2}/{subject}/p{paperNumber}/"
 
     classifiedPdf.add_page()
     classifiedPdf.set_font("helvetica",size=45,style="B")
