@@ -1,8 +1,10 @@
 import json
-
+import os
 # num of years Default is 12 when starts from 2011 and ends in 2022
 url = 'https://papers.gceguide.com'
-db = open('data.json', 'w')
+BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
+
+db = open(f'{BASE_PATH}/resources/json/data.json', 'w')
 subjects = [{"subjectname" : "physics", "subject" : 'Physics%20(9702)', "hasMarch" : True, "PCode" : 9702, "Papers" : [1,2,3,4,5], "numofyears" : 12, "solvePapers" : ['11','12','13'], "Level" : "A-level", "url2" : "A%20Levels"},
             {"subjectname" : "biology", "subject" : 'Biology%20(9700)', "hasMarch" : True, "PCode" : 9700, "Papers" : [1,2,3,4,5], "numofyears" : 12, "solvePapers" : ['11','12','13'], "Level" : "A-level", "url2" : "A%20Levels"},
             {"subjectname" : "chemistry", "subject" : 'Chemistry%20(9701)', "hasMarch" : True, "PCode" : 9701, "Papers" : [1,2,3,4,5], "numofyears" : 12, "solvePapers" : ['11','12','13'], "Level" : "A-level", "url2" : "A%20Levels"},

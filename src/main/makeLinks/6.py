@@ -1,4 +1,5 @@
 import json
+import os
 
 PCode=9702
 Papers= [1,2,3,4,5]
@@ -148,8 +149,9 @@ for i in range(numofyears):
                                 "synonym" : f"{str(PCode)}/{str(Papers[wcounter])}{str(variant+1)}/O/N/{str(22-i)} qp",
                                 "hasSolve" : "False"
                             }
+            BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
             paperObjectFormatted = json.dumps(paperObject)
-            db.write(paperObjectFormatted)
+            db.write(f"{BASE_PATH}/resources/json/{paperObjectFormatted}")
             db.write(",\n")    
 
 

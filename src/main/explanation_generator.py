@@ -68,7 +68,6 @@ def generate_explanations_for_all_questions(json_name):
     print(question_data[0]["pdfName"].split("_")[0])
     
     for record in question_data:
-        question_path = f"{image_path}/{record["Chapter"]}"
         generate_explanation_for_question(record, model, subject, code, level, image_path)
     json.dump(question_data, open(json_path, "w"))
 
