@@ -60,11 +60,13 @@ def generate_explanations_for_all_questions(json_name):
     subject = question_data[0]["Subject"]
     paper_number = question_data[0]["paperNumber"]
     code = question_data[0]["pdfName"].split("_")[0]
-    level = question_data[0]["Level"].lower()
-    image_path = f"src/resources/images/questions/igcse/{subject}/p{paper_number}" if level == "igcse" else f"src/resources/images/questions/a-level/{subject}/p{paper_number}"
+    level = question_data[0]["Level"]
+    image_path = f"src/resources/images/questions/igcse/{subject}/p{paper_number}" if level.lower() == "igcse" else f"src/resources/images/questions/a-level/{subject}/p{paper_number}"
+    
     genai.configure(api_key=GOOGLE_API_KEY)
     model = genai.GenerativeModel("gemini-2.5-pro-preview-06-05")
     print(question_data[0]["pdfName"].split("_")[0])
+    
     for record in question_data:
         question_path = f"{image_path}/{record["Chapter"]}"
         generate_explanation_for_question(record, model, subject, code, level, question_path)
