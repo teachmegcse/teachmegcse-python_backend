@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 import os
 
 
-def generate_explanation_for_question(record, chat, image_path):
+def generate_explanation_for_question(record, model, subject, code, level, image_path):
     """
     Generates an explanation for a single question record and appends it to the record.
     """
@@ -18,9 +18,19 @@ def generate_explanation_for_question(record, chat, image_path):
     response = None
     while not answerGenerated:
         try:
-            response = chat.send_message([
+            response = model.send_message([
                 img,
-                f"The correct answer is {record['Answer']}. Provide an explanation."], 
+                    f"""
+                    Your task is to clearly explain why the answer {record["Answer"]} is correct and why each of the other options is incorrect.
+                    Provide detailed yet concise explanations thorough enough that students fully understand the reasoning without needing additional resources.
+                    Maintain a formal, textbook-style tone, clearly articulating scientific concepts and processes.
+                    Do not refer to the image, question format, or directly address the student.
+                    Structure each explanation logically and coherently, ensuring it stands fully on its own.
+
+                    The subject is {subject}, curriculum {code}, and the level is {level}.
+
+                    These explanations will appear beneath each question on an educational study website.
+                    """], 
                 safety_settings={
                     'HATE': 'BLOCK_NONE',
                     'HARASSMENT': 'BLOCK_NONE',
@@ -55,34 +65,9 @@ def generate_explanations_for_all_questions(json_name):
     genai.configure(api_key=GOOGLE_API_KEY)
     model = genai.GenerativeModel("gemini-2.5-pro-preview-06-05")
     print(question_data[0]["pdfName"].split("_")[0])
-    chat = model.start_chat(history=[
-        {
-            "role": "user",
-            "parts": [
-                f"""
-                You will be shown a series of multiple-choice questions as images.
-
-                Your task is to clearly explain why the correct answer is correct and why each of the other options is incorrect.
-                Provide detailed yet concise explanations thorough enough that students fully understand the reasoning without needing additional resources.
-                Maintain a formal, textbook-style tone, clearly articulating scientific concepts and processes.
-                Do not refer to the image, question format, or directly address the student.
-                Structure each explanation logically and coherently, ensuring it stands fully on its own.
-
-                The subject is {subject}, curriculum {code}, and the level is {level}.
-
-                These explanations will appear beneath each question on an educational study website.
-                """
-            ]
-        },
-        {
-            "role": "model",
-            "parts": [
-                "Understood. I will explain the correct answers clearly, formally, and concisely as per your instructions."
-            ]
-        }
-    ])
     for record in question_data:
-        generate_explanation_for_question(record, chat, f"{image_path}/{record["Chapter"]}")
+        question_path = f"{image_path}/{record["Chapter"]}"
+        generate_explanation_for_question(record, model, subject, code, level, question_path)
     json.dump(question_data, open(json_path, "w"))
 
 if __name__ == "__main__":
