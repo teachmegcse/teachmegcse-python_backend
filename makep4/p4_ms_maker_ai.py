@@ -54,11 +54,10 @@ def makeImages(output_path, pdf_path, i):
         text = text.lower()
         if x >= 1:
             # Skip if page contains any of these strings
-            skip_strings = ["blank page", "important values", "periodic table", "next page", "guidance", "marking principle"]
+            skip_strings = ["blank page", "important values", "periodic table", "next page", "guidance", "marking principle", "correct answer only"]
             if not any(s in text for s in skip_strings):
                 images[x].save(f"{pdf_output_path}/{current_index}.jpg", 'JPEG')
                 current_index += 1
-
 
 def extract_question_number(im, current_question_num, output_path):
     returnArray = []
@@ -88,23 +87,33 @@ def extract_question_number(im, current_question_num, output_path):
             text_in_box = easyocr.Reader(['en']).readtext(f"{output_path}/questions/temp.jpg")
 
             if text_in_box:
-                text_in_box = text_in_box[0][1]
+                text_in_box = text_in_box[0][1]  # Extract text from OCR result
                 text_in_box = ''.join([ocr_corrections.get(c, c) for c in text_in_box])
-                print(f"Text in box: {text_in_box}")
-                text_in_box = text_in_box[0]
+                print(f"Raw OCR text: {text_in_box}")
 
-                if text_in_box.isdigit():
-                    if int(text_in_box) == current_question_num + 1:
+                # Extract leading digits manually (no regex)
+                digits_only = ''
+                for c in text_in_box:
+                    if c.isdigit():
+                        digits_only += c
+                    else:
+                        break  # stop at first non-digit character
+
+                print(f"Extracted digits: {digits_only}")
+
+                if digits_only:
+                    number = int(digits_only)
+                    if number > current_question_num:
                         returnArray.append(int(box[1]))
                         print(f"Question number {current_question_num} found at y1: {int(box[1])}")
                         current_question_num += 1
+
         print(f"returnArray: {returnArray} at iteration {current_question_num}")
         return returnArray
 
     except Exception as e:
         print(f"Error extracting question regions: {e}")
         return returnArray
-
 
 
 def merge_all_images(folder_num, output_path):
