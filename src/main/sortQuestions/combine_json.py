@@ -8,12 +8,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import os
 import json
 from multiprocessing import Pool, cpu_count
-from pathConst import BASE_PATH
+
+BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
 
 # Directories
-jsondirectory = rf"{BASE_PATH}\python_files\makep4\phy_db_final_p4.json"
-MSjsonDirectory = rf"{BASE_PATH}\json_files\phy_db_ms_p4.json"
-QuestionJsonDirectory = rf"{BASE_PATH}\json_files\phy_db_theory.json"
+jsondirectory = rf"{BASE_PATH}\resources\json\phy_db_final_p4.json"
+MSjsonDirectory = rf"{BASE_PATH}\resources\json\phy_db_ms_p4.json"
+QuestionJsonDirectory = rf"{BASE_PATH}\resources\json\phy_db_theory.json"
 
 def normalize_paper_code(code):
     """Normalize paper code by removing ms/qp and converting to lowercase."""
