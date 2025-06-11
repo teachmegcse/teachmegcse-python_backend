@@ -1,9 +1,6 @@
 import sys
 import os
 
-# Add the directory two levels up to sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 
 import PIL.Image
 from pdf2image import convert_from_path
@@ -16,8 +13,8 @@ import easyocr
 import requests
 from io import BytesIO
 import json
-from pathConst import BASE_PATH, POPPLER_PATH
-
+from pathConst import POPPLER_PATH
+BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
 def select_files():
     root = Tk()
     filetypes = [("PDF Files", "*.pdf")]
@@ -153,8 +150,8 @@ def take_screenshot(y1, y2, file_name, output_path, unique_filename, current_que
 if __name__ == "__main__":
     files = select_files()
     files = [file for file in files if 'ms' in file.lower()]
-    output_path = f"{BASE_PATH}/python_files/makep1/testImages"
-    JSON_FILE_LOCATION = f"{BASE_PATH}/json_files/phy_db_ms_p4.json"
+    output_path = f"{BASE_PATH}/resources/images/test_images"
+    JSON_FILE_LOCATION = f"{BASE_PATH}/resources/json/phy_db_ms_p4.json"
     with open(JSON_FILE_LOCATION, 'r') as json_file:
         ms_data = json.load(json_file)
 

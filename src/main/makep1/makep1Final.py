@@ -1,3 +1,5 @@
+"INCOMPLETE - MORE CHANGES LATER"
+
 import sys
 import os
 
@@ -9,7 +11,7 @@ from pdf2image import convert_from_path
 from PIL import Image
 from PyPDF2 import PdfReader
 from tkinter import filedialog, Tk
-from pathConst import BASE_PATH, POPPLER_PATH, TESSERACT_PATH, PDF_PATH
+from pathConst import POPPLER_PATH, TESSERACT_PATH
 import requests
 from joblib import load
 import cv2
@@ -21,6 +23,8 @@ from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
 import io
 
+BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
+PDF_PATH = rf"{BASE_PATH}/resources/pdfs"
 
 ALL_LABELS = ['Utility', 'Indifference curves and budget lines', 
              'Efficiency and market failure', 'Private costs and benefits, externalities and social costs and benefits ',
@@ -42,7 +46,7 @@ subject2 = 'economics' # physics, chemistry, biology
 num_of_questions = 30
 
 
-MODEL_PATH_TEMPLATE = f"{BASE_PATH}/python_files/sci-kit/{model}.joblib"
+MODEL_PATH_TEMPLATE = f"{BASE_PATH}/resources/sci-kit/{model}.joblib"
 current_question_num = 1
 root = Tk()
 filetypes = [("PDF Files", "*.pdf")]
@@ -51,7 +55,7 @@ startPixel = 150  # Default is 150
 questionObjects = []
 
 files = filedialog.askopenfilenames(filetypes=filetypes)
-output1Path = f"{BASE_PATH}/python_files/makep1/testImages"
+output1Path = f"{BASE_PATH}/resources/images/test_images"
 
 
 def makeImages(output_path, pdf_path, i):
@@ -95,11 +99,11 @@ def strip_images(folder_num):
 
 
 def clean_images():
-    folders = os.listdir(f"{BASE_PATH}/images/sorted/{level2}/{subject2}/{paper_number}")
+    folders = os.listdir(f"{BASE_PATH}/images/{level2}/{subject2}/{paper_number}")
     for folder in folders:
-        questions = os.listdir(f"{BASE_PATH}/images/sorted/{level2}/{subject2}/{paper_number}/{folder}")
+        questions = os.listdir(f"{BASE_PATH}/images/{level2}/{subject2}/{paper_number}/{folder}")
         for i in range(len(questions)):
-            im = Image.open(f"{BASE_PATH}/images/sorted/{level2}/{subject2}/{paper_number}/{folder}/{questions[i]}")
+            im = Image.open(f"{BASE_PATH}/images/{level2}/{subject2}/{paper_number}/{folder}/{questions[i]}")
             pix = im.load()
             flag = False
             if flag == False:
@@ -114,7 +118,7 @@ def clean_images():
                     if flag:
                         break
             cleaned_image = im.crop((0, 0, 1500, y + 10))
-            cleaned_image.save(f"{BASE_PATH}/images/sorted/{level2}/{subject2}/{paper_number}/{folder}/{questions[i]}")
+            cleaned_image.save(f"{BASE_PATH}/images/{level2}/{subject2}/{paper_number}/{folder}/{questions[i]}")
 
 
 def take_screenshot(y1, y2, file_name, folderNum):
@@ -219,8 +223,8 @@ for m in range(len(files)):
                     question_text = process_image(f"{output1Path}/questions/{subject}_{paper_number}_{current_question_num + (m * num_of_questions)}.jpg", CUSTOM_CONFIG).lower().strip()
                     chapter = predict(question_text, model)
                     chapter_num = start_chapter + ALL_LABELS.index(chapter)
-                    if not os.path.exists(f"{BASE_PATH}/images/sorted/{level2}/{subject2}/{paper_number}/{chapter_num}"):
-                        os.makedirs(f"{BASE_PATH}/images/sorted/{level2}/{subject2}/{paper_number}/{chapter_num}")
+                    if not os.path.exists(f"{BASE_PATH}/images/{level2}/{subject2}/{paper_number}/{chapter_num}"):
+                        os.makedirs(f"{BASE_PATH}/images/{level2}/{subject2}/{paper_number}/{chapter_num}")
                     shutil.copy(f"{output1Path}/questions/{subject}_{paper_number}_{current_question_num + (m * num_of_questions)}.jpg", f"{BASE_PATH}/images/sorted/{level2}/{subject2}/{paper_number}/{chapter_num}/{subject}_{paper_number}_{current_question_num + (m * num_of_questions)}.jpg")
                     print (f"length of answers: {len(answers)}, current question number: {current_question_num}, current file: {current_file}")
                     answer_object = {
@@ -236,7 +240,7 @@ for m in range(len(files)):
                     questionObjects.append(answer_object)
                 current_question_num += 1
 
-with open(f"{BASE_PATH}/python_files/makep1/db.json", 'w') as f:
+with open(f"{BASE_PATH}/resources/json/db.json", 'w') as f:
     f.write("[\n")
     for obj in questionObjects:
         f.write(json.dumps(obj) + ",\n")

@@ -1,3 +1,5 @@
+"MORE CHANGES NEEDED LATER"
+
 import sys
 import os
 
@@ -14,7 +16,7 @@ import os
 import json
 import requests
 import multiprocessing
-from pathConst import BASE_PATH, POPPLER_PATH, TESSERACT_PATH
+from pathConst import POPPLER_PATH, TESSERACT_PATH
 from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
 import re
@@ -23,10 +25,11 @@ import pytesseract
 from joblib import load
 import shutil
 
+BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
 # Constants for Tesseract and custom configuration
 model = 'IGphy'
 CUSTOM_CONFIG = r'--oem 3 --psm 6'
-MODEL_PATH_TEMPLATE = f"{BASE_PATH}/python_files/sci-kit/{model}.joblib"
+MODEL_PATH_TEMPLATE = f"{BASE_PATH}/resources/sci-kit/{model}.joblib"
 
 ALL_LABELS = ['Motion, forces and energy', 'Thermal physics', 
              'Waves', 'Electricity and magnetism', 'Nuclear physics', 'Space physics']
@@ -283,10 +286,10 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, fina
                         level2 = "A2"
                     level2 = "IGCSE"
 
-                    if not os.path.exists(f"{BASE_PATH}/images/sorted/{level2}/{subject2}/long/{chapter_num}"):
-                        os.makedirs(f"{BASE_PATH}/images/sorted/{level2}/{subject2}/long/{chapter_num}")
+                    if not os.path.exists(f"{BASE_PATH}/images/{level2}/{subject2}/long/{chapter_num}"):
+                        os.makedirs(f"{BASE_PATH}/images/{level2}/{subject2}/long/{chapter_num}")
 
-                    shutil.copy(f"{output1Path}/questions/{unique_filename}.jpg", f"{BASE_PATH}/images/sorted/{level2}/{subject2}/long/{chapter_num}/{unique_filename}.jpg")
+                    shutil.copy(f"{output1Path}/questions/{unique_filename}.jpg", f"{BASE_PATH}/images/{level2}/{subject2}/long/{chapter_num}/{unique_filename}.jpg")
 
                     answerObject = {
                         "questionName": f"{unique_filename}.jpg",
@@ -316,9 +319,9 @@ if __name__ == '__main__':
     unique_num = 1
     
     # Create necessary directories
-    output1Path = f"{BASE_PATH}/python_files/makep1/testImages"
+    output1Path = f"{BASE_PATH}/resources/images/test_images"
     finalOutputPath = "final_output"
-    db_path = f"{BASE_PATH}/json_files/phy_db_theory.json"
+    db_path = f"{BASE_PATH}/resources/json/phy_db_theory.json"
     
     # Initialize database file
     with open(db_path, 'w') as db:
