@@ -14,7 +14,64 @@ import os
 import json
 import requests
 import multiprocessing
-from pathConst import BASE_PATH, POPPLER_PATH
+from pathConst import BASE_PATH, POPPLER_PATH, TESSERACT_PATH
+from nltk.stem import PorterStemmer
+from nltk.tokenize import word_tokenize
+import re
+import cv2
+import pytesseract
+from joblib import load
+import shutil
+
+# Constants for Tesseract and custom configuration
+model = 'IGphy'
+CUSTOM_CONFIG = r'--oem 3 --psm 6'
+MODEL_PATH_TEMPLATE = f"{BASE_PATH}/python_files/sci-kit/{model}.joblib"
+
+ALL_LABELS = ['Motion, forces and energy', 'Thermal physics', 
+             'Waves', 'Electricity and magnetism', 'Nuclear physics', 'Space physics']
+
+def predict(data, model):
+    pipeline = load(MODEL_PATH_TEMPLATE.format(model=model))
+    data = formatText(data)
+    predicted_labels = pipeline.predict([data])
+    return predicted_labels[0]
+
+def formatText(text):
+    stemmer=PorterStemmer()
+
+    # Convert all text to lowercase
+    text = text.lower()
+
+    # Remove punctuation, digits, and non-alphabetic characters
+    text = re.sub(r'[^\w\s]', '', text)
+    text = re.sub(r'\d+', '', text)
+    
+    # Remove Cambridge command words
+    text = text.replace("analyse",""); text = text.replace("assess",""); text = text.replace("calculate","")
+    text = text.replace("comment",""); text = text.replace("compare",""); text = text.replace("consider","")
+    text = text.replace("contrast",""); text = text.replace("define",""); text = text.replace("describe","")
+    text = text.replace("develop",""); text = text.replace("discuss",""); text = text.replace("evaluate","")
+    text = text.replace("explain",""); text = text.replace("give",""); text = text.replace("identify","")
+    text = text.replace("justify",""); text = text.replace("outline",""); text = text.replace("predict","")
+    text = text.replace("sketch",""); text = text.replace("state",""); text = text.replace("suggest","")
+    text = text.replace("summarise",""); text = text.replace("benefit",""); text = text.replace("drawback","")
+    text = text.replace("advantage",""); text = text.replace("disadvantage",""); text = text.replace("understand","")
+    text = text.replace("use",""); text = text.replace("notes and guidance",""); text = text.replace("candidates should be able to","")
+    text = text.replace("show",""); text = text.replace("understanding","")
+
+    # Tokenize text into words
+    words = word_tokenize(text)
+    # Stem words
+    words = [stemmer.stem(w) for w in words]
+
+    # Join the processed words back into a single string
+    return ' '.join(words)
+
+def process_image(image_path, custom_config=CUSTOM_CONFIG):
+    pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
+    img = cv2.imread(image_path)
+    return pytesseract.image_to_string(img, config=custom_config)
 
 def select_files():
     root = Tk()
@@ -209,6 +266,11 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, fina
                 
                 # Clean the cropped image
                 input_path = f"{output1Path}/questions/{unique_filename}.jpg"
+                question_text = process_image(input_path)
+                formatted_text = formatText(question_text)
+                chapter = predict(formatted_text, subject)
+                chapter_num = ALL_LABELS.index(chapter) + 1 if chapter in ALL_LABELS else 0
+                print(f"Chapter prediction for question {current_question_num}: {chapter}")
                 if os.path.exists(input_path):
                     file_question_counts[current_file] += 1
                     
@@ -220,15 +282,22 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, fina
                     elif paper_num in A2papers:
                         level2 = "A2"
                     level2 = "IGCSE"
-                    
+
+                    if not os.path.exists(f"{BASE_PATH}/images/sorted/{level2}/{subject2}/long/{chapter_num}"):
+                        os.makedirs(f"{BASE_PATH}/images/sorted/{level2}/{subject2}/long/{chapter_num}")
+
+                    shutil.copy(f"{output1Path}/questions/{unique_filename}.jpg", f"{BASE_PATH}/images/sorted/{level2}/{subject2}/long/{chapter_num}/{unique_filename}.jpg")
+
                     answerObject = {
                         "questionName": f"{unique_filename}.jpg",
                         "questionNum": current_question_num,
                         "Subject": subject2,
                         "Level": level2,
+                        "Chapter": chapter_num,
                         "pdfName": current_file2,
                         "year": year,
-                        "paperNumber": paper_num
+                        "paperNumber": paper_num,
+                        "questionText": formatted_text
                     }
                     answerObjectFormatted = json.dumps(answerObject)
                     db.write(answerObjectFormatted + ",\n")

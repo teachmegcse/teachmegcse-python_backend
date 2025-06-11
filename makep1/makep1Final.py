@@ -22,21 +22,24 @@ from nltk.tokenize import word_tokenize
 import io
 
 
-ALL_LABELS = ['Characteristics and classification of living organisms', 'Organisation of the organism', 
-             'Movement into and out of cells', 'Biological molecules', 'Enzymes', 'Plant nutrition', 'Human nutrition',
-               'Transport in plants', 'Transport in animals', 'Diseases and immunity', 'Gas exchange in humans','Respiration',
-               'Excretion in humans','Coordination and response','Drugs','Reproduction','Inheritance','Variation and selection',
-               'Organisms and their environment','Human influences on ecosystems','Biotechnology and genetic modification']
+ALL_LABELS = ['Utility', 'Indifference curves and budget lines', 
+             'Efficiency and market failure', 'Private costs and benefits, externalities and social costs and benefits ',
+               'Types of cost, revenue and profit, short-run and long-run production',
+               'market structures', 'Growth and survival of firms',
+               'objectives and policies of firms', 'Government policies to achieve efficient resource allocation',
+                'Equity and redistribution of income and wealth', 'Labour market forces and government intervention', 'The circular flow of income',
+               'Economic growth and sustainability', 'Employment/unemployment', 'Money and banking', 'Government macroeconomic policy objectives',
+               'balance of payments', 'Economic development', 'levels of development']
 
-subject = 'IG_bio'
-paper_number = 'p1'
-code = '0610'
-start_chapter = 1
-model = 'IGbio'
-level = "IGCSE"
-level2 = 'IGCSE' # A-level or IGCSE
-subject2 = 'biology'
-num_of_questions = 40
+subject = 'A_eco'
+paper_number = 'p3'
+code = '0625'
+start_chapter = 12
+model = 'a2eco'
+level = "A2"
+level2 = 'A-level' # A-level or IGCSE
+subject2 = 'economics' # physics, chemistry, biology
+num_of_questions = 30
 
 
 MODEL_PATH_TEMPLATE = f"{BASE_PATH}/python_files/sci-kit/{model}.joblib"
@@ -129,7 +132,7 @@ def predict(data, model):
     predicted_labels = pipeline.predict([data])
     return predicted_labels[0]
 
-def process_image(image_path, custom_config):
+def process_image(image_path, custom_config=CUSTOM_CONFIG):
     pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
     img = cv2.imread(image_path)
     return pytesseract.image_to_string(img, config=custom_config)
@@ -219,7 +222,7 @@ for m in range(len(files)):
                     if not os.path.exists(f"{BASE_PATH}/images/sorted/{level2}/{subject2}/{paper_number}/{chapter_num}"):
                         os.makedirs(f"{BASE_PATH}/images/sorted/{level2}/{subject2}/{paper_number}/{chapter_num}")
                     shutil.copy(f"{output1Path}/questions/{subject}_{paper_number}_{current_question_num + (m * num_of_questions)}.jpg", f"{BASE_PATH}/images/sorted/{level2}/{subject2}/{paper_number}/{chapter_num}/{subject}_{paper_number}_{current_question_num + (m * num_of_questions)}.jpg")
-                    print (f"length of answers: {len(answers)}, current question number: {current_question_num}")
+                    print (f"length of answers: {len(answers)}, current question number: {current_question_num}, current file: {current_file}")
                     answer_object = {
                             "questionName": f"{subject}_{paper_number}_{current_question_num + (m * num_of_questions)}.jpg",
                             "Answer": answers[current_question_num - 1],
