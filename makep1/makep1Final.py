@@ -219,9 +219,6 @@ for m in range(len(files)):
                     question_text = process_image(f"{output1Path}/questions/{subject}_{paper_number}_{current_question_num + (m * num_of_questions)}.jpg", CUSTOM_CONFIG).lower().strip()
                     chapter = predict(question_text, model)
                     chapter_num = start_chapter + ALL_LABELS.index(chapter)
-                    if not os.path.exists(f"{BASE_PATH}/images/sorted/{level2}/{subject2}/{paper_number}/{chapter_num}"):
-                        os.makedirs(f"{BASE_PATH}/images/sorted/{level2}/{subject2}/{paper_number}/{chapter_num}")
-                    shutil.copy(f"{output1Path}/questions/{subject}_{paper_number}_{current_question_num + (m * num_of_questions)}.jpg", f"{BASE_PATH}/images/sorted/{level2}/{subject2}/{paper_number}/{chapter_num}/{subject}_{paper_number}_{current_question_num + (m * num_of_questions)}.jpg")
                     print (f"length of answers: {len(answers)}, current question number: {current_question_num}, current file: {current_file}")
                     answer_object = {
                             "questionName": f"{subject}_{paper_number}_{current_question_num + (m * num_of_questions)}.jpg",

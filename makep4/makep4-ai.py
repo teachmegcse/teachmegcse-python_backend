@@ -24,12 +24,13 @@ from joblib import load
 import shutil
 
 # Constants for Tesseract and custom configuration
-model = 'IGphy'
+model = 'IGchem'
 CUSTOM_CONFIG = r'--oem 3 --psm 6'
 MODEL_PATH_TEMPLATE = f"{BASE_PATH}/python_files/sci-kit/{model}.joblib"
 
-ALL_LABELS = ['Motion, forces and energy', 'Thermal physics', 
-             'Waves', 'Electricity and magnetism', 'Nuclear physics', 'Space physics']
+ALL_LABELS = ['States of matter', 'Atoms, elements and compounds', 
+             'Stoichiometry', 'Electrochemistry', 'Chemical energetics', 'Chemical reactions', 'Acids, bases and salts',
+               'The Periodic Table', 'Metals', 'Chemistry of the environment', 'Organic chemistry', 'Experimental techniques and chemical analysis']
 
 def predict(data, model):
     pipeline = load(MODEL_PATH_TEMPLATE.format(model=model))
@@ -95,7 +96,7 @@ def makeImages(output_path, pdf_path, i):
         text = text.lower()
         if x >= 1:
             # Skip if page contains any of these strings
-            skip_strings = ["blank page", "important values", "periodic table", "next page"]
+            skip_strings = ["blank page", "important values", "lanthanoids", "next page"]
             if not any(s in text for s in skip_strings):
                 images[x].save(f"{output_path}/{i}/{current_index}.jpg", 'JPEG')
                 current_index += 1
@@ -202,7 +203,7 @@ def merge_all_images(folder_num, output_path, heightsArr):
     heightsArr[folder_num] = total_height
     return current_height
 
-def take_screenshot(y1, y2, current_question_num, file_name, output_path, subject, unique_filename):
+def take_screenshot(y1, y2, current_question_num, file_name, output_path, unique_filename):
     print(f"\nTaking screenshot for question {current_question_num}")
     print(f"Coordinates: y1={y1}, y2={y2}")
     if (y2 - y1) > 300:
@@ -261,7 +262,7 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, fina
                 current_question_num = i + 1
                 
                 print(f"Processing question {current_question_num} with coordinates y1={y1}, y2={y2}")
-                unique_filename = f"{subject2}_p{paper_num}_q{unique_num}_{current_question_num}"
+                unique_filename = f"{subject2}_p{paper_num}_qp_{unique_num}"
                 take_screenshot(y1, y2, current_question_num, f"final{m}.jpg", output1Path, subject, unique_filename)
                 
                 # Clean the cropped image
@@ -311,14 +312,14 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, fina
 if __name__ == '__main__':
     print("Starting script...")
     # Initialize constants
-    subject = 'phy'
-    subject2 = 'physics'
+    subject = 'chem'
+    subject2 = 'chemistry'
     unique_num = 1
     
     # Create necessary directories
     output1Path = f"{BASE_PATH}/python_files/makep1/testImages"
     finalOutputPath = "final_output"
-    db_path = f"{BASE_PATH}/json_files/phy_db_theory.json"
+    db_path = f"{BASE_PATH}/json_files/ig_chem_theory.json"
     
     # Initialize database file
     with open(db_path, 'w') as db:
