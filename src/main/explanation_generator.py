@@ -18,7 +18,7 @@ def generate_explanation_for_question(record, model, subject, code, level, image
     response = None
     while not answerGenerated:
         try:
-            response = model.send_message([
+            response = model.generate_content([
                 img,
                     f"""
                     Your task is to clearly explain why the answer {record["Answer"]} is correct and why each of the other options is incorrect.
@@ -41,7 +41,7 @@ def generate_explanation_for_question(record, model, subject, code, level, image
                 answerGenerated = True
         except Exception as e:
             print(f"""failed, trying again {record["questionName"]} error code: {e}""")
-            time.sleep(0.2)
+            time.sleep(0.5)
     record["Explanation"] = response.text
     print(response.text)
 
@@ -54,7 +54,7 @@ def generate_explanations_for_all_questions(json_name):
     
     """
     load_dotenv()
-    GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+    GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY3")
     json_path = f"src/resources/json/{json_name}"
     question_data = json.load(open(json_path, "r"))
     subject = question_data[0]["Subject"]
@@ -66,10 +66,15 @@ def generate_explanations_for_all_questions(json_name):
     genai.configure(api_key=GOOGLE_API_KEY)
     model = genai.GenerativeModel("gemini-2.5-pro-preview-06-05")
     print(question_data[0]["pdfName"].split("_")[0])
-    
-    for record in question_data:
-        question_path = f"{image_path}/{record["Chapter"]}"
-        generate_explanation_for_question(record, model, subject, code, level, question_path)
+    try:
+        for record in question_data:
+            question_path = f"{image_path}/{record['Chapter']}"
+            generate_explanation_for_question(record, model, subject, code, level, question_path)
+    except KeyboardInterrupt:
+        print("\nKeyboardInterrupt detected. Saving progress to JSON file...")
+        json.dump(question_data, open(json_path, "w"))
+        print(f"Progress saved to {json_path}")
+        sys.exit(0)
     json.dump(question_data, open(json_path, "w"))
 
 if __name__ == "__main__":
