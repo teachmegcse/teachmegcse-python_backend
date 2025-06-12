@@ -38,7 +38,7 @@ def main():
 
     # Set up the base URL and output directory (also location independent)
     BASE_URL = "https://dynamicpapers.com/wp-content/uploads/2015/09/"
-    PDF_DIR = os.path.join(SCRIPT_DIR, "..", "resources", "pdfs", json_object[0]["pdfName"].split("_")[0])
+    PDF_DIR = os.path.join(SCRIPT_DIR, "..", "resources", "pdfs", "cie_papers", json_object[0]["pdfName"].split("_")[0])
 
 
     os.makedirs(PDF_DIR, exist_ok=True)

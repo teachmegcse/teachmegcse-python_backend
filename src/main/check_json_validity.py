@@ -35,6 +35,18 @@ def check_json_validity(json_object, pdf_dir, question_count):
                 prev_file_name = file_name
                 count = 1
     
+    for record in json_object:
+        file_id = int(record["questionName"].split('_')[3].split('.')[0])
+        file_num = int(file_id % question_count if file_id % question_count != 0 else question_count)
+
+        question_num = record["questionText"].split(' ')[0]
+        try:
+            question_num = int(question_num)
+        except ValueError:
+            question_num = int(''.join(filter(str.isdigit, question_num)))  # Remove all non-integer characters
+        if file_num != question_num:
+            flag = False
+            print(f"Invalid question number for {record['pdfName']}, {record['questionName']}: expected {file_num}, found {question_num}")
     # Compare answers in JSON with those in the corresponding MS PDFs
     current_pdf_name = None
     ms_text = None
@@ -85,7 +97,7 @@ def main():
     json_file = os.path.join(SCRIPT_DIR, "..", "resources", "json", json_name)
     with open(json_file, 'r') as f:
         json_object = json.load(f)
-    pdf_directory = os.path.join(SCRIPT_DIR, "..", "resources", "pdfs", json_object[0]["Level"].lower(), json_object[0]["Subject"])
+    pdf_directory = os.path.join(SCRIPT_DIR, "..", "resources", "pdfs", "cie_papers", json_object[0]["pdfName"].split("_")[0])
     check_json_validity(json_object, pdf_directory, QUESTION_COUNT)
 
 if __name__ == "__main__":
