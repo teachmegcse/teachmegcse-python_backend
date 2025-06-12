@@ -147,7 +147,20 @@ def take_screenshot(y1, y2, file_name, output_path, unique_filename, current_que
     else:
         print(f"Skipping question {current_question_num} - too small ({y2 - y1} pixels)")
 
+def extract_paper_number(filename):
+    try:
+        base_name = filename.split('.')[0]
+        
+        parts = base_name.split('_')
+        
+        if len(parts) >= 4:
+            return int(parts[3][0])
+    except Exception as e:
+        print(f"Error: {e}")
+    return None
+
 if __name__ == "__main__":
+    subject = 'physics'
     files = select_files()
     files = [file for file in files if 'ms' in file.lower()]
     output_path = f"{BASE_PATH}/resources/images/test_images"
@@ -171,25 +184,27 @@ if __name__ == "__main__":
             key=lambda x: int(x.split('.')[0])
         )
         
-        
+        paper_number = extract_paper_number(filename)
+
         for j in range(len(number_of_pages)):
             image_path = f"{output_path}/{i}/{number_of_pages[j]}"
             with PIL.Image.open(image_path) as im:
                 y_coordinates = extract_question_number(im, currentQuestionNum, output_path)
                 if y_coordinates:
                     # Loop through each detected question Y-coordinate
+                    image_file_name = f"{subject}_p{paper_number}_ms_{currentQuestionNum}"
                     for y1 in y_coordinates:
                         take_screenshot(previous_y, y1 + (j) * 1300 + 10,  # Include a small buffer below
-                                         i, output_path, f"{i}_ms_{currentQuestionNum}", currentQuestionNum)
+                                         i, output_path, image_file_name , currentQuestionNum)
 
-                        ms_data.append({"fileName": f"{i}_ms_{currentQuestionNum}.jpg", 
+                        ms_data.append({"fileName": image_file_name + ".jpg", 
                                           "questionNumber": currentQuestionNum, 
                                           "paperCode": filename})
                         previous_y = y1 + (j) * 1300
                         currentQuestionNum += 1
         
-        take_screenshot(previous_y, (len(number_of_pages)) * 1300, i, output_path, f"{i}_ms_{currentQuestionNum}", currentQuestionNum)
-        ms_data.append({"fileName": f"{i}_ms_{currentQuestionNum}.jpg", 
+        take_screenshot(previous_y, (len(number_of_pages)) * 1300, i, output_path, image_file_name, currentQuestionNum)
+        ms_data.append({"fileName": image_file_name + ".jpg", 
                                           "questionNumber": currentQuestionNum, 
                                           "paperCode": filename})
         try:
