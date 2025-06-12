@@ -43,7 +43,11 @@ def check_json_validity(json_object, pdf_dir, question_count):
         try:
             question_num = int(question_num)
         except ValueError:
-            question_num = int(''.join(filter(str.isdigit, question_num)))  # Remove all non-integer characters
+            question_num = ''.join(filter(str.isdigit, question_num))
+            if question_num.isdigit():
+                question_num = int(question_num)
+            else:
+                raise ValueError(f"Invalid question number format in {record['pdfName']}, {record['questionName']}: {record['questionText']}")
         if file_num != question_num:
             flag = False
             print(f"Invalid question number for {record['pdfName']}, {record['questionName']}: expected {file_num}, found {question_num}")

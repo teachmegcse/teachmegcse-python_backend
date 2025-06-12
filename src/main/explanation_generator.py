@@ -54,7 +54,7 @@ def generate_explanations_for_all_questions(json_name):
     
     """
     load_dotenv()
-    GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+    GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY3")
     json_path = f"src/resources/json/{json_name}"
     question_data = json.load(open(json_path, "r"))
     subject = question_data[0]["Subject"]
