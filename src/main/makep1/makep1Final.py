@@ -25,17 +25,20 @@ import io
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
 PDF_PATH = rf"{BASE_PATH}/resources/pdfs"
 
-ALL_LABELS = ['Motion, forces and energy', 'Thermal physics', 
-             'Waves', 'Electricity and magnetism', 'Nuclear physics', 'Space physics']
+ALL_LABELS = ['Atomic structure', 'Atoms, molecules and stoichiometry', 
+             'Chemical bonding', 'States of matter', 'Chemical energetics', 'Electrochemistry', 'Equilibria',
+               'Reaction kinetics', 'The Periodic Table: chemical periodicity', 'Group 2', 'Group 17', 'Nitrogen and sulfur', 'introduction to AS Level organic chemistry', 
+               'Hydrocarbons', 'Halogen compounds', 'Hydroxy compounds', 'Carbonyl compounds', 'Carboxylic acids and derivatives', 'Nitrogen compounds', 'Polymerisation',
+                 'Organic synthesis', 'Analytical techniques']
 
-subject = 'ig_phy'
-paper_number = 'p2'
-code = '0625'
+subject = 'a_chem'
+paper_number = 'p1'
+code = '9701'
 start_chapter = 1
-model = 'IGphy'
-level = 'IGCSE'
-level_folder_name = 'igcse' # a-level or igcse
-subject2 = 'physics' # physics, chemistry, biology
+model = 'aschem'
+level = 'AS' # A2, AS or IGCSE
+level_folder_name = 'a-level' # a-level or igcse
+subject2 = 'chemistry' # physics, chemistry, biology
 num_of_questions = 40
 
 
@@ -59,10 +62,8 @@ def makeImages(output_path, pdf_path, i):
     if not os.path.exists(path):
         os.makedirs(path)
     for x in range(number_of_pages):
-        page = reader.pages[x]
         if x >= startPage:
-            if page.extract_text().find("BLANK PAGE") == -1:
-                images[x].save(f"{output_path}/{i}/{x}.jpg", 'JPEG')
+            images[x].save(f"{output_path}/{i}/{x}.jpg", 'JPEG')
 
 def get_y_coordinates(file_name, folderNum):
     image_path = f"{output1Path}/{folderNum}/{file_name}"
