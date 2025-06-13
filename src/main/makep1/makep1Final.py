@@ -11,7 +11,6 @@ from pdf2image import convert_from_path
 from PIL import Image
 from PyPDF2 import PdfReader
 from tkinter import filedialog, Tk
-from pathConst import POPPLER_PATH, TESSERACT_PATH
 import requests
 from joblib import load
 import cv2
@@ -26,24 +25,21 @@ import io
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
 PDF_PATH = rf"{BASE_PATH}/resources/pdfs"
 
-ALL_LABELS = ['Utility', 'Indifference curves and budget lines', 
-             'Efficiency and market failure', 'Private costs and benefits, externalities and social costs and benefits ',
-               'Types of cost, revenue and profit, short-run and long-run production',
-               'market structures', 'Growth and survival of firms',
-               'objectives and policies of firms', 'Government policies to achieve efficient resource allocation',
-                'Equity and redistribution of income and wealth', 'Labour market forces and government intervention', 'The circular flow of income',
-               'Economic growth and sustainability', 'Employment/unemployment', 'Money and banking', 'Government macroeconomic policy objectives',
-               'balance of payments', 'Economic development', 'levels of development']
+ALL_LABELS = ['Characteristics and classification of living organisms', 'Organisation of the organism', 
+             'Movement into and out of cells', 'Biological molecules', 'Enzymes', 'Plant nutrition', 'Human nutrition',
+               'Transport in plants', 'Transport in animals', 'Diseases and immunity', 'Gas exchange in humans','Respiration',
+               'Excretion in humans','Coordination and response','Drugs','Reproduction','Inheritance','Variation and selection',
+               'Organisms and their environment','Human influences on ecosystems','Biotechnology and genetic modification']
 
-subject = 'A_eco'
-paper_number = 'p3'
-code = '0625'
-start_chapter = 12
-model = 'a2eco'
-level = "A2"
-level2 = 'A-level' # A-level or IGCSE
-subject2 = 'economics' # physics, chemistry, biology
-num_of_questions = 30
+subject = 'ig_bio'
+paper_number = 'p1'
+code = '0610'
+start_chapter = 1
+model = 'IGbio'
+level = "IGCSE"
+level_folder_name = "igcse" # a-level or igcse
+subject2 = 'biology' # physics, chemistry, biology
+num_of_questions = 40
 
 
 MODEL_PATH_TEMPLATE = f"{BASE_PATH}/resources/sci-kit/{model}.joblib"
@@ -59,7 +55,7 @@ output1Path = f"{BASE_PATH}/resources/images/test_images"
 
 
 def makeImages(output_path, pdf_path, i):
-    images = convert_from_path(pdf_path, poppler_path=POPPLER_PATH)
+    images = convert_from_path(pdf_path)
     reader = PdfReader(pdf_path)
     number_of_pages = len(reader.pages)
     path = f"{output_path}/{i}"
@@ -99,11 +95,9 @@ def strip_images(folder_num):
 
 
 def clean_images():
-    folders = os.listdir(f"{BASE_PATH}/images/{level2}/{subject2}/{paper_number}")
-    for folder in folders:
-        questions = os.listdir(f"{BASE_PATH}/images/{level2}/{subject2}/{paper_number}/{folder}")
+        questions = os.listdir(f"{BASE_PATH}/resources/images/{level_folder_name}/{subject2}/{paper_number}")
         for i in range(len(questions)):
-            im = Image.open(f"{BASE_PATH}/images/{level2}/{subject2}/{paper_number}/{folder}/{questions[i]}")
+            im = Image.open(f"{BASE_PATH}/resources/images/{level_folder_name}/{subject2}/{paper_number}/{questions[i]}")
             pix = im.load()
             flag = False
             if flag == False:
@@ -118,7 +112,7 @@ def clean_images():
                     if flag:
                         break
             cleaned_image = im.crop((0, 0, 1500, y + 10))
-            cleaned_image.save(f"{BASE_PATH}/images/{level2}/{subject2}/{paper_number}/{folder}/{questions[i]}")
+            cleaned_image.save(f"{BASE_PATH}/resources/images/{level_folder_name}/{subject2}/{paper_number}/{questions[i]}")
 
 
 def take_screenshot(y1, y2, file_name, folderNum):
@@ -137,7 +131,6 @@ def predict(data, model):
     return predicted_labels[0]
 
 def process_image(image_path, custom_config=CUSTOM_CONFIG):
-    pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
     img = cv2.imread(image_path)
     return pytesseract.image_to_string(img, config=custom_config)
 
@@ -215,20 +208,21 @@ for m in range(len(files)):
                 y2_list.append(y2)
         if len(y2_list):
             for j in range(len(y2_list)):
+                file_name = f"{subject}_{paper_number}_{current_question_num + (m * num_of_questions)}"
                 if j == len(y2_list) - 1:
                     take_screenshot(y2_list[j], 2050, f"{k + 1}.jpg", m)
                 else:
                     take_screenshot(y2_list[j], y2_list[j + 1], f"{k + 1}.jpg", m)
-                if os.path.exists(f"{output1Path}/questions/{subject}_{paper_number}_{current_question_num + (m * num_of_questions)}.jpg"):
-                    question_text = process_image(f"{output1Path}/questions/{subject}_{paper_number}_{current_question_num + (m * num_of_questions)}.jpg", CUSTOM_CONFIG).lower().strip()
+                if os.path.exists(f"{output1Path}/questions/{file_name}.jpg"):
+                    question_text = process_image(f"{output1Path}/questions/{file_name}.jpg", CUSTOM_CONFIG).lower().strip()
                     chapter = predict(question_text, model)
                     chapter_num = start_chapter + ALL_LABELS.index(chapter)
-                    if not os.path.exists(f"{BASE_PATH}/images/{level2}/{subject2}/{paper_number}/{chapter_num}"):
-                        os.makedirs(f"{BASE_PATH}/images/{level2}/{subject2}/{paper_number}/{chapter_num}")
-                    shutil.copy(f"{output1Path}/questions/{subject}_{paper_number}_{current_question_num + (m * num_of_questions)}.jpg", f"{BASE_PATH}/images/sorted/{level2}/{subject2}/{paper_number}/{chapter_num}/{subject}_{paper_number}_{current_question_num + (m * num_of_questions)}.jpg")
+
+                    shutil.copy(f"{output1Path}/questions/{file_name}.jpg", f"{BASE_PATH}/resources/images/{level_folder_name}/{subject2}/{paper_number}/{file_name}.jpg")
+
                     print (f"length of answers: {len(answers)}, current question number: {current_question_num}, current file: {current_file}")
                     answer_object = {
-                            "questionName": f"{subject}_{paper_number}_{current_question_num + (m * num_of_questions)}.jpg",
+                            "questionName": f"{file_name}.jpg",
                             "Answer": answers[current_question_num - 1],
                             "pdfName": current_file,
                             "questionText": question_text,
@@ -240,7 +234,7 @@ for m in range(len(files)):
                     questionObjects.append(answer_object)
                 current_question_num += 1
 
-with open(f"{BASE_PATH}/resources/json/db.json", 'w') as f:
+with open(f"{BASE_PATH}/resources/json/test_images.json", 'w') as f:
     f.write("[\n")
     for obj in questionObjects:
         f.write(json.dumps(obj) + ",\n")
