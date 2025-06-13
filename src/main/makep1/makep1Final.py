@@ -25,20 +25,17 @@ import io
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
 PDF_PATH = rf"{BASE_PATH}/resources/pdfs"
 
-ALL_LABELS = ['Characteristics and classification of living organisms', 'Organisation of the organism', 
-             'Movement into and out of cells', 'Biological molecules', 'Enzymes', 'Plant nutrition', 'Human nutrition',
-               'Transport in plants', 'Transport in animals', 'Diseases and immunity', 'Gas exchange in humans','Respiration',
-               'Excretion in humans','Coordination and response','Drugs','Reproduction','Inheritance','Variation and selection',
-               'Organisms and their environment','Human influences on ecosystems','Biotechnology and genetic modification']
+ALL_LABELS = ['Motion, forces and energy', 'Thermal physics', 
+             'Waves', 'Electricity and magnetism', 'Nuclear physics', 'Space physics']
 
-subject = 'ig_bio'
-paper_number = 'p1'
-code = '0610'
+subject = 'ig_phy'
+paper_number = 'p2'
+code = '0625'
 start_chapter = 1
-model = 'IGbio'
-level = "IGCSE"
-level_folder_name = "igcse" # a-level or igcse
-subject2 = 'biology' # physics, chemistry, biology
+model = 'IGphy'
+level = 'IGCSE'
+level_folder_name = 'igcse' # a-level or igcse
+subject2 = 'physics' # physics, chemistry, biology
 num_of_questions = 40
 
 
@@ -189,6 +186,7 @@ def formatText(text):
 
 for m in range(len(files)):
     makeImages(output1Path, files[m], m)
+    print(f"Processing {files[m]}...")
 
     strip_images(m)
     pages = os.listdir(f"{output1Path}/{m}")
@@ -196,11 +194,9 @@ for m in range(len(files)):
     answers = extract_answers_from_pdf(code, current_file)
     current_question_num = 1
     for k in range(len(pages)):
-        if current_question_num >= num_of_questions:
-            continue
         y_coordinates = get_y_coordinates(f"{k + 1}.jpg", m)
         # Filter boxes where x1 < 250 and extract their y2 (i.e. box[1])
-        raw_y2_list  = sorted(box[1] for box in y_coordinates if box[0] < 180)
+        raw_y2_list  = sorted(box[1] for box in y_coordinates if box[0] < 160)
         threshold = 10  # adjust as needed depending on your use case
         y2_list = []
         for y2 in raw_y2_list:
@@ -219,8 +215,7 @@ for m in range(len(files)):
                     chapter_num = start_chapter + ALL_LABELS.index(chapter)
 
                     shutil.copy(f"{output1Path}/questions/{file_name}.jpg", f"{BASE_PATH}/resources/images/{level_folder_name}/{subject2}/{paper_number}/{file_name}.jpg")
-
-                    print (f"length of answers: {len(answers)}, current question number: {current_question_num}, current file: {current_file}")
+                    print(f"{question_text} \n question number: {current_question_num} \n")
                     answer_object = {
                             "questionName": f"{file_name}.jpg",
                             "Answer": answers[current_question_num - 1],
