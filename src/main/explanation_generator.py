@@ -54,14 +54,18 @@ def generate_explanations_for_all_questions(json_name):
     
     """
     load_dotenv()
-    GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY3")
-    json_path = f"src/resources/json/{json_name}"
+    GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    json_path = os.path.join(base_dir, "resources", "json", json_name)
     question_data = json.load(open(json_path, "r"))
     subject = question_data[0]["Subject"]
     paper_number = question_data[0]["paperNumber"]
     code = question_data[0]["pdfName"].split("_")[0]
     level = question_data[0]["Level"]
-    image_path = f"src/resources/images/questions/igcse/{subject}/p{paper_number}" if level.lower() == "igcse" else f"src/resources/images/questions/a-level/{subject}/p{paper_number}"
+    if level.lower() == "igcse":
+        image_path = os.path.join(base_dir, "resources", "images", "questions", "igcse", subject, f"p{paper_number}")
+    else:
+        image_path = os.path.join(base_dir, "resources", "images", "questions", "a-level", subject, f"p{paper_number}")
     
     genai.configure(api_key=GOOGLE_API_KEY)
     model = genai.GenerativeModel("gemini-2.5-pro-preview-06-05")
