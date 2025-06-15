@@ -1,7 +1,3 @@
-import sys
-import os
-
-
 import PIL.Image
 from pdf2image import convert_from_path
 import PIL
@@ -13,7 +9,7 @@ import easyocr
 import requests
 from io import BytesIO
 import json
-from pathConst import POPPLER_PATH
+
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
 def select_files():
     root = Tk()
@@ -32,7 +28,7 @@ def strip_images(output_path, i):
                 im_crop.save(image_path)
 
 def makeImages(output_path, pdf_path, i):
-    images = convert_from_path(pdf_path, poppler_path=POPPLER_PATH)
+    images = convert_from_path(pdf_path)
     reader = PdfReader(pdf_path)
     number_of_pages = len(reader.pages)
     
