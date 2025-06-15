@@ -50,7 +50,10 @@ async def predict(file: UploadFile = File(...)) -> List[List[float]]:
 
         filename = f"{current_question_num}.jpg"
         current_question_num += 1
-        save_path = os.path.join(BASE_PATH, "images", "output_images", filename)
+        save_path = os.path.join(BASE_PATH, "resources", "images", "vision_output_images", filename)
+        save_dir = os.path.dirname(save_path)
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
         cv2.imwrite(save_path, image)
 
         print(f"Saved image with boxes to {save_path}")
