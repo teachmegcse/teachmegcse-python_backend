@@ -1,12 +1,5 @@
 "MORE CHANGES NEEDED LATER"
 
-import sys
-import os
-
-# Add the directory two levels up to sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-
 from pdf2image import convert_from_path
 import PIL
 from PyPDF2 import PdfReader
@@ -16,7 +9,6 @@ import os
 import json
 import requests
 import multiprocessing
-from pathConst import POPPLER_PATH, TESSERACT_PATH
 from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
 import re
@@ -27,13 +19,15 @@ import shutil
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
 # Constants for Tesseract and custom configuration
-model = 'IGchem'
+model = 'igbio'
 CUSTOM_CONFIG = r'--oem 3 --psm 6'
 MODEL_PATH_TEMPLATE = f"{BASE_PATH}/resources/sci-kit/{model}.joblib"
 
-ALL_LABELS = ['States of matter', 'Atoms, elements and compounds', 
-             'Stoichiometry', 'Electrochemistry', 'Chemical energetics', 'Chemical reactions', 'Acids, bases and salts',
-               'The Periodic Table', 'Metals', 'Chemistry of the environment', 'Organic chemistry', 'Experimental techniques and chemical analysis']
+ALL_LABELS = ['Characteristics and classification of living organisms', 'Organisation of the organism', 
+             'Movement into and out of cells', 'Biological molecules', 'Enzymes', 'Plant nutrition', 'Human nutrition',
+               'Transport in plants', 'Transport in animals', 'Diseases and immunity', 'Gas exchange in humans','Respiration',
+               'Excretion in humans','Coordination and response','Drugs','Reproduction','Inheritance','Variation and selection',
+               'Organisms and their environment','Human influences on ecosystems','Biotechnology and genetic modification']
 
 def predict(data, model):
     pipeline = load(MODEL_PATH_TEMPLATE.format(model=model))
@@ -73,7 +67,6 @@ def formatText(text):
     return ' '.join(words)
 
 def process_image(image_path, custom_config=CUSTOM_CONFIG):
-    pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
     img = cv2.imread(image_path)
     return pytesseract.image_to_string(img, config=custom_config)
 
@@ -85,7 +78,7 @@ def select_files():
     return list(files)
 
 def makeImages(output_path, pdf_path, i):
-    images = convert_from_path(pdf_path, poppler_path=POPPLER_PATH)
+    images = convert_from_path(pdf_path)
     reader = PdfReader(pdf_path)
     number_of_pages = len(reader.pages)
     path = f"{output_path}/{i}"
@@ -99,7 +92,7 @@ def makeImages(output_path, pdf_path, i):
         text = text.lower()
         if x >= 1:
             # Skip if page contains any of these strings
-            skip_strings = ["blank page", "important values", "lanthanoids", "next page"]
+            skip_strings = ["blank page", "important values", "lanthanoids", "next page", "continues on page"]
             if not any(s in text for s in skip_strings):
                 images[x].save(f"{output_path}/{i}/{current_index}.jpg", 'JPEG')
                 current_index += 1
@@ -147,6 +140,7 @@ def get_all_page_coordinates(folder_num, output_path):
                 
             # Take only the first box if multiple exist
             if bounding_boxes:
+                bounding_boxes.sort(key=lambda box: box[0])
                 first_box = bounding_boxes[0]
                 y1 = first_box[1]  # Top y coordinate only
                 x1 = first_box[0]
@@ -265,8 +259,8 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, fina
                 current_question_num = i + 1
                 
                 print(f"Processing question {current_question_num} with coordinates y1={y1}, y2={y2}")
-                unique_filename = f"{subject2}_p{paper_num}_qp_{unique_num}"
-                take_screenshot(y1, y2, current_question_num, f"final{m}.jpg", output1Path, subject, unique_filename)
+                unique_filename = f"{subject2}_p{paper_num}_qp_{unique_num}_{current_question_num}"
+                take_screenshot(y1, y2, current_question_num, f"final{m}.jpg", output1Path, unique_filename)
                 
                 # Clean the cropped image
                 input_path = f"{output1Path}/questions/{unique_filename}.jpg"
@@ -274,7 +268,6 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, fina
                 formatted_text = formatText(question_text)
                 chapter = predict(formatted_text, subject)
                 chapter_num = ALL_LABELS.index(chapter) + 1 if chapter in ALL_LABELS else 0
-                print(f"Chapter prediction for question {current_question_num}: {chapter}")
                 if os.path.exists(input_path):
                     file_question_counts[current_file] += 1
                     
@@ -287,10 +280,7 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, fina
                         level2 = "A2"
                     level2 = "IGCSE"
 
-                    if not os.path.exists(f"{BASE_PATH}/images/{level2}/{subject2}/long/{chapter_num}"):
-                        os.makedirs(f"{BASE_PATH}/images/{level2}/{subject2}/long/{chapter_num}")
-
-                    shutil.copy(f"{output1Path}/questions/{unique_filename}.jpg", f"{BASE_PATH}/images/{level2}/{subject2}/long/{chapter_num}/{unique_filename}.jpg")
+                    shutil.copy(f"{output1Path}/questions/{unique_filename}.jpg", f"{BASE_PATH}/resources/images/{level2}/{subject2}/long/{unique_filename}.jpg")
 
                     answerObject = {
                         "questionName": f"{unique_filename}.jpg",
@@ -315,15 +305,15 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, fina
 if __name__ == '__main__':
     print("Starting script...")
     # Initialize constants
-    subject = 'chem'
-    subject2 = 'chemistry'
+    subject = 'ig_bio'
+    subject2 = 'biology'
     unique_num = 1
     
     # Create necessary directories
     output1Path = f"{BASE_PATH}/resources/images/test_images"
     finalOutputPath = "final_output"
-    db_path = f"{BASE_PATH}/resources/json/phy_db_theory.json"
-    
+    db_path = f"{BASE_PATH}/resources/json/ig_bio_theory.json"
+
     # Initialize database file
     with open(db_path, 'w') as db:
         db.write("[")
