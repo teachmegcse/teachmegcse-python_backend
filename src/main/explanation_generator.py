@@ -54,7 +54,7 @@ def generate_explanations_for_all_questions(json_name):
     
     """
     load_dotenv()
-    GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+    GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY2")
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     json_path = os.path.join(base_dir, "resources", "json", json_name)
     question_data = json.load(open(json_path, "r"))
@@ -72,7 +72,7 @@ def generate_explanations_for_all_questions(json_name):
     print(question_data[0]["pdfName"].split("_")[0])
     try:
         for record in question_data:
-            question_path = f"{image_path}/{record['Chapter']}"
+            question_path = f"{image_path}"
             generate_explanation_for_question(record, model, subject, code, level, question_path)
     except KeyboardInterrupt:
         print("\nKeyboardInterrupt detected. Saving progress to JSON file...")

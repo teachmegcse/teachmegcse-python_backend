@@ -22,25 +22,21 @@ from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
 import io
 
-BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
-PDF_PATH = rf"{BASE_PATH}/resources/pdfs"
+ALL_LABELS = ['Motion, forces and energy', 'Thermal physics', 
+             'Waves', 'Electricity and magnetism', 'Nuclear physics', 'Space physics']
 
-ALL_LABELS = ['Atomic structure', 'Atoms, molecules and stoichiometry', 
-             'Chemical bonding', 'States of matter', 'Chemical energetics', 'Electrochemistry', 'Equilibria',
-               'Reaction kinetics', 'The Periodic Table: chemical periodicity', 'Group 2', 'Group 17', 'Nitrogen and sulfur', 'introduction to AS Level organic chemistry', 
-               'Hydrocarbons', 'Halogen compounds', 'Hydroxy compounds', 'Carbonyl compounds', 'Carboxylic acids and derivatives', 'Nitrogen compounds', 'Polymerisation',
-                 'Organic synthesis', 'Analytical techniques']
-
-subject = 'a_chem'
+subject = 'ig_phy'
 paper_number = 'p1'
-code = '9701'
+code = '0625'
 start_chapter = 1
-model = 'aschem'
-level = 'AS' # A2, AS or IGCSE
-level_folder_name = 'a-level' # a-level or igcse
-subject2 = 'chemistry' # physics, chemistry, biology
+model = 'IGphy'
+level = 'IGCSE' # A2, AS or IGCSE
+level_folder_name = 'igcse' # a-level or igcse
+subject2 = 'physics' # physics, chemistry, biology
 num_of_questions = 40
 
+BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
+PDF_PATH = rf"{BASE_PATH}/resources/pdfs/cie_papers"
 
 MODEL_PATH_TEMPLATE = f"{BASE_PATH}/resources/sci-kit/{model}.joblib"
 current_question_num = 1
@@ -134,7 +130,7 @@ def process_image(image_path, custom_config=CUSTOM_CONFIG):
 
 def extract_answers_from_pdf(code, pdfName):
     pdfName = pdfName.replace('qp', 'ms')
-    pdfPath = rf"{PDF_PATH}\{code}\{pdfName}"
+    pdfPath = f"{PDF_PATH}/{code}/{pdfName}"
     pdf_reader = PdfReader(open(pdfPath, "rb"))
     text = ""
     for page_num in range(len(pdf_reader.pages)):
