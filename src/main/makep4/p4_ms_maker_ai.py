@@ -155,14 +155,15 @@ def extract_paper_number(filename):
     return None
 
 if __name__ == "__main__":
-    subject = 'physics'
+    subject = 'ig_bio'
     files = select_files()
     files = [file for file in files if 'ms' in file.lower()]
     output_path = f"{BASE_PATH}/resources/images/test_images"
-    JSON_FILE_LOCATION = f"{BASE_PATH}/resources/json/a_phy_ms.json"
+    JSON_FILE_LOCATION = f"{BASE_PATH}/resources/json/ig_bio_ms.json"
     with open(JSON_FILE_LOCATION, 'r') as json_file:
         ms_data = json.load(json_file)
-
+        
+    filename_num = 1
     for i in range(len(files)):
         filename = files[i].split('/')[-1]
         filename = filename.replace('.pdf', '')
@@ -188,7 +189,7 @@ if __name__ == "__main__":
                 if y_coordinates:
                     # Loop through each detected question Y-coordinate
                     for y1 in y_coordinates:
-                        image_file_name = f"{subject}_p{paper_number}_ms_{currentQuestionNum}"
+                        image_file_name = f"{subject}_p{paper_number}_ms_{filename_num}_{currentQuestionNum}"
                         take_screenshot(previous_y, y1 + (j) * 1300 + 10,  # Include a small buffer below
                                          i, output_path, image_file_name , currentQuestionNum)
 
@@ -197,12 +198,14 @@ if __name__ == "__main__":
                                           "paperCode": filename})
                         previous_y = y1 + (j) * 1300
                         currentQuestionNum += 1
+                        filename_num += 1
         
-        image_file_name = f"{subject}_p{paper_number}_ms_{currentQuestionNum}"
+        image_file_name = f"{subject}_p{paper_number}_ms_{filename_num}_{currentQuestionNum}"
         take_screenshot(previous_y, (len(number_of_pages)) * 1300, i, output_path, image_file_name, currentQuestionNum)
         ms_data.append({"fileName": image_file_name + ".jpg", 
                                           "questionNumber": currentQuestionNum, 
                                           "paperCode": filename})
+        filename_num += 1
         try:
             with open(JSON_FILE_LOCATION, 'w') as json_file:
                 json.dump(ms_data, json_file, indent=1)
