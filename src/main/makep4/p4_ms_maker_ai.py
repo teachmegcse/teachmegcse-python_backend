@@ -1,9 +1,7 @@
-import PIL.Image
 from pdf2image import convert_from_path
 import PIL
 from PyPDF2 import PdfReader
-from tkinter import *
-from tkinter import filedialog
+from tkinter import filedialog, Tk
 import os
 import easyocr
 import requests
@@ -47,7 +45,9 @@ def makeImages(output_path, pdf_path, i):
         text = text.lower()
         if x >= 1:
             # Skip if page contains any of these strings
-            skip_strings = ["blank page", "important values", "periodic table", "next page", "guidance", "marking principle", "correct answer only"]
+            skip_strings = ["blank page", "important values",
+                             "periodic table", "guidance for chemical equations", "next page",
+                            "marking principle", "correct answer only"]
             if not any(s in text for s in skip_strings):
                 images[x].save(f"{pdf_output_path}/{current_index}.jpg", 'JPEG')
                 current_index += 1
@@ -101,7 +101,6 @@ def extract_question_number(im, current_question_num, output_path):
                         print(f"Question number {current_question_num} found at y1: {int(box[1])}")
                         current_question_num += 1
 
-        print(f"returnArray: {returnArray} at iteration {current_question_num}")
         return returnArray
 
     except Exception as e:
@@ -160,7 +159,7 @@ if __name__ == "__main__":
     files = select_files()
     files = [file for file in files if 'ms' in file.lower()]
     output_path = f"{BASE_PATH}/resources/images/test_images"
-    JSON_FILE_LOCATION = f"{BASE_PATH}/resources/json/phy_db_ms_p4.json"
+    JSON_FILE_LOCATION = f"{BASE_PATH}/resources/json/a_phy_ms.json"
     with open(JSON_FILE_LOCATION, 'r') as json_file:
         ms_data = json.load(json_file)
 
@@ -188,8 +187,8 @@ if __name__ == "__main__":
                 y_coordinates = extract_question_number(im, currentQuestionNum, output_path)
                 if y_coordinates:
                     # Loop through each detected question Y-coordinate
-                    image_file_name = f"{subject}_p{paper_number}_ms_{currentQuestionNum}"
                     for y1 in y_coordinates:
+                        image_file_name = f"{subject}_p{paper_number}_ms_{currentQuestionNum}"
                         take_screenshot(previous_y, y1 + (j) * 1300 + 10,  # Include a small buffer below
                                          i, output_path, image_file_name , currentQuestionNum)
 
@@ -199,6 +198,7 @@ if __name__ == "__main__":
                         previous_y = y1 + (j) * 1300
                         currentQuestionNum += 1
         
+        image_file_name = f"{subject}_p{paper_number}_ms_{currentQuestionNum}"
         take_screenshot(previous_y, (len(number_of_pages)) * 1300, i, output_path, image_file_name, currentQuestionNum)
         ms_data.append({"fileName": image_file_name + ".jpg", 
                                           "questionNumber": currentQuestionNum, 
