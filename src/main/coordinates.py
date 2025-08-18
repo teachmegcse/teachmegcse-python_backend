@@ -38,7 +38,7 @@ async def predict(file: UploadFile = File(...)) -> List[List[float]]:
         if image is None:
             raise ValueError("Invalid image file provided")
 
-        results = model(image, save=False, conf=0.1)
+        results = model(image, save=False, conf=0.05)
 
         boxes = []
         for box in results[0].boxes.xyxy:

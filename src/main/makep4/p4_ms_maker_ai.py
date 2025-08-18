@@ -155,11 +155,16 @@ def extract_paper_number(filename):
     return None
 
 if __name__ == "__main__":
-    subject = 'ig_bio'
+    subject = 'a_cs'
     files = select_files()
     files = [file for file in files if 'ms' in file.lower()]
     output_path = f"{BASE_PATH}/resources/images/test_images"
-    JSON_FILE_LOCATION = f"{BASE_PATH}/resources/json/ig_bio_ms.json"
+    JSON_FILE_LOCATION = f"{BASE_PATH}/resources/json/a_cs_ms.json"
+    if not os.path.exists(JSON_FILE_LOCATION):
+        with open(JSON_FILE_LOCATION, 'w') as f:
+            json.dump([], f)  # Use [] if you expect a list
+
+    # Load the file
     with open(JSON_FILE_LOCATION, 'r') as json_file:
         ms_data = json.load(json_file)
         

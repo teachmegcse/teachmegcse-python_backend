@@ -19,9 +19,11 @@ import shutil
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
 # Constants for Tesseract and custom configuration
-model = 'igbio'
+paperType = 'a-level'
+IGModel = 'igphy'
+ASModel = 'ascs'
+A2Model = 'a2cs'
 CUSTOM_CONFIG = r'--oem 3 --psm 6'
-MODEL_PATH_TEMPLATE = f"{BASE_PATH}/resources/sci-kit/{model}.joblib"
 
 ALL_LABELS = ['Characteristics and classification of living organisms', 'Organisation of the organism', 
              'Movement into and out of cells', 'Biological molecules', 'Enzymes', 'Plant nutrition', 'Human nutrition',
@@ -29,8 +31,21 @@ ALL_LABELS = ['Characteristics and classification of living organisms', 'Organis
                'Excretion in humans','Coordination and response','Drugs','Reproduction','Inheritance','Variation and selection',
                'Organisms and their environment','Human influences on ecosystems','Biotechnology and genetic modification']
 
+ASLabels = [
+    'Information representation', 'Communication', 
+             'Hardware', 'Processor Fundamentals', 'System Software', 'Security, privacy and data integrity', 'Ethics and Ownership',
+               'Databases', 'Algorithm Design and Problem-solving', 'Data Types and Structures', 'Programming', 'Software Development'
+]
+
+A2Labels = [
+   'Data Representation', 'Communication and internet technologies', 
+             'Hardware and Virtual Machines', 'System Software', 'Security',
+               'Artificial Intelligence (AI)', 'Computational thinking and Problem-solving',
+               'Further Programming'
+]
+
 def predict(data, model):
-    pipeline = load(MODEL_PATH_TEMPLATE.format(model=model))
+    pipeline = load(f"{BASE_PATH}/resources/sci-kit/{model}.joblib")
     data = formatText(data)
     predicted_labels = pipeline.predict([data])
     return predicted_labels[0]
@@ -224,10 +239,10 @@ def extract_paper_number(filename):
         print(f"Error: {e}")
     return None
 
-def process_question_paper(file_path, m, file_question_counts, output1Path, finalOutputPath, subject2, heightsArr, db_path):
+def process_question_paper(file_path, m, file_question_counts, output1Path, subject2, heightsArr, db_path):
     global unique_num
-    ASpapers = [2, 3]
-    A2papers = [4, 5]
+    ASpapers = [1, 2]
+    A2papers = [3, 4]
     print(f"Starting to process question paper: {file_path}")
     current_file = file_path[-18:]
     file_question_counts[current_file] = 0
@@ -266,7 +281,7 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, fina
                 input_path = f"{output1Path}/questions/{unique_filename}.jpg"
                 question_text = process_image(input_path)
                 formatted_text = formatText(question_text)
-                chapter = predict(formatted_text, subject)
+                chapter = predict(formatted_text, IGModel)
                 chapter_num = ALL_LABELS.index(chapter) + 1 if chapter in ALL_LABELS else 0
                 if os.path.exists(input_path):
                     file_question_counts[current_file] += 1
@@ -276,11 +291,15 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, fina
                     current_file2 = current_file.replace(".pdf", "")
                     if paper_num in ASpapers:
                         level2 = "AS"
+                        chapter = predict(formatted_text, ASModel)
+                        chapter_num = ASLabels.index(chapter) + 1 if chapter in ASLabels else 0
                     elif paper_num in A2papers:
                         level2 = "A2"
-                    level2 = "IGCSE"
+                        chapter = predict(formatted_text, A2Model)
+                        chapter_num = A2Labels.index(chapter) + 1 + len(ASLabels) if chapter in A2Labels  else 0
+                    #level2 = "IGCSE"
 
-                    shutil.copy(f"{output1Path}/questions/{unique_filename}.jpg", f"{BASE_PATH}/resources/images/{level2}/{subject2}/long/{unique_filename}.jpg")
+                    shutil.copy(f"{output1Path}/questions/{unique_filename}.jpg", f"{BASE_PATH}/resources/images/{paperType}/{subject2}/long/{unique_filename}.jpg")
 
                     answerObject = {
                         "questionName": f"{unique_filename}.jpg",
@@ -305,14 +324,12 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, fina
 if __name__ == '__main__':
     print("Starting script...")
     # Initialize constants
-    subject = 'ig_bio'
-    subject2 = 'biology'
+    subject2 = 'computer-science'
     unique_num = 1
     
     # Create necessary directories
     output1Path = f"{BASE_PATH}/resources/images/test_images"
-    finalOutputPath = "final_output"
-    db_path = f"{BASE_PATH}/resources/json/ig_bio_theory.json"
+    db_path = f"{BASE_PATH}/resources/json/a_cs_theory.json"
 
     # Initialize database file
     with open(db_path, 'w') as db:
@@ -342,7 +359,7 @@ if __name__ == '__main__':
         print(f"\nProcessing file {m + 1}: {file_path}")
         if file_path.find("ms") == -1:
             try:
-                process_question_paper(file_path, m, file_question_counts, output1Path, finalOutputPath, 
+                process_question_paper(file_path, m, file_question_counts, output1Path, 
                                      subject2, heightsArr, db_path)
                 print(f"Finished processing file {m + 1}")
             except Exception as e:
