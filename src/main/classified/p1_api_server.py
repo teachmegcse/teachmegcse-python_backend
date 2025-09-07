@@ -221,18 +221,18 @@ async def generate_pdf(questionData: QuestionsList):
 
             # Save the rotated image to a temporary file
             temp_image_pSath = f"{imagelocation}/temp_rotated_image_{currentQuestionNum}.jpg"
-            rotated_image.save(temp_image_path, format="JPEG")
+            rotated_image.save(temp_image_pSath, format="JPEG")
 
             # Add the rotated image and question number to the PDF
             answerPdf.add_page()
             answerPdf.set_xy(questionImageX, currentYAnswers - 30)
             answerPdf.cell(w=10, txt=f"{currentQuestionNum})")  # Print answer number
 
-            answerPdf.image(temp_image_path, questionImageX, currentYAnswers + 10, 1420, rotated_image.height)
+            answerPdf.image(temp_image_pSath, questionImageX, currentYAnswers + 10, 1420, rotated_image.height)
             currentQuestionNum += 1
 
             # Remove the temporary file
-            os.remove(temp_image_path)
+            os.remove(temp_image_pSath)
         except Exception as e:
             logger.error(f"Error processing answer image {currentAnswerPath}: {e}")
 
