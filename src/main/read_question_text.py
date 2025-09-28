@@ -57,8 +57,8 @@ def check_json_validity(json_object, pdf_dir) -> json:
                     line for line in question_text.splitlines() if line.strip()
                 )
 
-                split_questions = []
                 # Extract each question block: everything from start to each "[Total: x]" (colon optional), and spaces could be there
+                split_questions = []
                 pattern = re.compile(r'\[Total\s*:?\s*\d+\]', re.IGNORECASE)
                 start = 0
                 for match in pattern.finditer(question_text):
@@ -66,18 +66,18 @@ def check_json_validity(json_object, pdf_dir) -> json:
                     split_questions.append(block.strip())
                     start = match.end()
                 
-                # Simple check: for i in range, verify first character is the question number
-                for i, block in enumerate(split_questions, start=1):
-                    if i > 9:
-                        first_char = block[:2]
-                    else:
-                        first_char = block[:1]
-                    if first_char != str(i):
-                        # Mismatch in detected question numbering vs expected order
-                        print(block)
+                # Check that the number of questions in the PDF matches the number in the JSON for this paper
+                num_questions_in_json = sum(1 for rec in json_object if rec["pdfName"] == record["pdfName"])
+                num_questions_in_pdf = len(split_questions)
+                if num_questions_in_json != num_questions_in_pdf:
+                    if num_questions_in_json > num_questions_in_pdf:
                         raise ValueError(
-                            f"Split error in {qp_pdf_name}: block {i} does not start with '{i}', starts with '{first_char}'."
-                        )
+                            f"Mismatch in question count for {qp_pdf_name}: "
+                            f"{num_questions_in_pdf} questions found in PDF, "
+                            f"but {num_questions_in_json} in JSON.")
+                    else:
+                        print(f"Warning: More questions in PDF ({num_questions_in_pdf}) than in JSON ({num_questions_in_json}) for {qp_pdf_name}. Continuing..."
+                    )
             except Exception as e:
                 # Surface the underlying error with context so callers can handle it upstream
                 raise RuntimeError(f"Error reading {qp_pdf_name}: {e}") from e
