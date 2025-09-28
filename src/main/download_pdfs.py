@@ -57,7 +57,7 @@ def download_papers_for_years(target_year, code):
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     PDF_DIR = os.path.join(SCRIPT_DIR, "..", "resources", "pdfs", "cie_papers", code)
     os.makedirs(PDF_DIR, exist_ok=True)
-    variants = ["11", "12", "13", "21", "22", "23", "31", "32", "33", "41", "42", "43", "51", "52", "53", "61", "62", "63"]
+    variants = [f"{i:02d}" for i in range(11, 100)]
     seasons = ["m", "s", "w"]
 
     for year in range(int(target_year), 2026):

@@ -18,3 +18,4 @@ pycryptodome==3.23.0
 dotenv
 google-generativeai
 pillow
+pdfplumber==0.11.7

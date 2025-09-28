@@ -1,0 +1,116 @@
+import sys
+import json
+import os
+import re
+import tempfile
+import webbrowser
+import pdfplumber
+
+def check_json_validity(json_object, pdf_dir) -> json:
+    # Compare answers in JSON with those in the corresponding MS PDFs
+    current_pdf_name = None
+    ms_text = None
+    split_questions = dict()
+    for record in json_object:
+        qp_pdf_name = f"{record['pdfName']}.pdf"
+        if qp_pdf_name != current_pdf_name:
+            # Open and parse the new MS PDF
+            qp_path = os.path.join(pdf_dir, qp_pdf_name)
+            print(f"Reading PDF: {qp_pdf_name}")
+            if not os.path.exists(qp_path):
+                print(f"QP PDF not found: {qp_pdf_name}")
+                current_pdf_name = qp_pdf_name
+                continue
+            try:
+                # Crop top and bottom of each page to remove headers/footers (e.g., 60 points from top, 60 from bottom)
+                question_text = ""
+                with pdfplumber.open(qp_path) as pdf:
+                    for page in pdf.pages:
+                        if page.page_number == 1:
+                            continue
+                        # Crop 50pt from top only
+                        width = page.width
+                        height = page.height
+                        cropped = page.within_bbox((0, 50, width, height))
+                        question_text += cropped.extract_text() + "\n"
+
+                # Remove dotted lines (5 or more consecutive dots)
+                question_text = re.sub(r"\.{5,}", "", question_text)
+
+                # Remove lines like "Question x starts on page y." or "Question x is on page y."
+                question_text = re.sub(r'Question\s+\d+\s+(starts on|is on)\s+page\s+\d+\.', '', question_text, flags=re.IGNORECASE)
+                
+                # Remove copyright lines like "© UCLES 2024" (year can vary)
+                question_text = re.sub(r'©\s*UCLES\s*\d{2,4}', '', question_text, flags=re.IGNORECASE)
+
+                # Remove paper codes like "9700/43/M/J/24" (general format: digits/digits/letters/letters/digits)
+                question_text = re.sub(r'\d{4}/\d{2}/\s*[A-Z]/\s*[A-Z]/\d{2,4}', '', question_text, flags=re.IGNORECASE)
+
+                # Remove "Turn over" with starting bracket (case-insensitive, no ending bracket)
+                question_text = re.sub(r'\[Turn over', '', question_text, flags=re.IGNORECASE)
+
+                # Remove "blank page" (case-insensitive)
+                question_text = re.sub(r'blank page', '', question_text, flags=re.IGNORECASE)
+
+                # Remove lines that are now empty or contain only whitespace after removing dots
+                question_text = "\n".join(
+                    line for line in question_text.splitlines() if line.strip()
+                )
+
+                split_questions = []
+                # Extract each question block: everything from start to each "[Total: x]" (colon optional), and spaces could be there
+                pattern = re.compile(r'\[Total\s*:?\s*\d+\]', re.IGNORECASE)
+                start = 0
+                for match in pattern.finditer(question_text):
+                    block = question_text[start:match.end()]
+                    split_questions.append(block.strip())
+                    start = match.end()
+                
+                # Simple check: for i in range, verify first character is the question number
+                for i, block in enumerate(split_questions, start=1):
+                    if i > 9:
+                        first_char = block[:2]
+                    else:
+                        first_char = block[:1]
+                    if first_char != str(i):
+                        # Mismatch in detected question numbering vs expected order
+                        print(block)
+                        raise ValueError(
+                            f"Split error in {qp_pdf_name}: block {i} does not start with '{i}', starts with '{first_char}'."
+                        )
+            except Exception as e:
+                # Surface the underlying error with context so callers can handle it upstream
+                raise RuntimeError(f"Error reading {qp_pdf_name}: {e}") from e
+            current_pdf_name = qp_pdf_name
+        # Replace the current record's questionText with our extracted question text
+        qnum = record["questionNumber"]
+        if qnum - 1 < len(split_questions):
+            record["questionText"] = split_questions[qnum - 1]
+        else:
+            # The expected question index was not found in the parsed blocks
+            print(question_text)
+            raise IndexError(
+                f"Question number {qnum} not found in split_questions for {qp_pdf_name} (blocks detected: {len(split_questions)})"
+            )
+    return json_object
+
+def main():
+    # Make JSON path location independent (relative to this script)
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+    if len(sys.argv) < 2:
+        print("Usage: python check_json_validity.py <json_file>")
+        sys.exit(1)
+    json_name = sys.argv[1]
+    QUESTION_COUNT = int(sys.argv[2]) if len(sys.argv) > 2 else 40
+    json_file = os.path.join(SCRIPT_DIR, "..", "resources", "json", json_name)
+    with open(json_file, 'r') as f:
+        json_object = json.load(f)
+    pdf_directory = os.path.join(SCRIPT_DIR, "..", "resources", "pdfs", "cie_papers", json_object[0]["pdfName"].split("_")[0])
+    new_json = check_json_validity(json_object, pdf_directory)
+    with open(json_file, 'w') as f:
+        json.dump(new_json, f, indent=2)
+
+
+
+if __name__ == "__main__":
+    main()
