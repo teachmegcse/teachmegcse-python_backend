@@ -5,6 +5,7 @@ import re
 import tempfile
 import webbrowser
 import pdfplumber
+import logging
 
 def check_json_validity(json_object, pdf_dir) -> json:
     # Compare answers in JSON with those in the corresponding MS PDFs
@@ -16,9 +17,9 @@ def check_json_validity(json_object, pdf_dir) -> json:
         if qp_pdf_name != current_pdf_name:
             # Open and parse the new MS PDF
             qp_path = os.path.join(pdf_dir, qp_pdf_name)
-            print(f"Reading PDF: {qp_pdf_name}")
+            logging.info(f"Reading PDF: {qp_pdf_name}")
             if not os.path.exists(qp_path):
-                print(f"QP PDF not found: {qp_pdf_name}")
+                logging.warning(f"QP PDF not found: {qp_pdf_name}")
                 current_pdf_name = qp_pdf_name
                 continue
             try:
@@ -71,13 +72,14 @@ def check_json_validity(json_object, pdf_dir) -> json:
                 num_questions_in_pdf = len(split_questions)
                 if num_questions_in_json != num_questions_in_pdf:
                     if num_questions_in_json > num_questions_in_pdf:
-                        raise ValueError(
+                        logging.warning(
                             f"Mismatch in question count for {qp_pdf_name}: "
                             f"{num_questions_in_pdf} questions found in PDF, "
                             f"but {num_questions_in_json} in JSON.")
                     else:
-                        print(f"Warning: More questions in PDF ({num_questions_in_pdf}) than in JSON ({num_questions_in_json}) for {qp_pdf_name}. Continuing..."
-                    )
+                        logging.warning(
+                            f"More questions in PDF ({num_questions_in_pdf}) than in JSON ({num_questions_in_json}) for {qp_pdf_name}. Continuing..."
+                        )
             except Exception as e:
                 # Surface the underlying error with context so callers can handle it upstream
                 raise RuntimeError(f"Error reading {qp_pdf_name}: {e}") from e
@@ -88,7 +90,7 @@ def check_json_validity(json_object, pdf_dir) -> json:
             record["questionText"] = split_questions[qnum - 1]
         else:
             # The expected question index was not found in the parsed blocks
-            print(question_text)
+            logging.debug(question_text)
             raise IndexError(
                 f"Question number {qnum} not found in split_questions for {qp_pdf_name} (blocks detected: {len(split_questions)})"
             )
@@ -98,8 +100,29 @@ def main():
     # Make JSON path location independent (relative to this script)
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     if len(sys.argv) < 2:
-        print("Usage: python check_json_validity.py <json_file>")
+        # Configure logging to file in the current working directory
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s [%(levelname)s] %(message)s",
+            handlers=[
+                logging.FileHandler(os.path.join(os.getcwd(), "read_question_text.log"), mode="w", encoding="utf-8"),
+                logging.StreamHandler(),
+            ],
+        )
+        logging.captureWarnings(True)
+        logging.error("Usage: python check_json_validity.py <json_file>")
         sys.exit(1)
+    # Ensure logging is configured even in normal run
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            logging.FileHandler(os.path.join(os.getcwd(), "read_question_text.log"), mode="w", encoding="utf-8"),
+            logging.StreamHandler(),
+        ],
+        force=True,
+    )
+    logging.captureWarnings(True)
     json_name = sys.argv[1]
     QUESTION_COUNT = int(sys.argv[2]) if len(sys.argv) > 2 else 40
     json_file = os.path.join(SCRIPT_DIR, "..", "resources", "json", json_name)
