@@ -101,7 +101,7 @@ def main():
     json_file = os.path.join(SCRIPT_DIR, "..", "resources", "json", json_name)
     with open(json_file, 'r') as f:
         json_object = json.load(f)
-    pdf_directory = os.path.join(SCRIPT_DIR, "..", "resources", "pdfs", "cie_papers", json_object[0]["pdfName"].split("_")[0])
+    pdf_directory = os.path.join(SCRIPT_DIR, "..", "resources", "pdfs", json_object[0]["pdfName"].split("_")[0])
     check_json_validity(json_object, pdf_directory, QUESTION_COUNT)
 
 if __name__ == "__main__":

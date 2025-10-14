@@ -155,11 +155,11 @@ def extract_paper_number(filename):
     return None
 
 if __name__ == "__main__":
-    subject = 'a_cs'
+    subject = 'ig_chem'
     files = select_files()
     files = [file for file in files if 'ms' in file.lower()]
     output_path = f"{BASE_PATH}/resources/images/test_images"
-    JSON_FILE_LOCATION = f"{BASE_PATH}/resources/json/a_cs_ms.json"
+    JSON_FILE_LOCATION = f"{BASE_PATH}/resources/json/ig_chem_ms.json"
     if not os.path.exists(JSON_FILE_LOCATION):
         with open(JSON_FILE_LOCATION, 'w') as f:
             json.dump([], f)  # Use [] if you expect a list
@@ -174,7 +174,7 @@ if __name__ == "__main__":
         filename = filename.replace('.pdf', '')
         print(f"Processing PDF: {filename}")
         makeImages(output_path, files[i], i)
-        strip_images(output_path, i)
+        #strip_images(output_path, i)
         merge_all_images(i, output_path)
         currentQuestionNum = 1
         previous_y = 0

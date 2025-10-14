@@ -19,17 +19,15 @@ import shutil
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
 # Constants for Tesseract and custom configuration
-paperType = 'a-level'
-IGModel = 'igphy'
+paperType = 'IGCSE'
+IGModel = 'igchem'
 ASModel = 'ascs'
 A2Model = 'a2cs'
 CUSTOM_CONFIG = r'--oem 3 --psm 6'
 
-ALL_LABELS = ['Characteristics and classification of living organisms', 'Organisation of the organism', 
-             'Movement into and out of cells', 'Biological molecules', 'Enzymes', 'Plant nutrition', 'Human nutrition',
-               'Transport in plants', 'Transport in animals', 'Diseases and immunity', 'Gas exchange in humans','Respiration',
-               'Excretion in humans','Coordination and response','Drugs','Reproduction','Inheritance','Variation and selection',
-               'Organisms and their environment','Human influences on ecosystems','Biotechnology and genetic modification']
+ALL_LABELS = ['States of matter', 'Atoms, elements and compounds', 
+             'Stoichiometry', 'Electrochemistry', 'Chemical energetics', 'Chemical reactions', 'Acids, bases and salts',
+               'The Periodic Table', 'Metals', 'Chemistry of the environment', 'Organic chemistry', 'Experimental techniques and chemical analysis']
 
 ASLabels = [
     'Information representation', 'Communication', 
@@ -189,7 +187,7 @@ def get_all_page_coordinates(folder_num, output_path):
     all_coordinates.append(current_height)
     print("Final coordinates with total height:", all_coordinates)
     
-    return all_coordinates, current_height
+    return all_coordinates
 
 def merge_all_images(folder_num, output_path, heightsArr):
     pages = os.listdir(f"{output_path}/{folder_num}")
@@ -257,7 +255,7 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, subj
     strip_images(m, output1Path)
     
     # Get coordinates from individual pages first
-    coordinates, total_height = get_all_page_coordinates(m, output1Path)
+    coordinates = get_all_page_coordinates(m, output1Path)
     print(f"Got all coordinates: {coordinates}")
     
     # Merge images after getting coordinates
@@ -297,7 +295,9 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, subj
                         level2 = "A2"
                         chapter = predict(formatted_text, A2Model)
                         chapter_num = A2Labels.index(chapter) + 1 + len(ASLabels) if chapter in A2Labels  else 0
-                    #level2 = "IGCSE"
+                    level2 = "IGCSE"
+                    chapter = predict(formatted_text, IGModel)
+                    chapter_num = ALL_LABELS.index(chapter) + 1 if chapter in ALL_LABELS else 0
 
                     shutil.copy(f"{output1Path}/questions/{unique_filename}.jpg", f"{BASE_PATH}/resources/images/{paperType}/{subject2}/long/{unique_filename}.jpg")
 
@@ -324,12 +324,12 @@ def process_question_paper(file_path, m, file_question_counts, output1Path, subj
 if __name__ == '__main__':
     print("Starting script...")
     # Initialize constants
-    subject2 = 'computer-science'
+    subject2 = 'chemistry'
     unique_num = 1
     
     # Create necessary directories
     output1Path = f"{BASE_PATH}/resources/images/test_images"
-    db_path = f"{BASE_PATH}/resources/json/a_cs_theory.json"
+    db_path = f"{BASE_PATH}/resources/json/ig_chem_theory.json"
 
     # Initialize database file
     with open(db_path, 'w') as db:
