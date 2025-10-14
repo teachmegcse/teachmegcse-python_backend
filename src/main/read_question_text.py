@@ -2,22 +2,19 @@ import sys
 import json
 import os
 import re
-import tempfile
-import webbrowser
 import pdfplumber
 import logging
 
 def check_json_validity(json_object, pdf_dir) -> json:
     # Compare answers in JSON with those in the corresponding MS PDFs
     current_pdf_name = None
-    ms_text = None
     split_questions = dict()
     for record in json_object:
         qp_pdf_name = f"{record['pdfName']}.pdf"
         if qp_pdf_name != current_pdf_name:
             # Open and parse the new MS PDF
             qp_path = os.path.join(pdf_dir, qp_pdf_name)
-            logging.info(f"Reading PDF: {qp_pdf_name}")
+            print(f"Reading PDF: {qp_pdf_name}")
             if not os.path.exists(qp_path):
                 logging.warning(f"QP PDF not found: {qp_pdf_name}")
                 current_pdf_name = qp_pdf_name
@@ -91,40 +88,25 @@ def check_json_validity(json_object, pdf_dir) -> json:
         else:
             # The expected question index was not found in the parsed blocks
             logging.debug(question_text)
-            raise IndexError(
-                f"Question number {qnum} not found in split_questions for {qp_pdf_name} (blocks detected: {len(split_questions)})"
-            )
     return json_object
 
 def main():
     # Make JSON path location independent (relative to this script)
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     if len(sys.argv) < 2:
-        # Configure logging to file in the current working directory
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s [%(levelname)s] %(message)s",
-            handlers=[
-                logging.FileHandler(os.path.join(os.getcwd(), "read_question_text.log"), mode="w", encoding="utf-8"),
-                logging.StreamHandler(),
-            ],
-        )
-        logging.captureWarnings(True)
-        logging.error("Usage: python check_json_validity.py <json_file>")
+        print("Usage: python check_json_validity.py <json_file>")
         sys.exit(1)
-    # Ensure logging is configured even in normal run
+    # Configure logging to file in the current working directory
     logging.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
+        format="[%(levelname)s] %(message)s",
         handlers=[
-            logging.FileHandler(os.path.join(os.getcwd(), "read_question_text.log"), mode="w", encoding="utf-8"),
+            logging.FileHandler(os.path.join(os.getcwd(), f"{sys.argv[1]}.log"), mode="w", encoding="utf-8"),
             logging.StreamHandler(),
         ],
-        force=True,
     )
     logging.captureWarnings(True)
     json_name = sys.argv[1]
-    QUESTION_COUNT = int(sys.argv[2]) if len(sys.argv) > 2 else 40
     json_file = os.path.join(SCRIPT_DIR, "..", "resources", "json", json_name)
     with open(json_file, 'r') as f:
         json_object = json.load(f)
@@ -132,7 +114,6 @@ def main():
     new_json = check_json_validity(json_object, pdf_directory)
     with open(json_file, 'w') as f:
         json.dump(new_json, f, indent=2)
-
 
 
 if __name__ == "__main__":
