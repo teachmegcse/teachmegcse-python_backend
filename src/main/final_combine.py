@@ -61,4 +61,5 @@ if __name__ == "__main__":
     json_files = ["a_bio_final_long.json", "a_chem_final_long.json", "a_phy_final_long.json",
                   "ig_bio_final_long.json", "ig_chem_final_long.json", "ig_phy_final.json"]
     output_csv = "combined.csv"
-    combine_json_to_csv_and_json(base_path, json_files, output_csv)
+    output_json = "all.json"
+    combine_json_to_csv_and_json(base_path, json_files, output_csv, output_json)
