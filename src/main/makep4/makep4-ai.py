@@ -8,7 +8,6 @@ from tkinter import filedialog
 import os
 import json
 import requests
-import multiprocessing
 from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
 import re
@@ -253,7 +252,7 @@ def get_all_page_coordinates(folder_num, output_path):
     return all_coordinates
 
 
-def merge_all_images(folder_num, output_path, heightsArr):
+def merge_all_images(folder_num, output_path):
     pages = os.listdir(f"{output_path}/{folder_num}")
     pages = sorted(pages, key=lambda x: int(x.split(".")[0]))
 
@@ -274,7 +273,6 @@ def merge_all_images(folder_num, output_path, heightsArr):
             current_height += im.height
 
     dst.save(f"{output_path}/final/final{folder_num}.jpg")
-    heightsArr[folder_num] = total_height
     return current_height
 
 
@@ -309,31 +307,30 @@ def extract_paper_number(filename):
 
 
 def process_question_paper(
-    file_path, m, file_question_counts, output1Path, subject2, heightsArr, db_path
+    file_path, m, outputPath, subject, db_path
 ):
     global unique_num
     ASpapers = [1, 2]
     A2papers = [3, 4]
     print(f"Starting to process question paper: {file_path}")
     current_file = file_path[-18:]
-    file_question_counts[current_file] = 0
 
     # Extract paper number from filename
     paper_num = extract_paper_number(current_file)
 
     # Process the paper
     print("Converting PDF to images...")
-    makeImages(output1Path, file_path, m)
+    makeImages(outputPath, file_path, m)
     print("Stripping images...")
-    strip_images(m, output1Path)
+    strip_images(m, outputPath)
 
     # Get coordinates from individual pages first
-    coordinates = get_all_page_coordinates(m, output1Path)
+    coordinates = get_all_page_coordinates(m, outputPath)
     print(f"Got all coordinates: {coordinates}")
 
     # Merge images after getting coordinates
     print("Merging images...")
-    merge_all_images(m, output1Path, heightsArr)
+    merge_all_images(m, outputPath)
 
     try:
         # Open the database file in append mode
@@ -350,19 +347,19 @@ def process_question_paper(
                     }, y2={y2}"
                 )
                 unique_filename = (
-                    f"{subject2}_p{paper_num}_qp_{unique_num}_{current_question_num}"
+                    f"{subject}_p{paper_num}_qp_{unique_num}_{current_question_num}"
                 )
                 take_screenshot(
                     y1,
                     y2,
                     current_question_num,
                     f"final{m}.jpg",
-                    output1Path,
+                    outputPath,
                     unique_filename,
                 )
 
                 # Clean the cropped image
-                input_path = f"{output1Path}/questions/{unique_filename}.jpg"
+                input_path = f"{outputPath}/questions/{unique_filename}.jpg"
                 question_text = process_image(input_path)
                 formatted_text = formatText(question_text)
                 chapter = predict(formatted_text, IGModel)
@@ -370,34 +367,33 @@ def process_question_paper(
                     ALL_LABELS.index(chapter) + 1 if chapter in ALL_LABELS else 0
                 )
                 if os.path.exists(input_path):
-                    file_question_counts[current_file] += 1
 
                     # Extract year from filename (e.g., m15 -> 2015)
                     year = "20" + current_file.split("_")[1][1:3]
                     current_file2 = current_file.replace(".pdf", "")
                     if paper_num in ASpapers:
-                        level2 = "AS"
+                        level = "AS"
                         chapter = predict(formatted_text, ASModel)
                         chapter_num = (
                             ASLabels.index(chapter) + 1 if chapter in ASLabels else 0
                         )
                     elif paper_num in A2papers:
-                        level2 = "A2"
+                        level = "A2"
                         chapter = predict(formatted_text, A2Model)
                         chapter_num = (
                             A2Labels.index(chapter) + 1 + len(ASLabels)
                             if chapter in A2Labels
                             else 0
                         )
-                    level2 = "IGCSE"
+                    level = "IGCSE"
                     chapter = predict(formatted_text, IGModel)
                     chapter_num = (
                         ALL_LABELS.index(chapter) + 1 if chapter in ALL_LABELS else 0
                     )
 
                     shutil.copy(
-                        f"{output1Path}/questions/{unique_filename}.jpg",
-                        f"{BASE_PATH}/resources/images/{paperType}/{subject2}/long/{
+                        f"{outputPath}/questions/{unique_filename}.jpg",
+                        f"{BASE_PATH}/resources/images/{paperType}/{subject}/long/{
                             unique_filename
                         }.jpg",
                     )
@@ -405,8 +401,8 @@ def process_question_paper(
                     answerObject = {
                         "questionName": f"{unique_filename}.jpg",
                         "questionNum": current_question_num,
-                        "Subject": subject2,
-                        "Level": level2,
+                        "Subject": subject,
+                        "Level": level,
                         "Chapter": chapter_num,
                         "pdfName": current_file2,
                         "year": year,
@@ -426,11 +422,11 @@ def process_question_paper(
 if __name__ == "__main__":
     print("Starting script...")
     # Initialize constants
-    subject2 = "chemistry"
+    subject = "chemistry"
     unique_num = 1
 
     # Create necessary directories
-    output1Path = f"{BASE_PATH}/resources/images/test_images"
+    outputPath = f"{BASE_PATH}/resources/images/test_images"
     db_path = f"{BASE_PATH}/resources/json/ig_chem_theory.json"
 
     # Initialize database file
@@ -438,7 +434,7 @@ if __name__ == "__main__":
         db.write("[")
 
     print("Creating directories...")
-    for dir_path in [output1Path, f"{output1Path}/final", f"{output1Path}/questions"]:
+    for dir_path in [outputPath, f"{outputPath}/final", f"{outputPath}/questions"]:
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
 
@@ -451,11 +447,6 @@ if __name__ == "__main__":
 
     print(f"Selected files: {files}")
 
-    # Initialize processing variables
-    manager = multiprocessing.Manager()
-    heightsArr = manager.dict()
-    file_question_counts = manager.dict()
-
     # Process each question paper
     for m, file_path in enumerate(files):
         print(f"\nProcessing file {m + 1}: {file_path}")
@@ -464,10 +455,8 @@ if __name__ == "__main__":
                 process_question_paper(
                     file_path,
                     m,
-                    file_question_counts,
-                    output1Path,
-                    subject2,
-                    heightsArr,
+                    outputPath,
+                    subject,
                     db_path,
                 )
                 print(f"Finished processing file {m + 1}")
