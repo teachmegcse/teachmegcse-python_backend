@@ -1,30 +1,31 @@
+import numpy as np
+from io import BytesIO
+from typing import Optional
+import uvicorn
+from zipfile import ZipFile
+from typing import List
+from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
+from fpdf import FPDF
+from PIL import Image
+from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException
+import logging
 import sys
 import os
 
 # Add the directory two levels up to sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-
-import logging
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
-from PIL import Image
-from fpdf import FPDF
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List
-from zipfile import ZipFile
-import uvicorn
-import os
-from typing import Optional
-from io import BytesIO
-import numpy as np
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
 
 # Set up logger
 logger = logging.getLogger("uvicorn")
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+
 
 class Question(BaseModel):
     Level: str
@@ -39,8 +40,10 @@ class Question(BaseModel):
     questionNumber: Optional[int] = None
     year: Optional[str] = None
 
+
 class QuestionsList(BaseModel):
     questionData: List[Question]
+
 
 app = FastAPI()
 
@@ -49,17 +52,19 @@ app.add_middleware(
     allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
+
 
 def is_all_white(image):
     image_array = np.array(image)
     return np.all(image_array == (255, 255, 255))
 
+
 def create_zip_archive(files, output_dir, zip_filename):
     zip_path = os.path.join(output_dir, zip_filename).replace("\\", "/")
     logger.info(f"Creating zip archive at {zip_path}")
-    with ZipFile(zip_path, 'w') as zipf:
+    with ZipFile(zip_path, "w") as zipf:
         for file in files:
             if os.path.exists(file):
                 logger.info(f"Adding file {file} to zip")
@@ -68,13 +73,19 @@ def create_zip_archive(files, output_dir, zip_filename):
                 logger.error(f"File not found: {file}")
     return zip_path
 
+
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
 
+
 @app.post("/generate-pdf/")
 async def generate_pdf(questionData: QuestionsList):
-    logger.info(f"Received request to generate PDF for {len(questionData.questionData)} questions")
+    logger.info(
+        f"Received request to generate PDF for {
+            len(questionData.questionData)
+        } questions"
+    )
     questionData = questionData.questionData
     maxHeight = 2260
     outputdirectory = f"{BASE_PATH}/resources/pdfs/classified"
@@ -107,8 +118,12 @@ async def generate_pdf(questionData: QuestionsList):
     if mcqdData:
         classifiedPdf.add_page()
     for currentQuestionObject in mcqdData:
-        currentImage = Image.open(f"{imagelocation}/p{currentQuestionObject.paperNumber}/{currentQuestionObject.questionName}")
-        currentImageCropped = currentImage.crop((0, 0, currentImage.width, currentImage.height - 10))
+        currentImage = Image.open(
+            f"{imagelocation}/p{currentQuestionObject.paperNumber}/{currentQuestionObject.questionName}"
+        )
+        currentImageCropped = currentImage.crop(
+            (0, 0, currentImage.width, currentImage.height - 10)
+        )
 
         if currentImage.height + currentYClassified + 100 > maxHeight:
             classifiedPdf.add_page()
@@ -121,28 +136,59 @@ async def generate_pdf(questionData: QuestionsList):
         image_buffer = BytesIO()
         currentImageCropped.save(image_buffer, format="JPEG")
         image_buffer.seek(0)
-        classifiedPdf.image(image_buffer, questionImageX, currentYClassified, 1420, currentImageCropped.height)
+        classifiedPdf.image(
+            image_buffer,
+            questionImageX,
+            currentYClassified,
+            1420,
+            currentImageCropped.height,
+        )
         image_buffer.close()
 
-        Answers.append({"questionNum": currentQuestionNum, "Answer": currentQuestionObject.Answer, "Source": currentQuestionObject.pdfName, "type": "MCQ"})
+        Answers.append(
+            {
+                "questionNum": currentQuestionNum,
+                "Answer": currentQuestionObject.Answer,
+                "Source": currentQuestionObject.pdfName,
+                "type": "MCQ",
+            }
+        )
         currentYClassified += currentImageCropped.height + 100
         currentQuestionNum += 1
 
     if longdData:
         currentYClassified = 100
         for currentQuestionObject in longdData:
-            currentImagePath = f"{imagelocation}/long/{currentQuestionObject.questionName}"
+            currentImagePath = (
+                f"{imagelocation}/long/{currentQuestionObject.questionName}"
+            )
             if not os.path.exists(currentImagePath):
                 logger.error(f"Image not found: {currentImagePath}")
-                raise HTTPException(status_code=404, detail=f"Image not found: {currentImagePath}")
-            Answers.append({"questionNum": currentQuestionNum, "Answer": currentQuestionObject.MSName, "Source": currentQuestionObject.pdfName, "type": "Long"})
+                raise HTTPException(
+                    status_code=404, detail=f"Image not found: {currentImagePath}"
+                )
+            Answers.append(
+                {
+                    "questionNum": currentQuestionNum,
+                    "Answer": currentQuestionObject.MSName,
+                    "Source": currentQuestionObject.pdfName,
+                    "type": "Long",
+                }
+            )
             currentImage = Image.open(currentImagePath)
             modifier = 2000
             if currentImage.height > modifier:
                 currentIndex = 0
                 while True:
                     if (currentIndex + 1) * modifier > currentImage.height:
-                        croppedImage = currentImage.crop((0, currentIndex * modifier, currentImage.width, currentImage.height))
+                        croppedImage = currentImage.crop(
+                            (
+                                0,
+                                currentIndex * modifier,
+                                currentImage.width,
+                                currentImage.height,
+                            )
+                        )
                         if not is_all_white(croppedImage):
                             classifiedPdf.add_page()
                             classifiedPdf.set_xy(questionNumX, currentYClassified)
@@ -150,11 +196,24 @@ async def generate_pdf(questionData: QuestionsList):
                             image_buffer = BytesIO()
                             croppedImage.save(image_buffer, format="JPEG")
                             image_buffer.seek(0)
-                            classifiedPdf.image(image_buffer, questionImageX, currentYClassified, 1420, croppedImage.height)
+                            classifiedPdf.image(
+                                image_buffer,
+                                questionImageX,
+                                currentYClassified,
+                                1420,
+                                croppedImage.height,
+                            )
                             image_buffer.close()
                         break
                     else:
-                        croppedImage = currentImage.crop((0, currentIndex * modifier, currentImage.width, (currentIndex + 1) * modifier))
+                        croppedImage = currentImage.crop(
+                            (
+                                0,
+                                currentIndex * modifier,
+                                currentImage.width,
+                                (currentIndex + 1) * modifier,
+                            )
+                        )
                         if not is_all_white(croppedImage):
                             classifiedPdf.add_page()
                             classifiedPdf.set_xy(questionNumX, currentYClassified)
@@ -162,7 +221,13 @@ async def generate_pdf(questionData: QuestionsList):
                             image_buffer = BytesIO()
                             croppedImage.save(image_buffer, format="JPEG")
                             image_buffer.seek(0)
-                            classifiedPdf.image(image_buffer, questionImageX, currentYClassified, 1420, croppedImage.height)
+                            classifiedPdf.image(
+                                image_buffer,
+                                questionImageX,
+                                currentYClassified,
+                                1420,
+                                croppedImage.height,
+                            )
                             image_buffer.close()
                         currentIndex += 1
             else:
@@ -172,7 +237,13 @@ async def generate_pdf(questionData: QuestionsList):
                 image_buffer = BytesIO()
                 currentImage.save(image_buffer, format="JPEG")
                 image_buffer.seek(0)
-                classifiedPdf.image(image_buffer, questionImageX, currentYClassified, 1420, currentImage.height)
+                classifiedPdf.image(
+                    image_buffer,
+                    questionImageX,
+                    currentYClassified,
+                    1420,
+                    currentImage.height,
+                )
                 image_buffer.close()
             currentQuestionNum += 1
     logger.info("Generating answers PDF")
@@ -199,7 +270,12 @@ async def generate_pdf(questionData: QuestionsList):
             currentYAnswers = 100
 
         answerPdf.set_xy(questionNumX, currentYAnswers)
-        answerPdf.cell(w=10, txt=f"{currentQuestionNum})  Answer: {answer['Answer'] or 'N/A'},  Source: {answer['Source'] or 'Unknown'}")
+        answerPdf.cell(
+            w=10,
+            txt=f"{currentQuestionNum})  Answer: {answer['Answer'] or 'N/A'},  Source: {
+                answer['Source'] or 'Unknown'
+            }",
+        )
         currentYAnswers += 70
         currentQuestionNum += 1
 
@@ -230,9 +306,16 @@ async def generate_pdf(questionData: QuestionsList):
             # Add the rotated image and question number to the PDF
             answerPdf.add_page()
             answerPdf.set_xy(questionImageX, currentYAnswers - 30)
-            answerPdf.cell(w=10, txt=f"{currentQuestionNum})")  # Print answer number
+            # Print answer number
+            answerPdf.cell(w=10, txt=f"{currentQuestionNum})")
 
-            answerPdf.image(image_buffer, questionImageX, currentYAnswers + 10, 1420, rotated_image.height)
+            answerPdf.image(
+                image_buffer,
+                questionImageX,
+                currentYAnswers + 10,
+                1420,
+                rotated_image.height,
+            )
             currentQuestionNum += 1
 
             # Close the image buffer
@@ -247,6 +330,7 @@ async def generate_pdf(questionData: QuestionsList):
     zip_path = create_zip_archive(files, outputdirectory, "multiple_files.zip")
 
     return FileResponse(zip_path)
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000, timeout_keep_alive=600)

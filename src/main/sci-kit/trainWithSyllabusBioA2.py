@@ -2,9 +2,16 @@ import trainModels
 import getFormattedTextfromPdf
 
 
-allLabels = ['Energy and respiration', 'Photosynthesis', 
-             'Homeostasis', 'Control and coordination', 'Inheritance', 'Selection and evolution', 'Classification, biodiversity and conservation',
-               'Genetic technology']
+allLabels = [
+    "Energy and respiration",
+    "Photosynthesis",
+    "Homeostasis",
+    "Control and coordination",
+    "Inheritance",
+    "Selection and evolution",
+    "Classification, biodiversity and conservation",
+    "Genetic technology",
+]
 
 
 text = """

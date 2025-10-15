@@ -2,7 +2,7 @@ import sys
 import os
 
 # Add the directory two levels up to sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
 import os
@@ -15,6 +15,7 @@ BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", 
 jsondirectory = rf"{BASE_PATH}\resources\json\ig_chem_final_long.json"
 MSjsonDirectory = rf"{BASE_PATH}\resources\json\ig_chem_ms.json"
 QuestionJsonDirectory = rf"{BASE_PATH}\resources\json\ig_chem_theory.json"
+
 
 def normalize_paper_code(code):
     """Normalize paper code by removing ms/qp and converting to lowercase."""
@@ -29,7 +30,6 @@ def process_entry(args):
     key = (qp_entry["questionNum"], qp_code)
     if key not in ms_lookup:
         return None  # Skip if no match
-
 
     # Paths and processing
     question_name = qp_entry["questionName"]
@@ -47,17 +47,18 @@ def process_entry(args):
         "Level": qp_entry["Level"],
         "Chapter": qp_entry["Chapter"],
         "paperNumber": qp_entry["paperNumber"],
-        "questionText": qp_entry["questionText"]
+        "questionText": qp_entry["questionText"],
     }
+
 
 def combineJSON(MSjson, QPjson, jsonDirectory):
     print("Starting JSON combination process...")
 
     # Load the JSON files
     print("Loading JSON files...")
-    with open(MSjson, 'r') as f:
+    with open(MSjson, "r") as f:
         MSData = json.load(f)
-    with open(QPjson, 'r') as f:
+    with open(QPjson, "r") as f:
         QPData = json.load(f)
 
     print(f"Found {len(MSData)} mark scheme entries")
@@ -71,23 +72,24 @@ def combineJSON(MSjson, QPjson, jsonDirectory):
 
     # Use multiprocessing to process entries
     with Pool(processes=cpu_count()) as pool:
-        results = pool.map(process_entry, [
-            (qp_entry, ms_lookup) 
-            for qp_entry in QPData
-        ])
+        results = pool.map(
+            process_entry, [(qp_entry, ms_lookup) for qp_entry in QPData]
+        )
 
     # Filter out None results and save the combined data
     totalData = list(filter(None, results))
     print(f"Processed {len(totalData)} valid entries")
 
     print("Saving combined data...")
-    with open(jsonDirectory, 'w') as totalJson:
+    with open(jsonDirectory, "w") as totalJson:
         json.dump(totalData, totalJson, indent=1)
 
     print("Combination complete!")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     import multiprocessing
+
     multiprocessing.freeze_support()  # Optional for compatibility on some systems
 
     combineJSON(MSjsonDirectory, QuestionJsonDirectory, jsondirectory)
