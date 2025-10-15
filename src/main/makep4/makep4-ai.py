@@ -1,5 +1,3 @@
-"MORE CHANGES NEEDED LATER"
-
 from pdf2image import convert_from_path
 import PIL
 from PyPDF2 import PdfReader
