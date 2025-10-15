@@ -207,7 +207,7 @@ if __name__ == "__main__":
         filename = filename.replace(".pdf", "")
         print(f"Processing PDF: {filename}")
         makeImages(output_path, files[i], i)
-        # strip_images(output_path, i)
+        strip_images(output_path, i)
         merge_all_images(i, output_path)
         currentQuestionNum = 1
         previous_y = 0
