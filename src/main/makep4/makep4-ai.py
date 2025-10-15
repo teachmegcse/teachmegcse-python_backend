@@ -137,11 +137,11 @@ def select_files():
     return list(files)
 
 
-def makeImages(output_path, pdf_path, i):
+def makeImages(output_path, pdf_path):
     images = convert_from_path(pdf_path)
     reader = PdfReader(pdf_path)
     number_of_pages = len(reader.pages)
-    path = f"{output_path}/{i}"
+    path = f"{output_path}/currentPdfImages"
     if not os.path.exists(path):
         os.makedirs(path)
     current_index = 1
@@ -160,16 +160,16 @@ def makeImages(output_path, pdf_path, i):
                 "continues on page",
             ]
             if not any(s in text for s in skip_strings):
-                images[x].save(f"{output_path}/{i}/{current_index}.jpg", "JPEG")
+                images[x].save(f"{output_path}/currentPdfImages/{current_index}.jpg", "JPEG")
                 current_index += 1
 
 
-def strip_images(folder_num, output_path):
-    pages = os.listdir(f"{output_path}/{folder_num}")
+def strip_images(output_path):
+    pages = os.listdir(f"{output_path}/currentPdfImages")
     for i in range(len(pages)):
-        with PIL.Image.open(f"{output_path}/{folder_num}/{pages[i]}") as im:
+        with PIL.Image.open(f"{output_path}/currentPdfImages/{pages[i]}") as im:
             im_crop = im.crop((0, 150, 1654, 2200))
-            im_crop.save(f"{output_path}/{folder_num}/{pages[i]}")
+            im_crop.save(f"{output_path}/currentPdfImages/{pages[i]}")
 
 
 def get_dimensions_from_api(image_path):
@@ -189,16 +189,16 @@ def get_dimensions_from_api(image_path):
             )
 
 
-def get_all_page_coordinates(folder_num, output_path):
+def get_all_page_coordinates(output_path):
     print("Getting coordinates for all pages...")
-    pages = os.listdir(f"{output_path}/{folder_num}")
+    pages = os.listdir(f"{output_path}/currentPdfImages")
     pages = sorted(pages, key=lambda x: int(x.split(".")[0]))
     all_coordinates = []
     page_heights = []
 
     for page_file in pages:
         current_height = (int(page_file.split(".")[0]) - 1) * 2050
-        page_path = f"{output_path}/{folder_num}/{page_file}"
+        page_path = f"{output_path}/currentPdfImages/{page_file}"
         print(f"\nProcessing page: {page_file}")
 
         # Get coordinates for this page
@@ -250,14 +250,14 @@ def get_all_page_coordinates(folder_num, output_path):
     return all_coordinates
 
 
-def merge_all_images(folder_num, output_path):
-    pages = os.listdir(f"{output_path}/{folder_num}")
+def merge_all_images(output_path):
+    pages = os.listdir(f"{output_path}/currentPdfImages")
     pages = sorted(pages, key=lambda x: int(x.split(".")[0]))
 
     # First pass to get total height
     total_height = 0
     for page_file in pages:
-        with PIL.Image.open(f"{output_path}/{folder_num}/{page_file}") as im:
+        with PIL.Image.open(f"{output_path}/currentPdfImages/{page_file}") as im:
             total_height += im.height
 
     dst = PIL.Image.new("RGB", (1654, total_height), color="white")
@@ -265,12 +265,12 @@ def merge_all_images(folder_num, output_path):
 
     # Second pass to merge images
     for page_file in pages:
-        image_path = f"{output_path}/{folder_num}/{page_file}"
+        image_path = f"{output_path}/currentPdfImages/{page_file}"
         with PIL.Image.open(image_path) as im:
             dst.paste(im, (0, current_height))
             current_height += im.height
 
-    dst.save(f"{output_path}/final/final{folder_num}.jpg")
+    dst.save(f"{output_path}/final/final.jpg")
     return current_height
 
 
@@ -305,7 +305,7 @@ def extract_paper_number(filename):
 
 
 def process_question_paper(
-    file_path, m, outputPath, subject, db_path
+    file_path, outputPath, subject, db_path
 ):
     global unique_num
     ASpapers = [1, 2]
@@ -318,17 +318,17 @@ def process_question_paper(
 
     # Process the paper
     print("Converting PDF to images...")
-    makeImages(outputPath, file_path, m)
+    makeImages(outputPath, file_path)
     print("Stripping images...")
-    strip_images(m, outputPath)
+    strip_images(outputPath)
 
     # Get coordinates from individual pages first
-    coordinates = get_all_page_coordinates(m, outputPath)
+    coordinates = get_all_page_coordinates(outputPath)
     print(f"Got all coordinates: {coordinates}")
 
     # Merge images after getting coordinates
     print("Merging images...")
-    merge_all_images(m, outputPath)
+    merge_all_images(outputPath)
 
     try:
         # Open the database file in append mode
@@ -351,7 +351,7 @@ def process_question_paper(
                     y1,
                     y2,
                     current_question_num,
-                    f"final{m}.jpg",
+                    "final.jpg",
                     outputPath,
                     unique_filename,
                 )
@@ -412,6 +412,11 @@ def process_question_paper(
 
                     unique_num += 1
 
+        for filename in os.listdir(f"{outputPath}/currentPdfImages"):
+            file_path = os.path.join(f"{outputPath}/currentPdfImages", filename)
+            if os.path.isfile(file_path):  # only delete files
+                os.remove(file_path)
+
     except Exception as e:
         print(f"Error in processing: {str(e)}")
         raise e
@@ -446,18 +451,17 @@ if __name__ == "__main__":
     print(f"Selected files: {files}")
 
     # Process each question paper
-    for m, file_path in enumerate(files):
-        print(f"\nProcessing file {m + 1}: {file_path}")
+    for file_path in files:
+        print(f"\nProcessing file : {file_path}")
         if file_path.find("ms") == -1:
             try:
                 process_question_paper(
                     file_path,
-                    m,
                     outputPath,
                     subject,
                     db_path,
                 )
-                print(f"Finished processing file {m + 1}")
+                print(f"Finished processing file: {file_path}")
             except Exception as e:
                 print(f"Error processing file {file_path}: {str(e)}")
         else:
