@@ -74,7 +74,8 @@ def check_json_validity(json_object, pdf_dir) -> json:
 
                 # Extract each question block: everything from start to each "[Total: x]" (colon optional), and spaces could be there
                 split_questions = []
-                pattern = re.compile(r"\[Total\s*:?\s*\d+\]", re.IGNORECASE)
+                # Support marks like 10 or 10+
+                pattern = re.compile(r'\[\s*Total\s*:?\s*\d+\+?\s*\]', re.IGNORECASE)
                 start = 0
                 for match in pattern.finditer(question_text):
                     block = question_text[start : match.end()]
@@ -104,7 +105,12 @@ def check_json_validity(json_object, pdf_dir) -> json:
         # Replace the current record's questionText with our extracted question text
         qnum = record["questionNumber"]
         if qnum - 1 < len(split_questions):
-            record["questionText"] = split_questions[qnum - 1]
+            block_text = split_questions[qnum - 1]
+            record["questionText"] = block_text
+            # Extract the marks from the trailing [Total: X] within this block
+            m = re.search(r"\[\s*Total\s*:?\s*([0-9]+\+?)\s*\]", block_text, flags=re.IGNORECASE)
+            if m:
+                record["marks"] = m.group(1)
         else:
             # The expected question index was not found in the parsed blocks
             logging.debug(question_text)
