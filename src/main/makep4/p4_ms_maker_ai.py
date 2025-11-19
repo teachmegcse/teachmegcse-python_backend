@@ -11,7 +11,6 @@ import re
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
 
-
 def select_files():
     root = Tk()
     filetypes = [("PDF Files", "*.pdf")]
@@ -20,23 +19,23 @@ def select_files():
     return list(files)
 
 
-def strip_images(output_path, i):
-    pages = os.listdir(f"{output_path}/{i}")
+def strip_images(output_path):
+    pages = os.listdir(f"{output_path}/currentPdfImages")
     for page in pages:
         if page.endswith(".jpg"):
-            image_path = os.path.join(output_path, f"{i}/{page}")
+            image_path = os.path.join(output_path, f"currentPdfImages/{page}")
             with PIL.Image.open(image_path) as im:
                 im_crop = im.crop((100, 200, 2300, 1500))
                 im_crop.save(image_path)
 
 
-def makeImages(output_path, pdf_path, i):
+def makeImages(output_path, pdf_path):
     images = convert_from_path(pdf_path)
     reader = PdfReader(pdf_path)
     number_of_pages = len(reader.pages)
 
     # Create output directory for this PDF
-    pdf_output_path = os.path.join(output_path, str(i))
+    pdf_output_path = os.path.join(output_path, 'currentPdfImages')
     os.makedirs(pdf_output_path, exist_ok=True)
 
     # Create final directory if it doesn't exist
@@ -115,7 +114,6 @@ def extract_question_number(im, current_question_num, output_path):
                         break  # stop at first non-digit character
 
                 print(f"Extracted digits: {digits_only}")
-                print(f"isPaperCode: {isPaperCode}")
 
                 if digits_only and (not isPaperCode):
                     number = int(digits_only)
@@ -135,14 +133,14 @@ def extract_question_number(im, current_question_num, output_path):
         return returnArray
 
 
-def merge_all_images(folder_num, output_path):
-    pages = os.listdir(f"{output_path}/{folder_num}")
+def merge_all_images(output_path):
+    pages = os.listdir(f"{output_path}/currentPdfImages")
     pages = sorted(pages, key=lambda x: int(x.split(".")[0]))
 
     # First pass to get total height
     total_height = 0
     for page_file in pages:
-        with PIL.Image.open(f"{output_path}/{folder_num}/{page_file}") as im:
+        with PIL.Image.open(f"{output_path}/currentPdfImages/{page_file}") as im:
             total_height += im.height
 
     dst = PIL.Image.new("RGB", (2200, total_height), color="white")
@@ -150,24 +148,27 @@ def merge_all_images(folder_num, output_path):
 
     # Second pass to merge images
     for page_file in pages:
-        image_path = f"{output_path}/{folder_num}/{page_file}"
+        image_path = f"{output_path}/currentPdfImages/{page_file}"
         with PIL.Image.open(image_path) as im:
             dst.paste(im, (0, current_height))
             current_height += im.height
 
-    dst.save(f"{output_path}/final/final{folder_num}.jpg")
+    dst.save(f"{output_path}/final/final.jpg")
 
 
 def take_screenshot(
-    y1, y2, file_name, output_path, unique_filename, current_question_num
+    y1, y2, output_path, unique_filename, current_question_num, level
 ):
+    if not os.path.exists(f"{BASE_PATH}/resources/images/{level}/{subject}/long"):
+        os.makedirs(f"{BASE_PATH}/resources/images/{level}/{subject}/long")
+
     print(f"\nTaking screenshot for question {current_question_num}")
     print(f"Coordinates: y1={y1}, y2={y2}")
 
     if (y2 - y1) > 100:  # Reduced minimum height
-        with PIL.Image.open(f"{output_path}/final/final{file_name}.jpg") as im:
+        with PIL.Image.open(f"{output_path}/final/final.jpg") as im:
             im_crop = im.crop((0, y1, 2200, y2))
-            im_crop.save(f"{output_path}/questions/{unique_filename}.jpg")
+            im_crop.save(f"{BASE_PATH}/resources/images/{level}/{subject}/long/{unique_filename}.jpg")
     else:
         print(
             f"Skipping question {current_question_num} - too small ({y2 - y1} pixels)"
@@ -188,7 +189,7 @@ def extract_paper_number(filename):
 
 
 if __name__ == "__main__":
-    subject = "ig_chem"
+    subject = "chemistry"
     files = select_files()
     files = [file for file in files if "ms" in file.lower()]
     output_path = f"{BASE_PATH}/resources/images/test_images"
@@ -203,24 +204,35 @@ if __name__ == "__main__":
 
     filename_num = 1
     for i in range(len(files)):
+        for filename in os.listdir(f"{output_path}/currentPdfImages"):
+            file_path = os.path.join(f"{output_path}/currentPdfImages", filename)
+            if os.path.isfile(file_path):  # only delete files
+                os.remove(file_path)
+        
         filename = files[i].split("/")[-1]
         filename = filename.replace(".pdf", "")
+
+        if filename[0] == '0':
+            level = 'IGCSE'
+        else:
+            level = 'A-level'
+
         print(f"Processing PDF: {filename}")
-        makeImages(output_path, files[i], i)
-        strip_images(output_path, i)
-        merge_all_images(i, output_path)
+        makeImages(output_path, files[i])
+        strip_images(output_path)
+        merge_all_images(output_path)
         currentQuestionNum = 1
         previous_y = 0
 
         # Sort pages numerically
         number_of_pages = sorted(
-            os.listdir(f"{output_path}/{i}"), key=lambda x: int(x.split(".")[0])
+            os.listdir(f"{output_path}/currentPdfImages"), key=lambda x: int(x.split(".")[0])
         )
 
         paper_number = extract_paper_number(filename)
 
         for j in range(len(number_of_pages)):
-            image_path = f"{output_path}/{i}/{number_of_pages[j]}"
+            image_path = f"{output_path}/currentPdfImages/{number_of_pages[j]}"
             with PIL.Image.open(image_path) as im:
                 y_coordinates = extract_question_number(
                     im, currentQuestionNum, output_path
@@ -235,10 +247,10 @@ if __name__ == "__main__":
                             previous_y,
                             # Include a small buffer below
                             y1 + (j) * 1300 + 10,
-                            i,
                             output_path,
                             image_file_name,
                             currentQuestionNum,
+                            level
                         )
 
                         ms_data.append(
@@ -258,10 +270,10 @@ if __name__ == "__main__":
         take_screenshot(
             previous_y,
             (len(number_of_pages)) * 1300,
-            i,
             output_path,
             image_file_name,
             currentQuestionNum,
+            level
         )
         ms_data.append(
             {
