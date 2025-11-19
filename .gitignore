@@ -9,3 +9,5 @@ src/resources/images/
 ./pathConst.py
 pathConst.py
 src/resources/pdfs
+venv
+src/main/__pycache__
