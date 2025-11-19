@@ -13,10 +13,13 @@ import cv2
 import pytesseract
 from joblib import load
 import shutil
+import warnings
+from sklearn.exceptions import InconsistentVersionWarning
+
+warnings.filterwarnings("ignore", category=InconsistentVersionWarning)
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
 # Constants for Tesseract and custom configuration
-paperType = "IGCSE"
 IGModel = "igchem"
 ASModel = "ascs"
 A2Model = "a2cs"
@@ -303,6 +306,31 @@ def extract_paper_number(filename):
         print(f"Error: {e}")
     return None
 
+def get_level_and_chapter(formatted_text, paper_num, paperType, ASpapers, A2papers):
+    # implicit level = IGCSE as all IGCSE have format 06.. while A-level have 97..
+    if paperType == 'IGCSE':
+        level = 'IGCSE'
+        chapter = predict(formatted_text, IGModel)
+        chapter_num = (
+                            ALL_LABELS.index(chapter) + 1 if chapter in ALL_LABELS else 0
+                        )
+    else:
+        if paper_num in ASpapers:
+            level = "AS"
+            chapter = predict(formatted_text, ASModel)
+            chapter_num = (
+                ASLabels.index(chapter) + 1 if chapter in ASLabels else 0
+            )
+        elif paper_num in A2papers:
+            level = "A2"
+            chapter = predict(formatted_text, A2Model)
+            chapter_num = (
+                A2Labels.index(chapter) + 1 + len(ASLabels)
+                if chapter in A2Labels
+                else 0
+            )
+    return level, chapter_num
+
 
 def process_question_paper(
     file_path, outputPath, subject, db_path
@@ -330,96 +358,78 @@ def process_question_paper(
     print("Merging images...")
     merge_all_images(outputPath)
 
-    try:
-        # Open the database file in append mode
-        with open(db_path, "a") as db:
-            # Process each question based on the adjusted coordinates
-            for i in range(len(coordinates) - 1):
-                y1 = coordinates[i]
-                y2 = coordinates[i + 1]
-                current_question_num = i + 1
+    # Open the database file in append mode
+    with open(db_path, "a") as db:
+        # Process each question based on the adjusted coordinates
+        for i in range(len(coordinates) - 1):
+            y1 = coordinates[i]
+            y2 = coordinates[i + 1]
+            current_question_num = i + 1
 
-                print(
-                    f"Processing question {current_question_num} with coordinates y1={
-                        y1
-                    }, y2={y2}"
+            print(
+                f"Processing question {current_question_num} with coordinates y1={
+                    y1
+                }, y2={y2}"
+            )
+            unique_filename = (
+                f"{subject}_p{paper_num}_qp_{unique_num}_{current_question_num}"
+            )
+            take_screenshot(
+                y1,
+                y2,
+                current_question_num,
+                "final.jpg",
+                outputPath,
+                unique_filename,
+            )
+
+            # Clean the cropped image
+            input_path = f"{outputPath}/questions/{unique_filename}.jpg"
+            question_text = process_image(input_path)
+            formatted_text = formatText(question_text)
+
+            if current_file[0] == '0':
+                paperType = 'IGCSE'
+            else:
+                paperType = 'A-level'
+            
+            if os.path.exists(input_path):
+                current_file2 = current_file.replace(".pdf", "")
+                level, chapter_num = get_level_and_chapter(formatted_text, paper_num, paperType, ASpapers, A2papers)
+                if not os.path.exists(f"{BASE_PATH}/resources/images/{paperType}/{subject}/long"):
+                    os.makedirs(f"{BASE_PATH}/resources/images/{paperType}/{subject}/long")
+
+                shutil.copy(
+                    f"{outputPath}/questions/{unique_filename}.jpg",
+                    f"{BASE_PATH}/resources/images/{paperType}/{subject}/long/{
+                        unique_filename
+                    }.jpg",
                 )
-                unique_filename = (
-                    f"{subject}_p{paper_num}_qp_{unique_num}_{current_question_num}"
-                )
-                take_screenshot(
-                    y1,
-                    y2,
-                    current_question_num,
-                    "final.jpg",
-                    outputPath,
-                    unique_filename,
-                )
 
-                # Clean the cropped image
-                input_path = f"{outputPath}/questions/{unique_filename}.jpg"
-                question_text = process_image(input_path)
-                formatted_text = formatText(question_text)
-                chapter = predict(formatted_text, IGModel)
-                chapter_num = (
-                    ALL_LABELS.index(chapter) + 1 if chapter in ALL_LABELS else 0
-                )
-                if os.path.exists(input_path):
+                # Extract year from filename (e.g., m15 -> 2015)
+                year = "20" + current_file.split("_")[1][1:3]
 
-                    # Extract year from filename (e.g., m15 -> 2015)
-                    year = "20" + current_file.split("_")[1][1:3]
-                    current_file2 = current_file.replace(".pdf", "")
-                    if paper_num in ASpapers:
-                        level = "AS"
-                        chapter = predict(formatted_text, ASModel)
-                        chapter_num = (
-                            ASLabels.index(chapter) + 1 if chapter in ASLabels else 0
-                        )
-                    elif paper_num in A2papers:
-                        level = "A2"
-                        chapter = predict(formatted_text, A2Model)
-                        chapter_num = (
-                            A2Labels.index(chapter) + 1 + len(ASLabels)
-                            if chapter in A2Labels
-                            else 0
-                        )
-                    level = "IGCSE"
-                    chapter = predict(formatted_text, IGModel)
-                    chapter_num = (
-                        ALL_LABELS.index(chapter) + 1 if chapter in ALL_LABELS else 0
-                    )
+                answerObject = {
+                    "questionName": f"{unique_filename}.jpg",
+                    "questionNum": current_question_num,
+                    "Subject": subject,
+                    "Level": level,
+                    "Chapter": chapter_num,
+                    "pdfName": current_file2,
+                    "year": year,
+                    "paperNumber": paper_num,
+                    "questionText": formatted_text,
+                }
+                answerObjectFormatted = json.dumps(answerObject)
+                db.write(answerObjectFormatted + ",\n")
 
-                    shutil.copy(
-                        f"{outputPath}/questions/{unique_filename}.jpg",
-                        f"{BASE_PATH}/resources/images/{paperType}/{subject}/long/{
-                            unique_filename
-                        }.jpg",
-                    )
+                unique_num += 1
 
-                    answerObject = {
-                        "questionName": f"{unique_filename}.jpg",
-                        "questionNum": current_question_num,
-                        "Subject": subject,
-                        "Level": level,
-                        "Chapter": chapter_num,
-                        "pdfName": current_file2,
-                        "year": year,
-                        "paperNumber": paper_num,
-                        "questionText": formatted_text,
-                    }
-                    answerObjectFormatted = json.dumps(answerObject)
-                    db.write(answerObjectFormatted + ",\n")
+    for filename in os.listdir(f"{outputPath}/currentPdfImages"):
+        file_path = os.path.join(f"{outputPath}/currentPdfImages", filename)
+        if os.path.isfile(file_path):  # only delete files
+            os.remove(file_path)
 
-                    unique_num += 1
-
-        for filename in os.listdir(f"{outputPath}/currentPdfImages"):
-            file_path = os.path.join(f"{outputPath}/currentPdfImages", filename)
-            if os.path.isfile(file_path):  # only delete files
-                os.remove(file_path)
-
-    except Exception as e:
-        print(f"Error in processing: {str(e)}")
-        raise e
 
 
 if __name__ == "__main__":
@@ -454,16 +464,13 @@ if __name__ == "__main__":
     for file_path in files:
         print(f"\nProcessing file : {file_path}")
         if file_path.find("ms") == -1:
-            try:
-                process_question_paper(
-                    file_path,
-                    outputPath,
-                    subject,
-                    db_path,
-                )
-                print(f"Finished processing file: {file_path}")
-            except Exception as e:
-                print(f"Error processing file {file_path}: {str(e)}")
+            process_question_paper(
+                file_path,
+                outputPath,
+                subject,
+                db_path,
+            )
+            print(f"Finished processing file: {file_path}")
         else:
             pass
 
