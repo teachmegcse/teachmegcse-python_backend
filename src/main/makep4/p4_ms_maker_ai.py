@@ -10,6 +10,8 @@ import json
 import re
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
+output_path = f"{BASE_PATH}/resources/images/test_images"
+definitionsPath = f"{BASE_PATH}/main/definitions.json"
 
 def select_files():
     root = Tk()
@@ -189,10 +191,14 @@ def extract_paper_number(filename):
 
 
 if __name__ == "__main__":
-    subject = "chemistry"
+    
+    with open(definitionsPath, "r") as db:
+        definitionsData = json.load(db)
+    
     files = select_files()
     files = [file for file in files if "ms" in file.lower()]
-    output_path = f"{BASE_PATH}/resources/images/test_images"
+    
+
     JSON_FILE_LOCATION = f"{BASE_PATH}/resources/json/ig_chem_ms.json"
     if not os.path.exists(JSON_FILE_LOCATION):
         with open(JSON_FILE_LOCATION, "w") as f:
@@ -211,11 +217,26 @@ if __name__ == "__main__":
         
         filename = files[i].split("/")[-1]
         filename = filename.replace(".pdf", "")
+        paperCode = filename.split("_")[0]
 
         if filename[0] == '0':
             level = 'IGCSE'
         else:
             level = 'A-level'
+
+        currentDefintionsData = definitionsData[paperCode]
+        subject = currentDefintionsData["subjectName"]
+        db_name = currentDefintionsData["long_ms_db_path"]
+        
+        JSON_FILE_LOCATION = f"{BASE_PATH}/resources/json/{db_name}"
+        if not os.path.exists(JSON_FILE_LOCATION):
+            with open(JSON_FILE_LOCATION, "w") as f:
+                json.dump([], f)  # Use [] if you expect a list
+
+        # Load the file
+        with open(JSON_FILE_LOCATION, "r") as json_file:
+            ms_data = json.load(json_file)
+
 
         print(f"Processing PDF: {filename}")
         makeImages(output_path, files[i])

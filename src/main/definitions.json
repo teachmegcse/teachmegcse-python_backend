@@ -16,7 +16,8 @@
     ],
     "IGmodel" : "igbio.joblib",
     "board" : "cie",
-    "long_db_path" : "ig_bio_theory.json"
+    "long_db_path" : "ig_bio_theory.json",
+    "long_ms_db_path" : "ig_bio_ms.json"
   },
 
 
@@ -34,7 +35,8 @@
     ],
     "IGmodel" : "igchem.joblib",
     "board" : "cie",
-    "long_db_path" : "ig_chem_theory.json"
+    "long_db_path" : "ig_chem_theory.json",
+    "long_ms_db_path" : "ig_chem_ms.json"
   },
 
 
@@ -50,7 +52,8 @@
     ],
     "IGmodel" : "igphy.joblib",
     "board" : "cie",
-    "long_db_path" : "ig_phy_theory.json"
+    "long_db_path" : "ig_phy_theory.json",
+    "long_ms_db_path" : "ig_phy_ms.json"
   },
 
 
@@ -93,7 +96,8 @@
     "ASModel" : "asbio.joblib",
     "A2Model" : "a2bio.joblib",
     "board" : "cie",
-    "long_db_path" : "a_bio_theory.json"
+    "long_db_path" : "a_bio_theory.json",
+    "long_ms_db_path" : "a_bio_ms.json"
   },
 
 
@@ -127,7 +131,8 @@
     "ASModel" : "aschem.joblib",
     "A2Model" : "a2chem.joblib",
     "board" : "cie",
-    "long_db_path" : "a_chem_theory.json"
+    "long_db_path" : "a_chem_theory.json",
+    "long_ms_db_path" : "a_chem_ms.json"
   },
 
 
@@ -153,7 +158,8 @@
     "ASModel" : "asphy.joblib",
     "A2Model" : "a2phy.joblib",
     "board" : "cie",
-    "long_db_path" : "a_phy_theory.json"
+    "long_db_path" : "a_phy_theory.json",
+    "long_ms_db_path" : "a_phy_ms.json"
   },
 
 
