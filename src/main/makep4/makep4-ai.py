@@ -19,56 +19,14 @@ from sklearn.exceptions import InconsistentVersionWarning
 warnings.filterwarnings("ignore", category=InconsistentVersionWarning)
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
+outputPath = f"{BASE_PATH}/resources/images/test_images"
+definitionsPath = f"{BASE_PATH}/main/definitions.json"
 # Constants for Tesseract and custom configuration
-IGModel = "igchem"
-ASModel = "ascs"
-A2Model = "a2cs"
 CUSTOM_CONFIG = r"--oem 3 --psm 6"
-
-ALL_LABELS = [
-    "States of matter",
-    "Atoms, elements and compounds",
-    "Stoichiometry",
-    "Electrochemistry",
-    "Chemical energetics",
-    "Chemical reactions",
-    "Acids, bases and salts",
-    "The Periodic Table",
-    "Metals",
-    "Chemistry of the environment",
-    "Organic chemistry",
-    "Experimental techniques and chemical analysis",
-]
-
-ASLabels = [
-    "Information representation",
-    "Communication",
-    "Hardware",
-    "Processor Fundamentals",
-    "System Software",
-    "Security, privacy and data integrity",
-    "Ethics and Ownership",
-    "Databases",
-    "Algorithm Design and Problem-solving",
-    "Data Types and Structures",
-    "Programming",
-    "Software Development",
-]
-
-A2Labels = [
-    "Data Representation",
-    "Communication and internet technologies",
-    "Hardware and Virtual Machines",
-    "System Software",
-    "Security",
-    "Artificial Intelligence (AI)",
-    "Computational thinking and Problem-solving",
-    "Further Programming",
-]
 
 
 def predict(data, model):
-    pipeline = load(f"{BASE_PATH}/resources/sci-kit/{model}.joblib")
+    pipeline = load(f"{BASE_PATH}/resources/sci-kit/{model}")
     data = formatText(data)
     predicted_labels = pipeline.predict([data])
     return predicted_labels[0]
@@ -176,12 +134,9 @@ def strip_images(output_path):
 
 
 def get_dimensions_from_api(image_path):
-    print(f"Opening image file: {image_path}")
     with open(image_path, "rb") as img:
         files = {"file": img}
-        print("Sending request to API...")
         response = requests.post("http://127.0.0.1:8000/predict", files=files)
-        print(f"API response status code: {response.status_code}")
         if response.status_code == 200:
             coordinates = response.json()
             return coordinates
@@ -202,12 +157,10 @@ def get_all_page_coordinates(output_path):
     for page_file in pages:
         current_height = (int(page_file.split(".")[0]) - 1) * 2050
         page_path = f"{output_path}/currentPdfImages/{page_file}"
-        print(f"\nProcessing page: {page_file}")
 
         # Get coordinates for this page
         try:
             bounding_boxes = get_dimensions_from_api(page_path)
-            print(f"Got boxes for page {page_file}: {bounding_boxes}")
 
             if not bounding_boxes:  # Skip if no questions found
                 continue
@@ -221,22 +174,15 @@ def get_all_page_coordinates(output_path):
                 if x1 > 150:
                     continue
                 else:
-                    print(f"Using y-coordinate {y1} from first box on page {page_file}")
-
                     # Adjust coordinate based on current height in final image
                     adjusted_y = int(y1 + current_height)
-                    print(
-                        f"Adjusted y-coordinate for page {page_file}: {adjusted_y} (added {current_height})"
-                    )
                     all_coordinates.append(adjusted_y)
 
             # Update current height
             with PIL.Image.open(page_path) as im:
                 page_height = im.height
                 page_heights.append(page_height)
-                print(f"Page {page_file} height: {page_height}")
                 current_height += page_height
-                print(f"New cumulative height: {current_height}")
 
         except Exception as e:
             print(f"Error processing page {page_file}: {str(e)}")
@@ -244,11 +190,9 @@ def get_all_page_coordinates(output_path):
 
     # Sort all coordinates to ensure they're in order
     all_coordinates = sorted(list(set(all_coordinates)))
-    print("\nFinal coordinates after processing all pages:", all_coordinates)
 
     # Add the total height as the last coordinate to capture the last question
     all_coordinates.append(current_height)
-    print("Final coordinates with total height:", all_coordinates)
 
     return all_coordinates
 
@@ -280,11 +224,8 @@ def merge_all_images(output_path):
 def take_screenshot(
     y1, y2, current_question_num, file_name, output_path, unique_filename
 ):
-    print(f"\nTaking screenshot for question {current_question_num}")
-    print(f"Coordinates: y1={y1}, y2={y2}")
     if (y2 - y1) > 300:
         with PIL.Image.open(f"{output_path}/final/{file_name}") as im:
-            print(f"Image size: {im.size}")
             im_crop = im.crop((100, y1, 1600, y2))
             im_crop.save(f"{output_path}/questions/{unique_filename}.jpg")
             print(f"Saved question {current_question_num}")
@@ -306,15 +247,24 @@ def extract_paper_number(filename):
         print(f"Error: {e}")
     return None
 
-def get_level_and_chapter(formatted_text, paper_num, paperType, ASpapers, A2papers):
+def get_level_and_chapter(formatted_text, paper_num, paperType, currentDefinitionsData):
     # implicit level = IGCSE as all IGCSE have format 06.. while A-level have 97..
     if paperType == 'IGCSE':
+        IGModel = currentDefinitionsData["IGmodel"]
+        ALL_LABELS = currentDefinitionsData["chapters"]
         level = 'IGCSE'
         chapter = predict(formatted_text, IGModel)
         chapter_num = (
                             ALL_LABELS.index(chapter) + 1 if chapter in ALL_LABELS else 0
                         )
     else:
+        ASModel = currentDefinitionsData["ASModel"]
+        A2Model = currentDefinitionsData["A2Model"]
+        ASpapers = currentDefinitionsData["ASpapers"]
+        A2papers = currentDefinitionsData["A2papers"]
+        ASLabels = currentDefinitionsData["ASChapters"]
+        A2Labels = currentDefinitionsData["A2Chapters"]
+
         if paper_num in ASpapers:
             level = "AS"
             chapter = predict(formatted_text, ASModel)
@@ -333,13 +283,22 @@ def get_level_and_chapter(formatted_text, paper_num, paperType, ASpapers, A2pape
 
 
 def process_question_paper(
-    file_path, outputPath, subject, db_path
+    file_path
 ):
     global unique_num
-    ASpapers = [1, 2]
-    A2papers = [3, 4]
-    print(f"Starting to process question paper: {file_path}")
     current_file = file_path[-18:]
+    print(f"Starting to process question paper: {current_file}")
+    paperCode = current_file.split("_")[0]
+
+    currentDefintionsData = definitionsData[paperCode]
+    subject = currentDefintionsData["subjectName"]
+    long_db_path = currentDefintionsData["long_db_path"]
+    print(long_db_path)
+    db_path = f"{BASE_PATH}/resources/json/{long_db_path}"
+
+    # Initialize database file
+    with open(db_path, "w") as db:
+        db.write("[")
 
     # Extract paper number from filename
     paper_num = extract_paper_number(current_file)
@@ -366,11 +325,6 @@ def process_question_paper(
             y2 = coordinates[i + 1]
             current_question_num = i + 1
 
-            print(
-                f"Processing question {current_question_num} with coordinates y1={
-                    y1
-                }, y2={y2}"
-            )
             unique_filename = (
                 f"{subject}_p{paper_num}_qp_{unique_num}_{current_question_num}"
             )
@@ -395,7 +349,9 @@ def process_question_paper(
             
             if os.path.exists(input_path):
                 current_file2 = current_file.replace(".pdf", "")
-                level, chapter_num = get_level_and_chapter(formatted_text, paper_num, paperType, ASpapers, A2papers)
+                
+                level, chapter_num = get_level_and_chapter(formatted_text, paper_num, paperType, currentDefintionsData)
+
                 if not os.path.exists(f"{BASE_PATH}/resources/images/{paperType}/{subject}/long"):
                     os.makedirs(f"{BASE_PATH}/resources/images/{paperType}/{subject}/long")
 
@@ -435,16 +391,12 @@ def process_question_paper(
 if __name__ == "__main__":
     print("Starting script...")
     # Initialize constants
-    subject = "chemistry"
     unique_num = 1
 
     # Create necessary directories
-    outputPath = f"{BASE_PATH}/resources/images/test_images"
-    db_path = f"{BASE_PATH}/resources/json/ig_chem_theory.json"
 
-    # Initialize database file
-    with open(db_path, "w") as db:
-        db.write("[")
+    with open(definitionsPath, "r") as db:
+        definitionsData = json.load(db)
 
     print("Creating directories...")
     for dir_path in [outputPath, f"{outputPath}/final", f"{outputPath}/questions"]:
@@ -466,11 +418,7 @@ if __name__ == "__main__":
         if file_path.find("ms") == -1:
             process_question_paper(
                 file_path,
-                outputPath,
-                subject,
-                db_path,
             )
             print(f"Finished processing file: {file_path}")
         else:
             pass
-
