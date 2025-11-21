@@ -14,8 +14,9 @@
         "Variation and selection","Organisms and their environment",
         "Human influences on ecosystems","Biotechnology and genetic modification"
     ],
-    "model" : "igbio.joblib",
-    "board" : "cie"
+    "IGmodel" : "igbio.joblib",
+    "board" : "cie",
+    "long_db_path" : "ig_bio_theory.json"
   },
 
 
@@ -31,8 +32,9 @@
         "Metals", "Chemistry of the environment", "Organic chemistry",
         "Experimental techniques and chemical analysis"
     ],
-    "model" : "igchem.joblib",
-    "board" : "cie"
+    "IGmodel" : "igchem.joblib",
+    "board" : "cie",
+    "long_db_path" : "ig_chem_theory.json"
   },
 
 
@@ -46,8 +48,9 @@
         "Waves", "Electricity and magnetism",
         "Nuclear physics", "Space physics"
     ],
-    "model" : "igphy.joblib",
-    "board" : "cie"
+    "IGmodel" : "igphy.joblib",
+    "board" : "cie",
+    "long_db_path" : "ig_phy_theory.json"
   },
 
 
@@ -61,7 +64,7 @@
         "Microeconomic decision makers", "Government and the macroeconomy",
         "Economic development", "International trade and globalisation"
     ],
-    "model" : "igeco.joblib",
+    "IGmodel" : "igeco.joblib",
     "board" : "cie"
   },
 
@@ -71,6 +74,8 @@
     "subjectName": "biology",
     "mcqPapers": [1, 2],
     "longPapers": [3, 4, 5],
+    "ASpapers" : [1, 2],
+    "A2papers" : [3, 4, 5],
     "ASChapters": [
         "Cell structure", "Biological molecules",
         "Enzymes", "Cell membranes and transport", "The mitotic cell cycle",
@@ -87,7 +92,8 @@
     ],
     "ASModel" : "asbio.joblib",
     "A2Model" : "a2bio.joblib",
-    "board" : "cie"
+    "board" : "cie",
+    "long_db_path" : "a_bio_theory.json"
   },
 
 
@@ -96,6 +102,8 @@
     "subjectName": "chemistry",
     "mcqPapers": [1, 2],
     "longPapers": [3, 4, 5],
+    "ASpapers" : [1, 2],
+    "A2papers" : [3, 4, 5],
     "ASChapters": [
         "Atomic structure", "Atoms, molecules and stoichiometry",
         "Chemical bonding", "States of matter", "Chemical energetics",
@@ -118,7 +126,8 @@
     ],
     "ASModel" : "aschem.joblib",
     "A2Model" : "a2chem.joblib",
-    "board" : "cie"
+    "board" : "cie",
+    "long_db_path" : "a_chem_theory.json"
   },
 
 
@@ -127,6 +136,8 @@
     "subjectName": "physics",
     "mcqPapers": [1, 2],
     "longPapers": [3, 4, 5],
+    "ASpapers" : [1, 2],
+    "A2papers" : [3, 4, 5],
     "ASChapters": [
         "Physical quantities and units", "Kinematics",
         "Dynamics", "Forces, density and pressure",
@@ -141,7 +152,8 @@
     ],
     "ASModel" : "asphy.joblib",
     "A2Model" : "a2phy.joblib",
-    "board" : "cie"
+    "board" : "cie",
+    "long_db_path" : "a_phy_theory.json"
   },
 
 
@@ -150,6 +162,8 @@
     "subjectName": "economics",
     "mcqPapers": [1, 3],
     "longPapers": [2, 4],
+    "ASpapers" : [1, 2],
+    "A2papers" : [3, 4],
     "ASChapters": [
         "Scarcity, choice and opportunity cost, Economic methodology, Factors of production",
         "Resource allocation in different economic systems, PPC, goods and services",
