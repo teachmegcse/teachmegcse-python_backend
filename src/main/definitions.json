@@ -1,0 +1,169 @@
+{
+  "0610": {
+    "level": "IGCSE",
+    "subjectName": "biology",
+    "mcqPapers": [1, 2],
+    "longPapers": [3, 4, 5, 6],
+    "chapters": [
+        "Characteristics and classification of living organisms",
+        "Organisation of the organism", "Movement into and out of cells",
+        "Biological molecules", "Enzymes","Plant nutrition", "Human nutrition",
+        "Transport in plants", "Transport in animals", "Diseases and immunity",
+        "Gas exchange in humans","Respiration","Excretion in humans",
+        "Coordination and response","Drugs","Reproduction","Inheritance",
+        "Variation and selection","Organisms and their environment",
+        "Human influences on ecosystems","Biotechnology and genetic modification"
+    ],
+    "model" : "igbio.joblib",
+    "board" : "cie"
+  },
+
+
+  "0620": {
+    "level": "IGCSE",
+    "subjectName": "chemistry",
+    "mcqPapers": [1, 2],
+    "longPapers": [3, 4, 5, 6],
+    "chapters": [
+        "States of matter", "Atoms, elements and compounds",
+        "Stoichiometry", "Electrochemistry", "Chemical energetics",
+        "Chemical reactions", "Acids, bases and salts","The Periodic Table",
+        "Metals", "Chemistry of the environment", "Organic chemistry",
+        "Experimental techniques and chemical analysis"
+    ],
+    "model" : "igchem.joblib",
+    "board" : "cie"
+  },
+
+
+  "0625": {
+    "level": "IGCSE",
+    "subjectName": "physics",
+    "mcqPapers": [1, 2],
+    "longPapers": [3, 4, 5, 6],
+    "chapters": [
+        "Motion, forces and energy", "Thermal physics",
+        "Waves", "Electricity and magnetism",
+        "Nuclear physics", "Space physics"
+    ],
+    "model" : "igphy.joblib",
+    "board" : "cie"
+  },
+
+
+  "0455": {
+    "level": "IGCSE",
+    "subjectName": "economics",
+    "mcqPapers": [1],
+    "longPapers": [2],
+    "chapters": [
+        "The basic economic problem", "The allocation of resources",
+        "Microeconomic decision makers", "Government and the macroeconomy",
+        "Economic development", "International trade and globalisation"
+    ],
+    "model" : "igeco.joblib",
+    "board" : "cie"
+  },
+
+
+  "9700": {
+    "level": "A-Level",
+    "subjectName": "biology",
+    "mcqPapers": [1, 2],
+    "longPapers": [3, 4, 5],
+    "ASChapters": [
+        "Cell structure", "Biological molecules",
+        "Enzymes", "Cell membranes and transport", "The mitotic cell cycle",
+        "Nucleic acids and protein synthesis", "Transport in plants",
+        "Transport in mammals", "Gas exchange", "Infectious diseases",
+        "Immunity"
+    ],
+    "A2Chapters" : [
+        "Energy and respiration", "Photosynthesis", "Homeostasis",
+        "Control and coordination", "Inheritance",
+        "Selection and evolution",
+        "Classification, biodiversity and conservation",
+        "Genetic technology"
+    ],
+    "ASModel" : "asbio.joblib",
+    "A2Model" : "a2bio.joblib",
+    "board" : "cie"
+  },
+
+
+  "9701": {
+    "level": "A-Level",
+    "subjectName": "chemistry",
+    "mcqPapers": [1, 2],
+    "longPapers": [3, 4, 5],
+    "ASChapters": [
+        "Atomic structure", "Atoms, molecules and stoichiometry",
+        "Chemical bonding", "States of matter", "Chemical energetics",
+        "Electrochemistry", "Equilibria", "Reaction kinetics",
+        "The Periodic Table: chemical periodicity", "Group 2", "Group 17",
+        "Nitrogen and sulfur", "introduction to AS Level organic chemistry",
+        "Hydrocarbons", "Halogen compounds", "Hydroxy compounds",
+        "Carbonyl compounds", "Carboxylic acids and derivatives",
+        "Nitrogen compounds", "Polymerisation",
+        "Organic synthesis", "Analytical techniques"
+    ],
+    "A2Chapters" : [
+        "Chemical energetics", "Electrochemistry",
+        "Equilibria", "Reaction kinetics", "Group 2",
+        "Chemistry of transition elements",
+        "An introduction to A Level organic chemistry",
+        "Hydrocarbons", "Halogen compounds", "Hydroxy compounds",
+        "Carboxylic acids and derivatives","Nitrogen compounds",
+        "Polymerisation","Organic synthesis","Analytical techniques"
+    ],
+    "ASModel" : "aschem.joblib",
+    "A2Model" : "a2chem.joblib",
+    "board" : "cie"
+  },
+
+
+  "9702": {
+    "level": "A-Level",
+    "subjectName": "physics",
+    "mcqPapers": [1, 2],
+    "longPapers": [3, 4, 5],
+    "ASChapters": [
+        "Physical quantities and units", "Kinematics",
+        "Dynamics", "Forces, density and pressure",
+        "Work, energy and power", "Deformation of solids", "Waves",
+        "Superposition", "Electricity", "D.C. circuits", "Particle physics"
+    ],
+    "A2Chapters" : [
+        "Motion in a circle", "Gravitational fields",
+        "Temperature", "Ideal gases", "Thermodynamics", "Oscillations", "Electric fields",
+        "Capacitance", "Magnetic fields", "Alternating currents", "Quantum physics", "Nuclear physics",
+        "Medical physics", "Astronomy and cosmology"
+    ],
+    "ASModel" : "asphy.joblib",
+    "A2Model" : "a2phy.joblib",
+    "board" : "cie"
+  },
+
+
+  "9708": {
+    "level": "A-Level",
+    "subjectName": "economics",
+    "mcqPapers": [1, 3],
+    "longPapers": [2, 4],
+    "ASChapters": [
+        "Physical quantities and units", "Kinematics",
+        "Dynamics", "Forces, density and pressure",
+        "Work, energy and power", "Deformation of solids", "Waves",
+        "Superposition", "Electricity", "D.C. circuits", "Particle physics"
+    ],
+    "A2Chapters" : [
+        "Motion in a circle", "Gravitational fields",
+        "Temperature", "Ideal gases", "Thermodynamics", "Oscillations", "Electric fields",
+        "Capacitance", "Magnetic fields", "Alternating currents", "Quantum physics", "Nuclear physics",
+        "Medical physics", "Astronomy and cosmology"
+    ],
+    "ASModel" : "aseco.joblib",
+    "A2Model" : "a2eco.joblib",
+    "board" : "cie"
+  }
+}
