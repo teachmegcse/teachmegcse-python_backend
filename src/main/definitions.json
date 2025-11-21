@@ -151,16 +151,30 @@
     "mcqPapers": [1, 3],
     "longPapers": [2, 4],
     "ASChapters": [
-        "Physical quantities and units", "Kinematics",
-        "Dynamics", "Forces, density and pressure",
-        "Work, energy and power", "Deformation of solids", "Waves",
-        "Superposition", "Electricity", "D.C. circuits", "Particle physics"
+        "Scarcity, choice and opportunity cost, Economic methodology, Factors of production",
+        "Resource allocation in different economic systems, PPC, goods and services",
+        "Demand and Supply, elasticities",
+        "The interaction of demand and supply, Surpluses",
+        "Government microeconomic intervention",
+        "National income, Circular Flow",
+        "Aggregate Demand and Aggregate Supply",
+        "Economic Growth, Unemployment and Price stability",
+        "Government Policies", "International trade and Protectionism", "Balance of Payments and Exchange rates"
     ],
     "A2Chapters" : [
-        "Motion in a circle", "Gravitational fields",
-        "Temperature", "Ideal gases", "Thermodynamics", "Oscillations", "Electric fields",
-        "Capacitance", "Magnetic fields", "Alternating currents", "Quantum physics", "Nuclear physics",
-        "Medical physics", "Astronomy and cosmology"
+        "Utility", "Indifference curves and budget lines",
+        "Efficiency and market failure",
+        "Private costs and benefits, externalities and social costs and benefits ",
+        "Types of cost, revenue and profit, short-run and long-run production",
+        "market structures", "Growth and survival of firms",
+        "objectives and policies of firms",
+        "Government policies to achieve efficient resource allocation",
+        "Equity and redistribution of income and wealth",
+        "Labour market forces and government intervention",
+        "The circular flow of income",
+        "Economic growth and sustainability", "Employment/unemployment",
+        "Money and banking", "Government macroeconomic policy objectives",
+        "balance of payments", "Economic development", "levels of development"
     ],
     "ASModel" : "aseco.joblib",
     "A2Model" : "a2eco.joblib",
