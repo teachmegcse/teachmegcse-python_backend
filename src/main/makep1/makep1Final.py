@@ -90,6 +90,7 @@ for currentFileIndex in range(len(files)):
                         "Level": level,
                         "paperNumber": paper_number,
                         "Subject": subject,
+                        "year" : "20" + current_file.split("_")[1][1:3]
                     }
                     questionObjects.append(answer_object)
                 current_question_num += 1
