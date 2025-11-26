@@ -3,6 +3,7 @@ import os
 import json
 import shutil
 import sys
+# Need to add clean_images to remove whitespace at the bottom
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
 sys.path.append(BASE_PATH)
@@ -145,7 +146,7 @@ if __name__ == "__main__":
             print("Converting PDF to images...")
             makeImages(file_path)
             print("Stripping images...")
-            strip_images()
+            strip_images(mode='qp')
 
             # Get coordinates from individual pages first
             coordinates = get_all_page_coordinates()

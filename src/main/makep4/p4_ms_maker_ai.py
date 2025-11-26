@@ -1,69 +1,25 @@
-from pdf2image import convert_from_path
 import PIL
-from PyPDF2 import PdfReader
-from tkinter import filedialog, Tk
 import os
 import easyocr
 import requests
 from io import BytesIO
 import json
 import re
+import sys
+import shutil
+
+# Need to add clean_images to remove whitespace at the bottom
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
+sys.path.append(BASE_PATH)
+
+from main.utils import (
+    select_files, makeImages, strip_images, take_screenshot,
+    merge_all_images, extract_paper_number, cleanup
+)
+
 output_path = f"{BASE_PATH}/resources/images/test_images"
 definitionsPath = f"{BASE_PATH}/main/definitions.json"
-
-def select_files():
-    root = Tk()
-    filetypes = [("PDF Files", "*.pdf")]
-    files = filedialog.askopenfilenames(filetypes=filetypes)
-    root.destroy()
-    return list(files)
-
-
-def strip_images(output_path):
-    pages = os.listdir(f"{output_path}/currentPdfImages")
-    for page in pages:
-        if page.endswith(".jpg"):
-            image_path = os.path.join(output_path, f"currentPdfImages/{page}")
-            with PIL.Image.open(image_path) as im:
-                im_crop = im.crop((100, 200, 2300, 1500))
-                im_crop.save(image_path)
-
-
-def makeImages(output_path, pdf_path):
-    images = convert_from_path(pdf_path)
-    reader = PdfReader(pdf_path)
-    number_of_pages = len(reader.pages)
-
-    # Create output directory for this PDF
-    pdf_output_path = os.path.join(output_path, 'currentPdfImages')
-    os.makedirs(pdf_output_path, exist_ok=True)
-
-    # Create final directory if it doesn't exist
-    final_path = os.path.join(output_path, "final")
-    os.makedirs(final_path, exist_ok=True)
-
-    current_index = 1
-    for x in range(1, number_of_pages):
-        page = reader.pages[x]
-        text = page.extract_text()
-        text = text.lower()
-        if x >= 1:
-            # Skip if page contains any of these strings
-            skip_strings = [
-                "blank page",
-                "important values",
-                "periodic table",
-                "guidance for chemical equations",
-                "next page",
-                "marking principle",
-                "correct answer only",
-            ]
-            if not any(s in text for s in skip_strings):
-                images[x].save(f"{pdf_output_path}/{current_index}.jpg", "JPEG")
-                current_index += 1
-
 
 def extract_question_number(im, current_question_num, output_path):
     returnArray = []
@@ -135,61 +91,6 @@ def extract_question_number(im, current_question_num, output_path):
         return returnArray
 
 
-def merge_all_images(output_path):
-    pages = os.listdir(f"{output_path}/currentPdfImages")
-    pages = sorted(pages, key=lambda x: int(x.split(".")[0]))
-
-    # First pass to get total height
-    total_height = 0
-    for page_file in pages:
-        with PIL.Image.open(f"{output_path}/currentPdfImages/{page_file}") as im:
-            total_height += im.height
-
-    dst = PIL.Image.new("RGB", (2200, total_height), color="white")
-    current_height = 0
-
-    # Second pass to merge images
-    for page_file in pages:
-        image_path = f"{output_path}/currentPdfImages/{page_file}"
-        with PIL.Image.open(image_path) as im:
-            dst.paste(im, (0, current_height))
-            current_height += im.height
-
-    dst.save(f"{output_path}/final/final.jpg")
-
-
-def take_screenshot(
-    y1, y2, output_path, unique_filename, current_question_num, level
-):
-    if not os.path.exists(f"{BASE_PATH}/resources/images/{level}/{subject}/long"):
-        os.makedirs(f"{BASE_PATH}/resources/images/{level}/{subject}/long")
-
-    print(f"\nTaking screenshot for question {current_question_num}")
-    print(f"Coordinates: y1={y1}, y2={y2}")
-
-    if (y2 - y1) > 100:  # Reduced minimum height
-        with PIL.Image.open(f"{output_path}/final/final.jpg") as im:
-            im_crop = im.crop((0, y1, 2200, y2))
-            im_crop.save(f"{BASE_PATH}/resources/images/{level}/{subject}/long/{unique_filename}.jpg")
-    else:
-        print(
-            f"Skipping question {current_question_num} - too small ({y2 - y1} pixels)"
-        )
-
-
-def extract_paper_number(filename):
-    try:
-        base_name = filename.split(".")[0]
-
-        parts = base_name.split("_")
-
-        if len(parts) >= 4:
-            return int(parts[3][0])
-    except Exception as e:
-        print(f"Error: {e}")
-    return None
-
-
 if __name__ == "__main__":
     
     with open(definitionsPath, "r") as db:
@@ -197,16 +98,6 @@ if __name__ == "__main__":
     
     files = select_files()
     files = [file for file in files if "ms" in file.lower()]
-    
-
-    JSON_FILE_LOCATION = f"{BASE_PATH}/resources/json/ig_chem_ms.json"
-    if not os.path.exists(JSON_FILE_LOCATION):
-        with open(JSON_FILE_LOCATION, "w") as f:
-            json.dump([], f)  # Use [] if you expect a list
-
-    # Load the file
-    with open(JSON_FILE_LOCATION, "r") as json_file:
-        ms_data = json.load(json_file)
 
     filename_num = 1
     for i in range(len(files)):
@@ -218,6 +109,11 @@ if __name__ == "__main__":
         filename = files[i].split("/")[-1]
         filename = filename.replace(".pdf", "")
         paperCode = filename.split("_")[0]
+
+        if filename[0] == '0':
+                        paperType = 'IGCSE'
+        else:
+            paperType = 'A-level'
 
         if filename[0] == '0':
             level = 'IGCSE'
@@ -239,9 +135,9 @@ if __name__ == "__main__":
 
 
         print(f"Processing PDF: {filename}")
-        makeImages(output_path, files[i])
-        strip_images(output_path)
-        merge_all_images(output_path)
+        makeImages(files[i])
+        strip_images(mode='ms')
+        merge_all_images()
         currentQuestionNum = 1
         previous_y = 0
 
@@ -268,10 +164,7 @@ if __name__ == "__main__":
                             previous_y,
                             # Include a small buffer below
                             y1 + (j) * 1300 + 10,
-                            output_path,
                             image_file_name,
-                            currentQuestionNum,
-                            level
                         )
 
                         ms_data.append(
@@ -285,16 +178,23 @@ if __name__ == "__main__":
                         currentQuestionNum += 1
                         filename_num += 1
 
+                        if not os.path.exists(f"{BASE_PATH}/resources/images/{paperType}/{subject}/long"):
+                            os.makedirs(f"{BASE_PATH}/resources/images/{paperType}/{subject}/long")
+
+                        shutil.copy(
+                            f"{output_path}/questions/{image_file_name}.jpg",
+                            f"{BASE_PATH}/resources/images/{paperType}/{subject}/long/{
+                                image_file_name
+                            }.jpg",
+                        )
+
         image_file_name = (
             f"{subject}_p{paper_number}_ms_{filename_num}_{currentQuestionNum}"
         )
         take_screenshot(
             previous_y,
             (len(number_of_pages)) * 1300,
-            output_path,
             image_file_name,
-            currentQuestionNum,
-            level
         )
         ms_data.append(
             {
@@ -303,9 +203,18 @@ if __name__ == "__main__":
                 "paperCode": filename,
             }
         )
+
+        shutil.copy(
+                    f"{output_path}/questions/{image_file_name}.jpg",
+                    f"{BASE_PATH}/resources/images/{paperType}/{subject}/long/{
+                        image_file_name
+                    }.jpg",
+                )
+        
         filename_num += 1
         try:
             with open(JSON_FILE_LOCATION, "w") as json_file:
                 json.dump(ms_data, json_file, indent=1)
+                cleanup()
         except Exception as e:
             print(f"Error saving JSON data: {str(e)}")

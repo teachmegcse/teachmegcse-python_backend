@@ -118,11 +118,14 @@ def formatText(text):
     # Join the processed words back into a single string
     return " ".join(words)
 
-def strip_images():
+def strip_images(mode):
     pages = os.listdir(f"{outputPath}/currentPdfImages")
     for i in range(len(pages)):
         with PIL.Image.open(f"{outputPath}/currentPdfImages/{pages[i]}") as im:
-            im_crop = im.crop((0, 150, 1654, 2200))
+            if mode == 'qp':
+                im_crop = im.crop((0, 150, 1654, 2200))
+            else:
+                im_crop = im.crop((100, 200, 2300, 1500))
             im_crop.save(f"{outputPath}/currentPdfImages/{pages[i]}")
 
 def take_screenshot(
