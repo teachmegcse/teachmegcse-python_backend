@@ -1,251 +1,73 @@
-from pdf2image import convert_from_path
 import PIL
-from PyPDF2 import PdfReader
-from tkinter import *
-from tkinter import filedialog
 import os
 import json
-import requests
-from nltk.stem import PorterStemmer
-from nltk.tokenize import word_tokenize
-import re
-import cv2
-import pytesseract
-from joblib import load
 import shutil
-import warnings
-from sklearn.exceptions import InconsistentVersionWarning
-
-warnings.filterwarnings("ignore", category=InconsistentVersionWarning)
+import sys
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
+sys.path.append(BASE_PATH)
+
+from main.utils import (
+    predict, process_image, select_files, makeImages,
+    formatText, strip_images, take_screenshot, merge_all_images,
+    extract_paper_number, get_dimensions_from_api, cleanup
+)
+
 outputPath = f"{BASE_PATH}/resources/images/test_images"
 definitionsPath = f"{BASE_PATH}/main/definitions.json"
-# Constants for Tesseract and custom configuration
-CUSTOM_CONFIG = r"--oem 3 --psm 6"
 
-
-def predict(data, model):
-    pipeline = load(f"{BASE_PATH}/resources/sci-kit/{model}")
-    data = formatText(data)
-    predicted_labels = pipeline.predict([data])
-    return predicted_labels[0]
-
-
-def formatText(text):
-    stemmer = PorterStemmer()
-
-    # Convert all text to lowercase
-    text = text.lower()
-
-    # Remove punctuation, digits, and non-alphabetic characters
-    text = re.sub(r"[^\w\s]", "", text)
-    text = re.sub(r"\d+", "", text)
-
-    # Remove Cambridge command words
-    text = text.replace("analyse", "")
-    text = text.replace("assess", "")
-    text = text.replace("calculate", "")
-    text = text.replace("comment", "")
-    text = text.replace("compare", "")
-    text = text.replace("consider", "")
-    text = text.replace("contrast", "")
-    text = text.replace("define", "")
-    text = text.replace("describe", "")
-    text = text.replace("develop", "")
-    text = text.replace("discuss", "")
-    text = text.replace("evaluate", "")
-    text = text.replace("explain", "")
-    text = text.replace("give", "")
-    text = text.replace("identify", "")
-    text = text.replace("justify", "")
-    text = text.replace("outline", "")
-    text = text.replace("predict", "")
-    text = text.replace("sketch", "")
-    text = text.replace("state", "")
-    text = text.replace("suggest", "")
-    text = text.replace("summarise", "")
-    text = text.replace("benefit", "")
-    text = text.replace("drawback", "")
-    text = text.replace("advantage", "")
-    text = text.replace("disadvantage", "")
-    text = text.replace("understand", "")
-    text = text.replace("use", "")
-    text = text.replace("notes and guidance", "")
-    text = text.replace("candidates should be able to", "")
-    text = text.replace("show", "")
-    text = text.replace("understanding", "")
-
-    # Tokenize text into words
-    words = word_tokenize(text)
-    # Stem words
-    words = [stemmer.stem(w) for w in words]
-
-    # Join the processed words back into a single string
-    return " ".join(words)
-
-
-def process_image(image_path, custom_config=CUSTOM_CONFIG):
-    img = cv2.imread(image_path)
-    return pytesseract.image_to_string(img, config=custom_config)
-
-
-def select_files():
-    root = Tk()
-    filetypes = [("PDF Files", "*.pdf")]
-    files = filedialog.askopenfilenames(filetypes=filetypes)
-    root.destroy()
-    return list(files)
-
-
-def makeImages(output_path, pdf_path):
-    images = convert_from_path(pdf_path)
-    reader = PdfReader(pdf_path)
-    number_of_pages = len(reader.pages)
-    path = f"{output_path}/currentPdfImages"
-    if not os.path.exists(path):
-        os.makedirs(path)
-    current_index = 1
-    for x in range(1, number_of_pages):
-        reader = PdfReader(pdf_path)
-        page = reader.pages[x]
-        text = page.extract_text()
-        text = text.lower()
-        if x >= 1:
-            # Skip if page contains any of these strings
-            skip_strings = [
-                "blank page",
-                "important values",
-                "lanthanoids",
-                "next page",
-                "continues on page",
-            ]
-            if not any(s in text for s in skip_strings):
-                images[x].save(f"{output_path}/currentPdfImages/{current_index}.jpg", "JPEG")
-                current_index += 1
-
-
-def strip_images(output_path):
-    pages = os.listdir(f"{output_path}/currentPdfImages")
-    for i in range(len(pages)):
-        with PIL.Image.open(f"{output_path}/currentPdfImages/{pages[i]}") as im:
-            im_crop = im.crop((0, 150, 1654, 2200))
-            im_crop.save(f"{output_path}/currentPdfImages/{pages[i]}")
-
-
-def get_dimensions_from_api(image_path):
-    with open(image_path, "rb") as img:
-        files = {"file": img}
-        response = requests.post("http://127.0.0.1:8000/predict", files=files)
-        if response.status_code == 200:
-            coordinates = response.json()
-            return coordinates
-        else:
-            print(f"API response text: {response.text}")
-            raise Exception(
-                f"API request failed with status code {response.status_code}"
-            )
-
-
-def get_all_page_coordinates(output_path):
+def get_all_page_coordinates():
     print("Getting coordinates for all pages...")
-    pages = os.listdir(f"{output_path}/currentPdfImages")
+    pages = os.listdir(f"{outputPath}/currentPdfImages")
     pages = sorted(pages, key=lambda x: int(x.split(".")[0]))
     all_coordinates = []
-    page_heights = []
+    current_height = 0
 
     for page_file in pages:
-        current_height = (int(page_file.split(".")[0]) - 1) * 2050
-        page_path = f"{output_path}/currentPdfImages/{page_file}"
+        page_path = f"{outputPath}/currentPdfImages/{page_file}"
 
         # Get coordinates for this page
         try:
             bounding_boxes = get_dimensions_from_api(page_path)
 
             if not bounding_boxes:  # Skip if no questions found
+                # Still need to account for page height!
+                with PIL.Image.open(page_path) as im:
+                    current_height += im.height
                 continue
 
-            # Take only the first box if multiple exist
-            if bounding_boxes:
-                bounding_boxes.sort(key=lambda box: box[0])
-                first_box = bounding_boxes[0]
-                y1 = first_box[1]  # Top y coordinate only
-                x1 = first_box[0]
-                if x1 > 150:
-                    continue
-                else:
-                    # Adjust coordinate based on current height in final image
-                    adjusted_y = int(y1 + current_height)
-                    all_coordinates.append(adjusted_y)
+            # Take first box
+            bounding_boxes.sort(key=lambda box: box[0])
+            first_box = bounding_boxes[0]
+            x1, y1 = first_box[0], first_box[1]
 
-            # Update current height
+            # Skip based on x threshold
+            if x1 > 150:
+                with PIL.Image.open(page_path) as im:
+                    current_height += im.height
+                continue
+
+            # Adjust coordinate
+            adjusted_y = int(y1 + current_height)
+            all_coordinates.append(adjusted_y)
+
+            # Update current height based on page height
             with PIL.Image.open(page_path) as im:
-                page_height = im.height
-                page_heights.append(page_height)
-                current_height += page_height
+                current_height += im.height
 
         except Exception as e:
             print(f"Error processing page {page_file}: {str(e)}")
             continue
 
-    # Sort all coordinates to ensure they're in order
-    all_coordinates = sorted(list(set(all_coordinates)))
+    # Remove duplicates + sort
+    all_coordinates = sorted(set(all_coordinates))
 
-    # Add the total height as the last coordinate to capture the last question
+    # Add ending coordinate
     all_coordinates.append(current_height)
 
     return all_coordinates
 
 
-def merge_all_images(output_path):
-    pages = os.listdir(f"{output_path}/currentPdfImages")
-    pages = sorted(pages, key=lambda x: int(x.split(".")[0]))
-
-    # First pass to get total height
-    total_height = 0
-    for page_file in pages:
-        with PIL.Image.open(f"{output_path}/currentPdfImages/{page_file}") as im:
-            total_height += im.height
-
-    dst = PIL.Image.new("RGB", (1654, total_height), color="white")
-    current_height = 0
-
-    # Second pass to merge images
-    for page_file in pages:
-        image_path = f"{output_path}/currentPdfImages/{page_file}"
-        with PIL.Image.open(image_path) as im:
-            dst.paste(im, (0, current_height))
-            current_height += im.height
-
-    dst.save(f"{output_path}/final/final.jpg")
-    return current_height
-
-
-def take_screenshot(
-    y1, y2, current_question_num, file_name, output_path, unique_filename
-):
-    if (y2 - y1) > 300:
-        with PIL.Image.open(f"{output_path}/final/{file_name}") as im:
-            im_crop = im.crop((100, y1, 1600, y2))
-            im_crop.save(f"{output_path}/questions/{unique_filename}.jpg")
-            print(f"Saved question {current_question_num}")
-    else:
-        print(
-            f"Skipping question {current_question_num} - too small ({y2 - y1} pixels)"
-        )
-
-
-def extract_paper_number(filename):
-    try:
-        base_name = filename.split(".")[0]
-
-        parts = base_name.split("_")
-
-        if len(parts) >= 4:
-            return int(parts[3][0])
-    except Exception as e:
-        print(f"Error: {e}")
-    return None
 
 def get_level_and_chapter(formatted_text, paper_num, paperType, currentDefinitionsData):
     # implicit level = IGCSE as all IGCSE have format 06.. while A-level have 97..
@@ -282,118 +104,9 @@ def get_level_and_chapter(formatted_text, paper_num, paperType, currentDefinitio
     return level, chapter_num
 
 
-def process_question_paper(
-    file_path
-):
-    global unique_num
-    current_file = file_path[-18:]
-    print(f"Starting to process question paper: {current_file}")
-    paperCode = current_file.split("_")[0]
-
-    currentDefintionsData = definitionsData[paperCode]
-    subject = currentDefintionsData["subjectName"]
-    long_db_path = currentDefintionsData["long_db_path"]
-    print(long_db_path)
-    db_path = f"{BASE_PATH}/resources/json/{long_db_path}"
-
-    # Initialize database file
-    with open(db_path, "w") as db:
-        db.write("[")
-
-    # Extract paper number from filename
-    paper_num = extract_paper_number(current_file)
-
-    # Process the paper
-    print("Converting PDF to images...")
-    makeImages(outputPath, file_path)
-    print("Stripping images...")
-    strip_images(outputPath)
-
-    # Get coordinates from individual pages first
-    coordinates = get_all_page_coordinates(outputPath)
-    print(f"Got all coordinates: {coordinates}")
-
-    # Merge images after getting coordinates
-    print("Merging images...")
-    merge_all_images(outputPath)
-
-    # Open the database file in append mode
-    with open(db_path, "a") as db:
-        # Process each question based on the adjusted coordinates
-        for i in range(len(coordinates) - 1):
-            y1 = coordinates[i]
-            y2 = coordinates[i + 1]
-            current_question_num = i + 1
-
-            unique_filename = (
-                f"{subject}_p{paper_num}_qp_{unique_num}_{current_question_num}"
-            )
-            take_screenshot(
-                y1,
-                y2,
-                current_question_num,
-                "final.jpg",
-                outputPath,
-                unique_filename,
-            )
-
-            # Clean the cropped image
-            input_path = f"{outputPath}/questions/{unique_filename}.jpg"
-            question_text = process_image(input_path)
-            formatted_text = formatText(question_text)
-
-            if current_file[0] == '0':
-                paperType = 'IGCSE'
-            else:
-                paperType = 'A-level'
-            
-            if os.path.exists(input_path):
-                current_file2 = current_file.replace(".pdf", "")
-                
-                level, chapter_num = get_level_and_chapter(formatted_text, paper_num, paperType, currentDefintionsData)
-
-                if not os.path.exists(f"{BASE_PATH}/resources/images/{paperType}/{subject}/long"):
-                    os.makedirs(f"{BASE_PATH}/resources/images/{paperType}/{subject}/long")
-
-                shutil.copy(
-                    f"{outputPath}/questions/{unique_filename}.jpg",
-                    f"{BASE_PATH}/resources/images/{paperType}/{subject}/long/{
-                        unique_filename
-                    }.jpg",
-                )
-
-                # Extract year from filename (e.g., m15 -> 2015)
-                year = "20" + current_file.split("_")[1][1:3]
-
-                answerObject = {
-                    "questionName": f"{unique_filename}.jpg",
-                    "questionNum": current_question_num,
-                    "Subject": subject,
-                    "Level": level,
-                    "Chapter": chapter_num,
-                    "pdfName": current_file2,
-                    "year": year,
-                    "paperNumber": paper_num,
-                    "questionText": formatted_text,
-                }
-                answerObjectFormatted = json.dumps(answerObject)
-                db.write(answerObjectFormatted + ",\n")
-
-                unique_num += 1
-
-    for filename in os.listdir(f"{outputPath}/currentPdfImages"):
-        file_path = os.path.join(f"{outputPath}/currentPdfImages", filename)
-        if os.path.isfile(file_path):  # only delete files
-            os.remove(file_path)
-
-
-
 if __name__ == "__main__":
     print("Starting script...")
-    # Initialize constants
     unique_num = 1
-
-    # Create necessary directories
 
     with open(definitionsPath, "r") as db:
         definitionsData = json.load(db)
@@ -416,9 +129,95 @@ if __name__ == "__main__":
     for file_path in files:
         print(f"\nProcessing file : {file_path}")
         if file_path.find("ms") == -1:
-            process_question_paper(
-                file_path,
-            )
+            current_file = file_path[-18:]
+            print(f"Starting to process question paper: {current_file}")
+            paperCode = current_file.split("_")[0]
+
+            currentDefintionsData = definitionsData[paperCode]
+            subject = currentDefintionsData["subjectName"]
+            long_db_path = currentDefintionsData["long_db_path"]
+            db_path = f"{BASE_PATH}/resources/json/{long_db_path}"
+
+            # Extract paper number from filename
+            paper_num = extract_paper_number(current_file)
+
+            # Process the paper
+            print("Converting PDF to images...")
+            makeImages(file_path)
+            print("Stripping images...")
+            strip_images()
+
+            # Get coordinates from individual pages first
+            coordinates = get_all_page_coordinates()
+            print(f"Got all coordinates: {coordinates}")
+
+            # Merge images after getting coordinates
+            print("Merging images...")
+            merge_all_images()
+
+            # Open the database file in append mode
+            with open(db_path, "a") as db:
+                # Process each question based on the adjusted coordinates
+                for i in range(len(coordinates) - 1):
+                    y1 = coordinates[i]
+                    y2 = coordinates[i + 1]
+                    current_question_num = i + 1
+
+                    unique_filename = (
+                        f"{subject}_p{paper_num}_qp_{unique_num}_{current_question_num}"
+                    )
+                    take_screenshot(
+                        y1,
+                        y2,
+                        unique_filename,
+                    )
+
+                    # Clean the cropped image
+                    image_path = f"{outputPath}/questions/{unique_filename}.jpg"
+                    question_text = process_image(image_path)
+                    formatted_text = formatText(question_text)
+
+                    if current_file[0] == '0':
+                        paperType = 'IGCSE'
+                    else:
+                        paperType = 'A-level'
+                    
+                    if os.path.exists(image_path):
+                        current_file = current_file.replace(".pdf", "")
+                        
+                        level, chapter_num = get_level_and_chapter(formatted_text, paper_num, paperType, currentDefintionsData)
+
+                        if not os.path.exists(f"{BASE_PATH}/resources/images/{paperType}/{subject}/long"):
+                            os.makedirs(f"{BASE_PATH}/resources/images/{paperType}/{subject}/long")
+
+                        shutil.copy(
+                            f"{outputPath}/questions/{unique_filename}.jpg",
+                            f"{BASE_PATH}/resources/images/{paperType}/{subject}/long/{
+                                unique_filename
+                            }.jpg",
+                        )
+
+                        # Extract year from filename (e.g., m15 -> 2015)
+                        year = "20" + current_file.split("_")[1][1:3]
+
+                        answerObject = {
+                            "questionName": f"{unique_filename}.jpg",
+                            "questionNum": current_question_num,
+                            "Subject": subject,
+                            "Level": level,
+                            "Chapter": chapter_num,
+                            "pdfName": current_file,
+                            "year": year,
+                            "paperNumber": paper_num,
+                            "questionText": formatted_text,
+                        }
+                        answerObjectFormatted = json.dumps(answerObject)
+                        db.write(answerObjectFormatted + ",\n")
+
+                        unique_num += 1
+
+            cleanup()
+
             print(f"Finished processing file: {file_path}")
         else:
             pass

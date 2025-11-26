@@ -7,6 +7,7 @@ makep4/phy_db_final_p4.json
 classified/pdfs/questions.pdf
 src/resources/images/
 src/resources/Classified_pdfs
+src/resources/full_pdfs
 ./pathConst.py
 pathConst.py
 src/resources/pdfs

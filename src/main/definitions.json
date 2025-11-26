@@ -17,7 +17,8 @@
     "IGmodel" : "igbio.joblib",
     "board" : "cie",
     "long_db_path" : "ig_bio_theory.json",
-    "long_ms_db_path" : "ig_bio_ms.json"
+    "long_ms_db_path" : "ig_bio_ms.json",
+    "mcqNumberOfQuestions" : 40
   },
 
 
@@ -36,7 +37,8 @@
     "IGmodel" : "igchem.joblib",
     "board" : "cie",
     "long_db_path" : "ig_chem_theory.json",
-    "long_ms_db_path" : "ig_chem_ms.json"
+    "long_ms_db_path" : "ig_chem_ms.json",
+    "mcqNumberOfQuestions" : 40
   },
 
 
@@ -53,7 +55,8 @@
     "IGmodel" : "igphy.joblib",
     "board" : "cie",
     "long_db_path" : "ig_phy_theory.json",
-    "long_ms_db_path" : "ig_phy_ms.json"
+    "long_ms_db_path" : "ig_phy_ms.json",
+    "mcqNumberOfQuestions" : 40
   },
 
 
@@ -68,7 +71,8 @@
         "Economic development", "International trade and globalisation"
     ],
     "IGmodel" : "igeco.joblib",
-    "board" : "cie"
+    "board" : "cie",
+    "mcqNumberOfQuestions" : 30
   },
 
 
@@ -97,7 +101,8 @@
     "A2Model" : "a2bio.joblib",
     "board" : "cie",
     "long_db_path" : "a_bio_theory.json",
-    "long_ms_db_path" : "a_bio_ms.json"
+    "long_ms_db_path" : "a_bio_ms.json",
+    "mcqNumberOfQuestions" : 40
   },
 
 
@@ -132,7 +137,8 @@
     "A2Model" : "a2chem.joblib",
     "board" : "cie",
     "long_db_path" : "a_chem_theory.json",
-    "long_ms_db_path" : "a_chem_ms.json"
+    "long_ms_db_path" : "a_chem_ms.json",
+    "mcqNumberOfQuestions" : 40
   },
 
 
@@ -159,7 +165,8 @@
     "A2Model" : "a2phy.joblib",
     "board" : "cie",
     "long_db_path" : "a_phy_theory.json",
-    "long_ms_db_path" : "a_phy_ms.json"
+    "long_ms_db_path" : "a_phy_ms.json",
+    "mcqNumberOfQuestions" : 40
   },
 
 
@@ -198,6 +205,7 @@
     ],
     "ASModel" : "aseco.joblib",
     "A2Model" : "a2eco.joblib",
-    "board" : "cie"
+    "board" : "cie",
+    "mcqNumberOfQuestions" : 30
   }
 }
