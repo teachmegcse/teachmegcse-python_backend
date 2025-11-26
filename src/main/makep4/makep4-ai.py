@@ -9,7 +9,7 @@ BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", 
 sys.path.append(BASE_PATH)
 
 from main.utils import (
-    predict, process_image, select_files, makeImages,
+    process_image, select_files, makeImages, get_level_and_chapter,
     formatText, strip_images, take_screenshot, merge_all_images,
     extract_paper_number, get_dimensions_from_api, cleanup
 )
@@ -67,42 +67,6 @@ def get_all_page_coordinates():
     all_coordinates.append(current_height)
 
     return all_coordinates
-
-
-
-def get_level_and_chapter(formatted_text, paper_num, paperType, currentDefinitionsData):
-    # implicit level = IGCSE as all IGCSE have format 06.. while A-level have 97..
-    if paperType == 'IGCSE':
-        IGModel = currentDefinitionsData["IGmodel"]
-        ALL_LABELS = currentDefinitionsData["chapters"]
-        level = 'IGCSE'
-        chapter = predict(formatted_text, IGModel)
-        chapter_num = (
-                            ALL_LABELS.index(chapter) + 1 if chapter in ALL_LABELS else 0
-                        )
-    else:
-        ASModel = currentDefinitionsData["ASModel"]
-        A2Model = currentDefinitionsData["A2Model"]
-        ASpapers = currentDefinitionsData["ASpapers"]
-        A2papers = currentDefinitionsData["A2papers"]
-        ASLabels = currentDefinitionsData["ASChapters"]
-        A2Labels = currentDefinitionsData["A2Chapters"]
-
-        if paper_num in ASpapers:
-            level = "AS"
-            chapter = predict(formatted_text, ASModel)
-            chapter_num = (
-                ASLabels.index(chapter) + 1 if chapter in ASLabels else 0
-            )
-        elif paper_num in A2papers:
-            level = "A2"
-            chapter = predict(formatted_text, A2Model)
-            chapter_num = (
-                A2Labels.index(chapter) + 1 + len(ASLabels)
-                if chapter in A2Labels
-                else 0
-            )
-    return level, chapter_num
 
 
 if __name__ == "__main__":
@@ -171,6 +135,8 @@ if __name__ == "__main__":
                         y1,
                         y2,
                         unique_filename,
+                        'long',
+                        ''
                     )
 
                     # Clean the cropped image

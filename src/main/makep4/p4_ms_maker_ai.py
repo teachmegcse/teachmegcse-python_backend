@@ -165,6 +165,8 @@ if __name__ == "__main__":
                             # Include a small buffer below
                             y1 + (j) * 1300 + 10,
                             image_file_name,
+                            'long',
+                            ''
                         )
 
                         ms_data.append(
@@ -195,6 +197,8 @@ if __name__ == "__main__":
             previous_y,
             (len(number_of_pages)) * 1300,
             image_file_name,
+            'long',
+            ''
         )
         ms_data.append(
             {

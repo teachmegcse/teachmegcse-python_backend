@@ -56,7 +56,6 @@ def makeImages(pdf_path):
             skip_strings = [
                 "blank page",
                 "important values",
-                "periodic table",
                 "guidance for chemical equations",
                 "next page",
                 "marking principle",
@@ -128,18 +127,33 @@ def strip_images(mode):
                 im_crop = im.crop((100, 200, 2300, 1500))
             im_crop.save(f"{outputPath}/currentPdfImages/{pages[i]}")
 
-def take_screenshot(
-    y1, y2, unique_filename
-):
-    if (y2 - y1) > 300:
-        with PIL.Image.open(f"{outputPath}/final/final.jpg") as im:
-            im_crop = im.crop((100, y1, 1600, y2))
-            im_crop.save(f"{outputPath}/questions/{unique_filename}.jpg")
-            print(f"Saved question {unique_filename}")
+def take_screenshot(y1, y2, unique_filename, type, page):
+    height = y2 - y1
+
+    if height <= 300:
+        print(f"Skipping question {unique_filename} - too small ({height} pixels)")
+        return
+
+    # Open the correct image based on type
+    if type == "long":
+        image_path = f"{outputPath}/final/final.jpg"
     else:
-        print(
-            f"Skipping question {unique_filename} - too small ({y2 - y1} pixels)"
-        )
+        image_path = f"{outputPath}/currentPdfImages/{page}"
+
+    try:
+        with PIL.Image.open(image_path) as im:
+            # Crop the region
+            im_crop = im.crop((100, y1, 1600, y2))
+
+            # Save to questions folder
+            save_path = f"{outputPath}/questions/{unique_filename}.jpg"
+            im_crop.save(save_path)
+
+            print(f"Saved question {unique_filename} → {save_path}")
+
+    except Exception as e:
+        print(f"Error saving question {unique_filename}: {e}")
+
 
 def clean_images(level_folder_name, subject, paper_number):
     questions = os.listdir(
@@ -230,3 +244,63 @@ def cleanup():
             file_path = os.path.join(f"{outputPath}/questions", filename)
             if os.path.isfile(file_path):  # only delete files
                 os.remove(file_path)
+
+def get_level_and_chapter(formatted_text, paper_num, paperType, currentDefinitionsData):
+    # implicit level = IGCSE as all IGCSE have format 06.. while A-level have 97..
+    if paperType == 'IGCSE':
+        IGModel = currentDefinitionsData["IGmodel"]
+        ALL_LABELS = currentDefinitionsData["chapters"]
+        level = 'IGCSE'
+        chapter = predict(formatted_text, IGModel)
+        chapter_num = (
+                            ALL_LABELS.index(chapter) + 1 if chapter in ALL_LABELS else 0
+                        )
+    else:
+        ASModel = currentDefinitionsData["ASModel"]
+        A2Model = currentDefinitionsData["A2Model"]
+        ASpapers = currentDefinitionsData["ASpapers"]
+        A2papers = currentDefinitionsData["A2papers"]
+        ASLabels = currentDefinitionsData["ASChapters"]
+        A2Labels = currentDefinitionsData["A2Chapters"]
+
+        if paper_num in ASpapers:
+            level = "AS"
+            chapter = predict(formatted_text, ASModel)
+            chapter_num = (
+                ASLabels.index(chapter) + 1 if chapter in ASLabels else 0
+            )
+        elif paper_num in A2papers:
+            level = "A2"
+            chapter = predict(formatted_text, A2Model)
+            chapter_num = (
+                A2Labels.index(chapter) + 1 + len(ASLabels)
+                if chapter in A2Labels
+                else 0
+            )
+    return level, chapter_num
+
+def extract_answers_from_pdf(code, pdfName):
+    pdfName = pdfName.replace("qp", "ms")
+    pdfPath = f"{BASE_PATH}/resources/full_pdfs/{code}/{pdfName}"
+    pdf_reader = PdfReader(open(pdfPath, "rb"))
+    text = ""
+    for page_num in range(len(pdf_reader.pages)):
+        page = pdf_reader.pages[page_num]
+        text += page.extract_text()
+
+    lines = text.split("\n")
+    answers = []
+    for line in lines:
+        line = line.strip()
+        parts = line.split()
+        # Check if the line contains a question number followed by an answer
+        if (
+            len(parts) >= 2
+            and parts[0].isdigit()
+            and len(parts[1]) == 1
+            and parts[1].isalpha()
+        ):
+            answer = parts[1]
+            answers.append(answer)
+
+    return answers

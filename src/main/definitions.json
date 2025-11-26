@@ -36,6 +36,7 @@
     ],
     "IGmodel" : "igchem.joblib",
     "board" : "cie",
+    "mcq_db_path" : "ig_chem_mcq.json",
     "long_db_path" : "ig_chem_theory.json",
     "long_ms_db_path" : "ig_chem_ms.json",
     "mcqNumberOfQuestions" : 40
