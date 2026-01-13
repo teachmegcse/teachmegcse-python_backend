@@ -9,13 +9,23 @@ BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", 
 sys.path.append(BASE_PATH)
 
 from main.utils import (
-    process_image, select_files, makeImages, get_level_and_chapter,
-    formatText, strip_images, take_screenshot, merge_all_images,
-    extract_paper_number, get_dimensions_from_api, cleanup
+    process_image,
+    select_files,
+    makeImages,
+    get_level_and_chapter,
+    formatText,
+    strip_images,
+    take_screenshot,
+    merge_all_images,
+    extract_paper_number,
+    get_dimensions_from_api,
+    cleanup,
+    clean_image,
 )
 
 outputPath = f"{BASE_PATH}/resources/images/test_images"
 definitionsPath = f"{BASE_PATH}/main/definitions.json"
+
 
 def get_all_page_coordinates():
     print("Getting coordinates for all pages...")
@@ -110,7 +120,7 @@ if __name__ == "__main__":
             print("Converting PDF to images...")
             makeImages(file_path)
             print("Stripping images...")
-            strip_images(mode='qp')
+            strip_images(mode="qp")
 
             # Get coordinates from individual pages first
             coordinates = get_all_page_coordinates()
@@ -131,37 +141,41 @@ if __name__ == "__main__":
                     unique_filename = (
                         f"{subject}_p{paper_num}_qp_{unique_num}_{current_question_num}"
                     )
-                    take_screenshot(
-                        y1,
-                        y2,
-                        unique_filename,
-                        'long',
-                        ''
-                    )
+                    take_screenshot(y1, y2, unique_filename, "long", "")
 
                     # Clean the cropped image
                     image_path = f"{outputPath}/questions/{unique_filename}.jpg"
                     question_text = process_image(image_path)
                     formatted_text = formatText(question_text)
 
-                    if current_file[0] == '0':
-                        paperType = 'IGCSE'
+                    if current_file[0] == "0":
+                        paperType = "IGCSE"
                     else:
-                        paperType = 'A-level'
-                    
+                        paperType = "A-level"
+
                     if os.path.exists(image_path):
                         current_file = current_file.replace(".pdf", "")
-                        
-                        level, chapter_num = get_level_and_chapter(formatted_text, paper_num, paperType, currentDefintionsData)
 
-                        if not os.path.exists(f"{BASE_PATH}/resources/images/{paperType}/{subject}/long"):
-                            os.makedirs(f"{BASE_PATH}/resources/images/{paperType}/{subject}/long")
+                        level, chapter_num = get_level_and_chapter(
+                            formatted_text, paper_num, paperType, currentDefintionsData
+                        )
+
+                        if not os.path.exists(
+                            f"{BASE_PATH}/resources/images/{paperType}/{subject}/long"
+                        ):
+                            os.makedirs(
+                                f"{BASE_PATH}/resources/images/{paperType}/{subject}/long"
+                            )
 
                         shutil.copy(
                             f"{outputPath}/questions/{unique_filename}.jpg",
                             f"{BASE_PATH}/resources/images/{paperType}/{subject}/long/{
                                 unique_filename
                             }.jpg",
+                        )
+
+                        clean_image(
+                            paperType, subject, "long", f"{unique_filename}.jpg"
                         )
 
                         # Extract year from filename (e.g., m15 -> 2015)
@@ -188,3 +202,4 @@ if __name__ == "__main__":
             print(f"Finished processing file: {file_path}")
         else:
             pass
+
