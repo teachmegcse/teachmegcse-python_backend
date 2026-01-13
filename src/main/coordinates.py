@@ -13,8 +13,15 @@ app = FastAPI()
 current_question_num = 0
 
 # Argument parser for model selection
-parser = argparse.ArgumentParser(description="Start FastAPI app with specific YOLO model")
-parser.add_argument("--mode", type=str, default="best1", help="Model name without .pt extension (e.g., 'mcq' for mcq.pt)")
+parser = argparse.ArgumentParser(
+    description="Start FastAPI app with specific YOLO model"
+)
+parser.add_argument(
+    "--mode",
+    type=str,
+    default="best1",
+    help="Model name without .pt extension (e.g., 'mcq' for mcq.pt)",
+)
 args, unknown = parser.parse_known_args()
 
 model_path = f"{BASE_PATH}/resources/vision-models/{args.mode}.pt"
@@ -38,7 +45,7 @@ async def predict(file: UploadFile = File(...)) -> List[List[float]]:
         if image is None:
             raise ValueError("Invalid image file provided")
 
-        results = model(image, save=False, conf=0.05)
+        results = model(image, save=False, conf=0.15)
 
         boxes = []
         for box in results[0].boxes.xyxy:
@@ -50,7 +57,9 @@ async def predict(file: UploadFile = File(...)) -> List[List[float]]:
 
         filename = f"{current_question_num}.jpg"
         current_question_num += 1
-        save_path = os.path.join(BASE_PATH, "resources", "images", "vision_output_images", filename)
+        save_path = os.path.join(
+            BASE_PATH, "resources", "images", "vision_output_images", filename
+        )
         save_dir = os.path.dirname(save_path)
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)

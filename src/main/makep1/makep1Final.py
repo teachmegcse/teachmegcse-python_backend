@@ -11,9 +11,18 @@ definitionsPath = f"{BASE_PATH}/main/definitions.json"
 outputPath = f"{BASE_PATH}/resources/images/test_images"
 
 from main.utils import (
-    process_image, select_files, makeImages, get_level_and_chapter, clean_images,
-    formatText, strip_images, take_screenshot, get_dimensions_from_api, cleanup,
-    extract_answers_from_pdf, extract_paper_number
+    process_image,
+    select_files,
+    makeImages,
+    get_level_and_chapter,
+    clean_image,
+    formatText,
+    strip_images,
+    take_screenshot,
+    get_dimensions_from_api,
+    cleanup,
+    extract_answers_from_pdf,
+    extract_paper_number,
 )
 
 with open(definitionsPath, "r") as db:
@@ -24,7 +33,7 @@ questionObjects = []
 
 for currentFileIndex in range(len(files)):
     current_file = files[currentFileIndex][-18:]
-    paperCode = current_file.split("_")[0] # like 0620
+    paperCode = current_file.split("_")[0]  # like 0620
     currentDefintionsData = definitionsData[paperCode]
 
     currentDefintionsData = definitionsData[paperCode]
@@ -33,22 +42,24 @@ for currentFileIndex in range(len(files)):
     db_path = f"{BASE_PATH}/resources/json/{mcq_db_path}"
     num_of_questions = currentDefintionsData["mcqNumberOfQuestions"]
 
-    if current_file[0] == '0':
-        paperType = 'IGCSE'
+    if current_file[0] == "0":
+        paperType = "IGCSE"
     else:
-        paperType = 'A-level'
+        paperType = "A-level"
 
     # Extract paper number from filename
     paper_number = extract_paper_number(current_file)
 
     makeImages(files[currentFileIndex])
 
-    strip_images(mode='qp')
+    strip_images(mode="qp")
     pages = os.listdir(f"{outputPath}/currentPdfImages")
     answers = extract_answers_from_pdf(paperCode, current_file)
     current_question_num = 1
     for k in range(len(pages)):
-        y_coordinates = get_dimensions_from_api(f"{outputPath}/currentPdfImages/{k + 1}.jpg")
+        y_coordinates = get_dimensions_from_api(
+            f"{outputPath}/currentPdfImages/{k + 1}.jpg"
+        )
         # Filter boxes where x1 < 250 and extract their y2 (i.e. box[1])
         raw_y2_list = sorted(box[1] for box in y_coordinates if box[0] < 160)
         threshold = 10  # adjust as needed depending on your use case
@@ -61,25 +72,44 @@ for currentFileIndex in range(len(files)):
                 image_file_name = f"{subject}_p{paper_number}_{current_question_num + (currentFileIndex * num_of_questions)}"
 
                 if j == len(y2_list) - 1:
-                    take_screenshot(y2_list[j], 2050, image_file_name, 'mcq', f"{k + 1}.jpg")
+                    taken = take_screenshot(
+                        y2_list[j], 2050, image_file_name, "mcq", f"{k + 1}.jpg"
+                    )
                 else:
-                    take_screenshot(y2_list[j], y2_list[j + 1], image_file_name, 'mcq', f"{k + 1}.jpg")
-                
+                    taken = take_screenshot(
+                        y2_list[j],
+                        y2_list[j + 1],
+                        image_file_name,
+                        "mcq",
+                        f"{k + 1}.jpg",
+                    )
+                if not taken:
+                    current_question_num -= 1
                 if os.path.exists(f"{outputPath}/questions/{image_file_name}.jpg"):
                     question_text = (
-                        process_image(f"{outputPath}/questions/{image_file_name}.jpg").lower().strip()
+                        process_image(f"{outputPath}/questions/{image_file_name}.jpg")
+                        .lower()
+                        .strip()
                     )
                     formatted_text = formatText(question_text)
 
-                    level, chapter_num = get_level_and_chapter(formatted_text, paper_number, paperType, currentDefintionsData)
+                    level, chapter_num = get_level_and_chapter(
+                        formatted_text, paper_number, paperType, currentDefintionsData
+                    )
 
-                    if not os.path.exists(f"{BASE_PATH}/resources/images/{paperType}/{subject}/mcq"):
-                        os.makedirs(f"{BASE_PATH}/resources/images/{paperType}/{subject}/mcq")
+                    if not os.path.exists(
+                        f"{BASE_PATH}/resources/images/{paperType}/{subject}/mcq"
+                    ):
+                        os.makedirs(
+                            f"{BASE_PATH}/resources/images/{paperType}/{subject}/mcq"
+                        )
 
                     shutil.copy(
                         f"{outputPath}/questions/{image_file_name}.jpg",
                         f"{BASE_PATH}/resources/images/{paperType}/{subject}/mcq/{image_file_name}.jpg",
                     )
+
+                    clean_image(paperType, subject, "mcq", f"{image_file_name}.jpg")
 
                     answer_object = {
                         "questionName": f"{image_file_name}.jpg",
@@ -90,12 +120,13 @@ for currentFileIndex in range(len(files)):
                         "Level": level,
                         "paperNumber": paper_number,
                         "Subject": subject,
-                        "year" : "20" + current_file.split("_")[1][1:3]
+                        "year": "20" + current_file.split("_")[1][1:3],
                     }
                     questionObjects.append(answer_object)
                 current_question_num += 1
-    
+
     print(f"Finished processing {files[currentFileIndex]}...")
+    cleanup()
 
 
 with open(f"{BASE_PATH}/resources/json/test_images.json", "w") as f:

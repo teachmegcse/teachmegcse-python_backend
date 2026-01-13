@@ -11,5 +11,5 @@ src/resources/full_pdfs
 ./pathConst.py
 pathConst.py
 src/resources/pdfs
-venv
+.venv
 src/main/__pycache__

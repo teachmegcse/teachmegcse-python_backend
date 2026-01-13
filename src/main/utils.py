@@ -27,9 +27,11 @@ def predict(data, model):
     predicted_labels = pipeline.predict([data])
     return predicted_labels[0]
 
+
 def process_image(image_path):
     img = cv2.imread(image_path)
     return pytesseract.image_to_string(img, config=CUSTOM_CONFIG)
+
 
 def select_files():
     root = Tk()
@@ -37,6 +39,7 @@ def select_files():
     files = filedialog.askopenfilenames(filetypes=filetypes)
     root.destroy()
     return list(files)
+
 
 def makeImages(pdf_path):
     images = convert_from_path(pdf_path)
@@ -62,8 +65,11 @@ def makeImages(pdf_path):
                 "correct answer only",
             ]
             if not any(s in text for s in skip_strings):
-                images[x].save(f"{outputPath}/currentPdfImages/{current_index}.jpg", "JPEG")
+                images[x].save(
+                    f"{outputPath}/currentPdfImages/{current_index}.jpg", "JPEG"
+                )
                 current_index += 1
+
 
 def formatText(text):
     stemmer = PorterStemmer()
@@ -117,22 +123,29 @@ def formatText(text):
     # Join the processed words back into a single string
     return " ".join(words)
 
+
 def strip_images(mode):
     pages = os.listdir(f"{outputPath}/currentPdfImages")
     for i in range(len(pages)):
         with PIL.Image.open(f"{outputPath}/currentPdfImages/{pages[i]}") as im:
-            if mode == 'qp':
+            if mode == "qp":
                 im_crop = im.crop((0, 150, 1654, 2200))
             else:
                 im_crop = im.crop((100, 200, 2300, 1500))
             im_crop.save(f"{outputPath}/currentPdfImages/{pages[i]}")
 
+
 def take_screenshot(y1, y2, unique_filename, type, page):
+    # type can either be mcq or long
     height = y2 - y1
 
-    if height <= 300:
+    if type == "long" and height <= 300:
         print(f"Skipping question {unique_filename} - too small ({height} pixels)")
-        return
+        return False
+
+    if type == "mcq" and height <= 100:
+        print(f"Skipping question {unique_filename} - too small ({height} pixels)")
+        return False
 
     # Open the correct image based on type
     if type == "long":
@@ -151,35 +164,33 @@ def take_screenshot(y1, y2, unique_filename, type, page):
 
             print(f"Saved question {unique_filename} → {save_path}")
 
+        return True
     except Exception as e:
         print(f"Error saving question {unique_filename}: {e}")
 
 
-def clean_images(level_folder_name, subject, paper_number):
-    questions = os.listdir(
-        f"{BASE_PATH}/resources/images/{level_folder_name}/{subject}/{paper_number}"
+def clean_image(level_folder_name, subject, paper_number, image_name):
+    im = PIL.Image.open(
+        f"{BASE_PATH}/resources/images/{level_folder_name}/{subject}/{paper_number}/{image_name}"
     )
-    for i in range(len(questions)):
-        im = Image.open(
-            f"{BASE_PATH}/resources/images/{level_folder_name}/{subject}/{paper_number}/{questions[i]}"
-        )
-        pix = im.load()
-        flag = False
-        if flag == False:
-            for y in range(im.height - 2, 1, -2):
-                for x in range(im.width - 2, 1, -2):
-                    value = pix[x, y]
-                    if value != (255, 255, 255):
-                        value2 = pix[x + 1, y]
-                        if value2 != (255, 255, 255):
-                            flag = True
-                            break
-                if flag:
-                    break
+    pix = im.load()
+    flag = False
+    if not flag:
+        for y in range(im.height - 2, 1, -2):
+            for x in range(im.width - 2, 1, -2):
+                value = pix[x, y]
+                if value != (255, 255, 255):
+                    value2 = pix[x + 1, y]
+                    if value2 != (255, 255, 255):
+                        flag = True
+                        break
+            if flag:
+                break
         cleaned_image = im.crop((0, 0, 1500, y + 10))
         cleaned_image.save(
-            f"{BASE_PATH}/resources/images/{level_folder_name}/{subject}/{paper_number}/{questions[i]}"
+            f"{BASE_PATH}/resources/images/{level_folder_name}/{subject}/{paper_number}/{image_name}"
         )
+
 
 def merge_all_images():
     pages = os.listdir(f"{outputPath}/currentPdfImages")
@@ -204,6 +215,7 @@ def merge_all_images():
     dst.save(f"{outputPath}/final/final.jpg")
     return current_height
 
+
 def extract_paper_number(filename):
     try:
         base_name = filename.split(".")[0]
@@ -215,6 +227,7 @@ def extract_paper_number(filename):
     except Exception as e:
         print(f"Error: {e}")
     return None
+
 
 def get_dimensions_from_api(image_path):
     with open(image_path, "rb") as img:
@@ -229,32 +242,32 @@ def get_dimensions_from_api(image_path):
                 f"API request failed with status code {response.status_code}"
             )
 
+
 def cleanup():
     for filename in os.listdir(f"{outputPath}/currentPdfImages"):
         file_path = os.path.join(f"{outputPath}/currentPdfImages", filename)
         if os.path.isfile(file_path):  # only delete files
             os.remove(file_path)
-            
+
     for filename in os.listdir(f"{outputPath}/final"):
         file_path = os.path.join(f"{outputPath}/final", filename)
         if os.path.isfile(file_path):  # only delete files
             os.remove(file_path)
 
     for filename in os.listdir(f"{outputPath}/questions"):
-            file_path = os.path.join(f"{outputPath}/questions", filename)
-            if os.path.isfile(file_path):  # only delete files
-                os.remove(file_path)
+        file_path = os.path.join(f"{outputPath}/questions", filename)
+        if os.path.isfile(file_path):  # only delete files
+            os.remove(file_path)
+
 
 def get_level_and_chapter(formatted_text, paper_num, paperType, currentDefinitionsData):
     # implicit level = IGCSE as all IGCSE have format 06.. while A-level have 97..
-    if paperType == 'IGCSE':
+    if paperType == "IGCSE":
         IGModel = currentDefinitionsData["IGmodel"]
         ALL_LABELS = currentDefinitionsData["chapters"]
-        level = 'IGCSE'
+        level = "IGCSE"
         chapter = predict(formatted_text, IGModel)
-        chapter_num = (
-                            ALL_LABELS.index(chapter) + 1 if chapter in ALL_LABELS else 0
-                        )
+        chapter_num = ALL_LABELS.index(chapter) + 1 if chapter in ALL_LABELS else 0
     else:
         ASModel = currentDefinitionsData["ASModel"]
         A2Model = currentDefinitionsData["A2Model"]
@@ -266,9 +279,7 @@ def get_level_and_chapter(formatted_text, paper_num, paperType, currentDefinitio
         if paper_num in ASpapers:
             level = "AS"
             chapter = predict(formatted_text, ASModel)
-            chapter_num = (
-                ASLabels.index(chapter) + 1 if chapter in ASLabels else 0
-            )
+            chapter_num = ASLabels.index(chapter) + 1 if chapter in ASLabels else 0
         elif paper_num in A2papers:
             level = "A2"
             chapter = predict(formatted_text, A2Model)
@@ -278,6 +289,7 @@ def get_level_and_chapter(formatted_text, paper_num, paperType, currentDefinitio
                 else 0
             )
     return level, chapter_num
+
 
 def extract_answers_from_pdf(code, pdfName):
     pdfName = pdfName.replace("qp", "ms")
@@ -304,3 +316,4 @@ def extract_answers_from_pdf(code, pdfName):
             answers.append(answer)
 
     return answers
+

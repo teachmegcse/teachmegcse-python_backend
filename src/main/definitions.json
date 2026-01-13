@@ -16,6 +16,7 @@
     ],
     "IGmodel" : "igbio.joblib",
     "board" : "cie",
+    "mcq_db_path" : "ig_bio_mcq.json",
     "long_db_path" : "ig_bio_theory.json",
     "long_ms_db_path" : "ig_bio_ms.json",
     "mcqNumberOfQuestions" : 40
@@ -55,6 +56,7 @@
     ],
     "IGmodel" : "igphy.joblib",
     "board" : "cie",
+    "mcq_db_path" : "ig_phy_mcq.json",
     "long_db_path" : "ig_phy_theory.json",
     "long_ms_db_path" : "ig_phy_ms.json",
     "mcqNumberOfQuestions" : 40
@@ -73,6 +75,7 @@
     ],
     "IGmodel" : "igeco.joblib",
     "board" : "cie",
+    "mcq_db_path" : "ig_eco_mcq.json",
     "mcqNumberOfQuestions" : 30
   },
 
@@ -101,6 +104,7 @@
     "ASModel" : "asbio.joblib",
     "A2Model" : "a2bio.joblib",
     "board" : "cie",
+    "mcq_db_path" : "a_bio_mcq.json",
     "long_db_path" : "a_bio_theory.json",
     "long_ms_db_path" : "a_bio_ms.json",
     "mcqNumberOfQuestions" : 40
@@ -137,6 +141,7 @@
     "ASModel" : "aschem.joblib",
     "A2Model" : "a2chem.joblib",
     "board" : "cie",
+    "mcq_db_path" : "a_chem_mcq.json",
     "long_db_path" : "a_chem_theory.json",
     "long_ms_db_path" : "a_chem_ms.json",
     "mcqNumberOfQuestions" : 40
@@ -165,6 +170,7 @@
     "ASModel" : "asphy.joblib",
     "A2Model" : "a2phy.joblib",
     "board" : "cie",
+    "mcq_db_path" : "a_phy_mcq.json",
     "long_db_path" : "a_phy_theory.json",
     "long_ms_db_path" : "a_phy_ms.json",
     "mcqNumberOfQuestions" : 40
@@ -207,6 +213,7 @@
     "ASModel" : "aseco.joblib",
     "A2Model" : "a2eco.joblib",
     "board" : "cie",
+    "mcq_db_path" : "a_eco_mcq.json",
     "mcqNumberOfQuestions" : 30
   }
 }
