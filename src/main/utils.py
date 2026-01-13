@@ -1,8 +1,7 @@
 from pdf2image import convert_from_path
 import PIL
 from PyPDF2 import PdfReader
-from tkinter import *
-from tkinter import filedialog
+from tkinter import filedialog, Tk
 import os
 from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
