@@ -169,6 +169,7 @@ def take_screenshot(y1, y2, unique_filename, type, page):
 
 
 def clean_image(level_folder_name, subject, paper_number, image_name):
+    # level_folder_name is either "IGCSE" or "A-level"
     im = PIL.Image.open(
         f"{BASE_PATH}/resources/images/{level_folder_name}/{subject}/{paper_number}/{image_name}"
     )

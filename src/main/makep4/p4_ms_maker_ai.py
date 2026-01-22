@@ -15,7 +15,7 @@ sys.path.append(BASE_PATH)
 
 from main.utils import (
     select_files, makeImages, strip_images, take_screenshot,
-    merge_all_images, extract_paper_number, cleanup
+    merge_all_images, extract_paper_number, cleanup, clean_image
 )
 
 output_path = f"{BASE_PATH}/resources/images/test_images"
@@ -190,6 +190,8 @@ if __name__ == "__main__":
                             }.jpg",
                         )
 
+                        clean_image(paperType, subject, "long", f"{image_file_name}.jpg")
+
         image_file_name = (
             f"{subject}_p{paper_number}_ms_{filename_num}_{currentQuestionNum}"
         )
@@ -215,6 +217,8 @@ if __name__ == "__main__":
                     }.jpg",
                 )
         
+        clean_image(paperType, subject, "long", f"{image_file_name}.jpg")
+
         filename_num += 1
         try:
             with open(JSON_FILE_LOCATION, "w") as json_file:
