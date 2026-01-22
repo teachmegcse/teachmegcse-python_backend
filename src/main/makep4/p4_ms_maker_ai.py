@@ -8,16 +8,15 @@ import re
 import sys
 import shutil
 
-# Need to add clean_images to remove whitespace at the bottom
-
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
 sys.path.append(BASE_PATH)
 
 from main.utils import (
-    select_files, makeImages, strip_images, take_screenshot,
+    select_files, strip_images, take_screenshot, makeImages,
     merge_all_images, extract_paper_number, cleanup, clean_image
 )
 
+reader = easyocr.Reader(["en"])
 output_path = f"{BASE_PATH}/resources/images/test_images"
 definitionsPath = f"{BASE_PATH}/main/definitions.json"
 
@@ -53,9 +52,7 @@ def extract_question_number(im, current_question_num, output_path):
         for box in bounding_boxes:
             current_box = im.crop((box[0], box[1], box[2], box[3]))
             current_box.save(f"{output_path}/questions/temp.jpg")
-            text_in_box = easyocr.Reader(["en"]).readtext(
-                f"{output_path}/questions/temp.jpg"
-            )
+            text_in_box = reader.readtext(f"{output_path}/questions/temp.jpg")
 
             if text_in_box:
                 text_in_box = text_in_box[0][1]  # Extract text from OCR result
@@ -111,7 +108,7 @@ if __name__ == "__main__":
         paperCode = filename.split("_")[0]
 
         if filename[0] == '0':
-                        paperType = 'IGCSE'
+            paperType = 'IGCSE'
         else:
             paperType = 'A-level'
 
