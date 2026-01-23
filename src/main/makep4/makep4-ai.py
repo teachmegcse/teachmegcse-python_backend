@@ -108,9 +108,9 @@ if __name__ == "__main__":
             print(f"Starting to process question paper: {current_file}")
             paperCode = current_file.split("_")[0]
 
-            currentDefintionsData = definitionsData[paperCode]
-            subject = currentDefintionsData["subjectName"]
-            long_db_path = currentDefintionsData["long_db_path"]
+            currentDefinitionsData = definitionsData[paperCode]
+            subject = currentDefinitionsData["subjectName"]
+            long_db_path = currentDefinitionsData["long_db_path"]
             db_path = f"{BASE_PATH}/resources/json/{long_db_path}"
 
             # Extract paper number from filename
