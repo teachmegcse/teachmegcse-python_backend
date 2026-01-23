@@ -5,36 +5,24 @@ This folder contains Python scripts and pre-trained models (`.joblib` files) for
 ---
 
 ## General Overview of `.joblib` Files
-The `.joblib` files are pre-trained machine learning models for various subjects and academic levels (e.g., IGCSE, AS, A2). Each `.joblib` file represents a trained model specific to a subject or syllabus, enabling prediction tasks such as topic classification and chapter identification.
 
-These files are used in conjunction with the `predictData.py` script for making predictions.
+The `.joblib` files are pre-trained machine learning models for various subjects and academic levels (e.g., IGCSE, AS, A2). Each `.joblib` file represents a trained model specific to a subject or syllabus, enabling prediction tasks such as topic classification and chapter identification.
 
 ---
 
 ## Detailed File Descriptions
 
-### **1. predictData.py**
-- **Purpose**: Makes predictions on syllabus content using pre-trained `.joblib` models.
-- **Features**:
-  - Processes input text (e.g., syllabus or question text) using NLP techniques.
-  - Loads the appropriate `.joblib` model and predicts the corresponding topic or chapter.
-
-#### Key Functions:
-1. **`predict(data, model)`**:
-   - Preprocesses input text by cleaning and removing irrelevant characters.
-   - Loads the specified `.joblib` model and predicts the label for the input data.
-2. **`printLabel(data, model)`**:
-   - A wrapper for the `predict` function, displaying predictions in a readable format.
-
 ---
 
-### **2. trainModels.py**
+### **1. trainModels.py**
+
 - **Purpose**: Trains machine learning models for syllabus classification tasks.
 - **Features**:
   - Implements an NLP pipeline using `CountVectorizer` and a Naive Bayes classifier.
   - Saves trained models as `.joblib` files for later use.
 
-#### Key Functions:
+#### Key Functions
+
 1. **`train(data, label)`**:
    - Accepts labeled training data.
    - Trains a Naive Bayes model using a pipeline that includes text vectorization.
@@ -42,13 +30,15 @@ These files are used in conjunction with the `predictData.py` script for making 
 
 ---
 
-### **3. trainWithPdfs.py**
+### **2. trainWithPdfs.py**
+
 - **Purpose**: Trains models using text extracted from PDFs of syllabus documents.
 - **Features**:
   - Reads PDF files containing syllabus content, extracts text, and preprocesses it.
   - Labels the text based on chapters or topics and trains a classification model.
 
-#### Key Components:
+#### Key Components
+
 1. **PDF Text Extraction**:
    - Uses `getFormattedTextfromPdf.py` to extract and clean text from PDFs.
 2. **Model Training**:
@@ -56,14 +46,16 @@ These files are used in conjunction with the `predictData.py` script for making 
 
 ---
 
-### **4. getFormattedTextfromPdf.py**
+### **3. getFormattedTextfromPdf.py**
+
 - **Purpose**: Extracts and preprocesses text from PDF files for training or prediction.
 - **Features**:
   - Removes unnecessary content like punctuation, stopwords, and digits.
   - Applies NLP techniques such as stemming and tokenization.
   - Focuses on educational keywords by removing command words like "analyze" or "describe."
 
-#### Key Functions:
+#### Key Functions
+
 1. **`getPdfText(pdfPath)`**:
    - Extracts raw text from all pages of a PDF.
 2. **`makeText(pdfPath)`**:
@@ -73,7 +65,8 @@ These files are used in conjunction with the `predictData.py` script for making 
 
 ---
 
-### **5. Syllabus-Based Training Scripts**
+### **4. Syllabus-Based Training Scripts**
+
 - **Purpose**: Train machine learning models for specific subjects and academic levels.
 - **Features**:
   - Prepares labeled training data directly from syllabus content for individual subjects.
@@ -82,4 +75,3 @@ These files are used in conjunction with the `predictData.py` script for making 
 These scripts are specialized for different subjects (e.g., Biology, Chemistry, Economics) and levels (e.g., IGCSE, AS, A2). They produce subject-specific `.joblib` files.
 
 ---
-

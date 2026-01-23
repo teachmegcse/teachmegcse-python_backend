@@ -32,7 +32,6 @@ This repository contains a collection of Python scripts that automate the classi
 ### 4. **Machine Learning & NLP Processing**
 
 - **`.joblib`**\*\* Files\*\*: Pre-trained machine learning models for syllabus classification.
-- **`predictData.py`**: Uses trained models to classify syllabus content into topics.
 - **`trainModels.py`**: Trains machine learning models for syllabus classification using NLP techniques.
 - **`trainWithPdfs.py`**: Extracts text from PDFs and trains models based on syllabus content.
 - **`getFormattedTextfromPdf.py`**: Extracts and preprocesses text from syllabus PDFs.
@@ -57,7 +56,7 @@ This repository contains a collection of Python scripts that automate the classi
 1. Run `p1_api.py` to serve the PDF generation API.
 2. Use `makep1Final.py` or `makep4-ai.py` to extract question images from PDFs.
 3. Use `6.py` and `7.py` to generate JSON metadata.
-4. Train or use ML models with `trainModels.py` and `predictData.py`.
+4. Train or use ML models with `trainModels.py`.
 5. Organize and format JSON data with `combine_json.py` and `format-json.py`.
 
 ## Conclusion

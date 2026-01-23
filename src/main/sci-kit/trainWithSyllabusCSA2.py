@@ -1,5 +1,11 @@
 import trainModels
-import getFormattedTextfromPdf
+import os
+import sys
+
+BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
+sys.path.append(BASE_PATH)
+
+from main.utils import formatText
 
 
 allLabels = ['Data Representation', 'Communication and internet technologies', 
@@ -332,6 +338,6 @@ Write program code to use exception handling
 
 textarr = [text, text2, text3, text4, text5, text6, text7, text8]
 for i in range(len(textarr)):
-    textarr[i] = getFormattedTextfromPdf.formatText(textarr[i])
+    textarr[i] = formatText(textarr[i])
 
 trainModels.train(textarr, allLabels)
