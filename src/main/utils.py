@@ -42,34 +42,46 @@ def select_files():
     return list(files)
 
 
+
 def makeImages(pdf_path):
     images = convert_from_path(pdf_path)
     reader = PdfReader(pdf_path)
     number_of_pages = len(reader.pages)
+
     path = f"{outputPath}/currentPdfImages"
-    if not os.path.exists(path):
-        os.makedirs(path)
+    os.makedirs(path, exist_ok=True)
+
+    skip_strings = [
+        "blank page",
+        "important values",
+        "guidance for chemical equations",
+        "next page",
+        "marking principle",
+        "correct answer only",
+    ]
+
     current_index = 1
+
     for x in range(1, number_of_pages):
-        reader = PdfReader(pdf_path)
         page = reader.pages[x]
-        text = page.extract_text()
-        text = text.lower()
-        if x >= 1:
-            # Skip if page contains any of these strings
-            skip_strings = [
-                "blank page",
-                "important values",
-                "guidance for chemical equations",
-                "next page",
-                "marking principle",
-                "correct answer only",
-            ]
-            if not any(s in text for s in skip_strings):
-                images[x].save(
-                    f"{outputPath}/currentPdfImages/{current_index}.jpg", "JPEG"
-                )
-                current_index += 1
+        text = (page.extract_text() or "").lower()
+
+        matched = [s for s in skip_strings if s in text]
+
+        if matched:
+            print(
+                f"[SKIPPED] Page {x + 1} → matched: {', '.join(matched)}"
+            )
+            continue
+
+        images[x].save(
+            f"{path}/{current_index}.jpg",
+            "JPEG"
+        )
+        print(f"[SAVED] Page {x + 1} → image {current_index}.jpg")
+
+        current_index += 1
+
 
 
 def formatText(text):
@@ -163,7 +175,7 @@ def take_screenshot(y1, y2, unique_filename, type, page):
             save_path = f"{outputPath}/questions/{unique_filename}.jpg"
             im_crop.save(save_path)
 
-            print(f"Saved question {unique_filename} → {save_path}")
+            print(f"Saved question {unique_filename}")
 
         return True
     except Exception as e:
@@ -258,6 +270,11 @@ def cleanup():
 
     for filename in os.listdir(f"{outputPath}/questions"):
         file_path = os.path.join(f"{outputPath}/questions", filename)
+        if os.path.isfile(file_path):  # only delete files
+            os.remove(file_path)
+
+    for filename in os.listdir(f"{BASE_PATH}/resources/images/vision_output_images"):
+        file_path = os.path.join(f"{BASE_PATH}/resources/images/vision_output_images", filename)
         if os.path.isfile(file_path):  # only delete files
             os.remove(file_path)
 

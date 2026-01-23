@@ -103,17 +103,18 @@ def check_json_validity(json_object, pdf_dir) -> json:
                 raise RuntimeError(f"Error reading {qp_pdf_name}: {e}") from e
             current_pdf_name = qp_pdf_name
         # Replace the current record's questionText with our extracted question text
-        qnum = record["questionNumber"]
+        qnum = record["questionNum"]
         if qnum - 1 < len(split_questions):
             block_text = split_questions[qnum - 1]
             record["questionText"] = block_text
             # Extract the marks from the trailing [Total: X] within this block
             m = re.search(r"\[\s*Total\s*:?\s*([0-9]+\+?)\s*\]", block_text, flags=re.IGNORECASE)
             if m:
-                record["marks"] = m.group(1)
+                record["marks"] = int(m.group(1))
         else:
             # The expected question index was not found in the parsed blocks
-            logging.debug(question_text)
+            #logging.debug(question_text)
+            pass
     return json_object
 
 
@@ -142,7 +143,7 @@ def main():
     with open(json_file, "r") as f:
         json_object = json.load(f)
     pdf_directory = os.path.join(
-        SCRIPT_DIR, "..", "resources", "pdfs", json_object[0]["pdfName"].split("_")[0]
+        SCRIPT_DIR, "..", "resources", "full_pdfs", json_object[0]["pdfName"].split("_")[0]
     )
     new_json = check_json_validity(json_object, pdf_directory)
     with open(json_file, "w") as f:
