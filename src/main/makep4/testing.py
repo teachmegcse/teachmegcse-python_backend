@@ -11,7 +11,6 @@ from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
 import re
 import cv2
-import pytesseract
 from joblib import load
 import shutil
 import pdfplumber

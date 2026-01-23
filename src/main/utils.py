@@ -7,18 +7,19 @@ from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
 import re
 import cv2
-import pytesseract
 from joblib import load
 import warnings
 from sklearn.exceptions import InconsistentVersionWarning
 import requests
+import easyocr
+import numpy as np
 
 warnings.filterwarnings("ignore", category=InconsistentVersionWarning)
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../..", "src"))
 outputPath = f"{BASE_PATH}/resources/images/test_images"
 CUSTOM_CONFIG = r"--oem 3 --psm 6"
-
+READER = easyocr.Reader(["en"])
 
 def predict(data, model):
     pipeline = load(f"{BASE_PATH}/resources/sci-kit/{model}")
@@ -29,7 +30,8 @@ def predict(data, model):
 
 def process_image(image_path):
     img = cv2.imread(image_path)
-    return pytesseract.image_to_string(img, config=CUSTOM_CONFIG)
+    results = READER.readtext(img, detail=0)
+    return "\n".join(results)
 
 
 def select_files():

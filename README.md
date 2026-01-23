@@ -50,7 +50,7 @@ This repository contains a collection of Python scripts that automate the classi
 
 ## Libraries Used
 
-- `FastAPI`, `pdf2image`, `PIL`, `PyPDF2`, `pytesseract`, `scikit-learn`, `tkinter`
+- `FastAPI`, `pdf2image`, `PIL`, `PyPDF2`, `scikit-learn`, `tkinter`
 
 ## Usage
 

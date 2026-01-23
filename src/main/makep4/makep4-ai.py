@@ -3,7 +3,7 @@ import os
 import json
 import shutil
 import sys
-# Need to add clean_images to remove whitespace at the bottom
+import easyocr
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
 sys.path.append(BASE_PATH)
