@@ -3,7 +3,6 @@ import os
 import json
 import shutil
 import sys
-import easyocr
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
 sys.path.append(BASE_PATH)
@@ -116,6 +115,11 @@ if __name__ == "__main__":
             # Extract paper number from filename
             paper_num = extract_paper_number(current_file)
 
+            longPapers = currentDefinitionsData["longPapers"]
+            if paper_num not in longPapers:
+                print(f"Paper number {paper_num} not in longPapers list, skipping file.")
+                continue
+
             # Process the paper
             print("Converting PDF to images...")
             makeImages(file_path)
@@ -157,7 +161,7 @@ if __name__ == "__main__":
                         current_file = current_file.replace(".pdf", "")
 
                         level, chapter_num = get_level_and_chapter(
-                            formatted_text, paper_num, paperType, currentDefintionsData
+                            formatted_text, paper_num, paperType, currentDefinitionsData
                         )
 
                         if not os.path.exists(

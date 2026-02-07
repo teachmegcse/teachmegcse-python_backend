@@ -112,14 +112,10 @@ if __name__ == "__main__":
         else:
             paperType = 'A-level'
 
-        if filename[0] == '0':
-            level = 'IGCSE'
-        else:
-            level = 'A-level'
-
         currentDefintionsData = definitionsData[paperCode]
         subject = currentDefintionsData["subjectName"]
         db_name = currentDefintionsData["long_ms_db_path"]
+        longPapers = currentDefintionsData["longPapers"]
         
         JSON_FILE_LOCATION = f"{BASE_PATH}/resources/json/{db_name}"
         if not os.path.exists(JSON_FILE_LOCATION):
@@ -144,6 +140,9 @@ if __name__ == "__main__":
         )
 
         paper_number = extract_paper_number(filename)
+        if paper_number not in longPapers:
+            print(f"Paper number {paper_number} not in longPapers list, skipping file.")
+            continue
 
         for j in range(len(number_of_pages)):
             image_path = f"{output_path}/currentPdfImages/{number_of_pages[j]}"

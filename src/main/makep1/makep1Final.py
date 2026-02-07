@@ -41,6 +41,7 @@ for currentFileIndex in range(len(files)):
     mcq_db_path = currentDefintionsData["mcq_db_path"]
     db_path = f"{BASE_PATH}/resources/json/{mcq_db_path}"
     num_of_questions = currentDefintionsData["mcqNumberOfQuestions"]
+    mcqPapers = currentDefintionsData["mcqPapers"]
 
     if current_file[0] == "0":
         paperType = "IGCSE"
@@ -49,6 +50,10 @@ for currentFileIndex in range(len(files)):
 
     # Extract paper number from filename
     paper_number = extract_paper_number(current_file)
+
+    if paper_number not in mcqPapers:
+        print(f"Paper number {paper_number} not in mcqPapers list, skipping file.")
+        continue
 
     makeImages(files[currentFileIndex])
 

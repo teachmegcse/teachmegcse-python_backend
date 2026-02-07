@@ -83,8 +83,8 @@
   "9700": {
     "level": "A-Level",
     "subjectName": "biology",
-    "mcqPapers": [1, 2],
-    "longPapers": [3, 4, 5],
+    "mcqPapers": [1],
+    "longPapers": [2, 3, 4, 5],
     "ASpapers" : [1, 2],
     "A2papers" : [3, 4, 5],
     "ASChapters": [
@@ -114,8 +114,8 @@
   "9701": {
     "level": "A-Level",
     "subjectName": "chemistry",
-    "mcqPapers": [1, 2],
-    "longPapers": [3, 4, 5],
+    "mcqPapers": [1],
+    "longPapers": [2, 3, 4, 5],
     "ASpapers" : [1, 2],
     "A2papers" : [3, 4, 5],
     "ASChapters": [
@@ -151,8 +151,8 @@
   "9702": {
     "level": "A-Level",
     "subjectName": "physics",
-    "mcqPapers": [1, 2],
-    "longPapers": [3, 4, 5],
+    "mcqPapers": [1],
+    "longPapers": [2, 3, 4, 5],
     "ASpapers" : [1, 2],
     "A2papers" : [3, 4, 5],
     "ASChapters": [
