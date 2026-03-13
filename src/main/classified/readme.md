@@ -1,35 +1,30 @@
-# Overview
+# Classified PDF Services
 
-These Python scripts automate the classification and generation of PDFs for exam questions and answers.
+APIs and helpers that bundle curated question datasets into printable PDFs + ZIP archives.
 
-## Files Description
+## p1_api.py
 
-### 1. `p1_api.py`
-- **Purpose**: 
-  - Implements a FastAPI web service for generating and serving classified PDFs.
-  - Handles requests to generate question and answer PDFs based on input JSON data.
-- **Key Features**:
-  - Supports cross-origin resource sharing (CORS) to allow external applications to interact.
-  - Processes input data (e.g., questions and their attributes) to create structured PDFs.
-  - Combines multiple PDFs into a single downloadable ZIP file.
-- **Endpoints**:
-  - `/`: A root endpoint that returns a simple "Hello World" message.
-  - `/generate-pdf/`: Accepts JSON input (`QuestionsList`) and generates a ZIP file containing `questions.pdf` and `answers.pdf`.
+- **What it does**: FastAPI app exposing `/generate-pdf/`. Accepts a `QuestionsList` payload (MCQ + long question metadata) and returns a ZIP containing `questions.pdf` and `answers.pdf`.
+- **Key behaviors**:
+  - Applies CORS defaults for external callers.
+  - Splits MCQ vs long-answer data so layouts stay consistent (MCQ images inline; long answers paginated and rotated when necessary).
+  - Uses `resources/images/<level>/<subject>` to fetch question/answer JPEGs saved by `makep1` / `makep4` pipelines.
+  - Stores the generated PDFs in `resources/pdfs/classified/` before zipping.
+- **Running locally**:
+  ```bash
+  uvicorn src.main.classified.p1_api:app --host 0.0.0.0 --port 8010
+  ```
 
-### 2. `p1_fixed.py`
-- **Purpose**: 
-  - script to generate classified and answer PDFs from a predefined JSON file.
-- **Key Features**:
-  - Reads a JSON database of classified questions.
-  - Outputs PDFs with questions and corresponding answers.
-  - Includes page numbering and aesthetic layouts.
-  - Combines generated PDFs into a single ZIP file for easier sharing.
+## p1_api_2.py / p1_api_server.py
 
-### 3. `p1_images_to_classified.py`
-- **Purpose**: 
-  - Generates classified PDFs with chapters, questions, indexes and mark schemes, although those are all optional to facilitate the creation of worksheets through these tools
-- **Key Features**:
-  - Reads question images from a directory and organizes them into chapters.
-  - Adds optional chapter title pages, advertisement banners, and indexes.
-  - Merges classified questions with mark schemes into a single PDF, if enabled.
-  - Highly configurable through parameters like `hasIndex`, `hasChapterPages`, and `hasMS`.
+- Legacy/alternate FastAPI entry points kept for experimentation (different payload formats, legacy UI integration). Prefer `p1_api.py` unless you need backwards compatibility.
+
+## p1_fixed.py
+
+- CLI-oriented script that reads a predefined JSON dataset, renders `questions.pdf` + `answers.pdf`, and zips them without hosting an API. Handy for batch generation or debugging layout changes offline.
+
+## p1_images_to_classified.py
+
+- Builds chaptered PDFs directly from an image directory (e.g., `resources/images/IGCSE/chemistry/mcq`).
+- Optional flags control chapter title pages, index generation, advertising banners, and mark-scheme inclusion.
+- Useful for ad-hoc worksheet creation when you already have curated folders rather than JSON payloads.

@@ -1,57 +1,34 @@
-# Detailed File Descriptions
+# makep4 pipeline (Long-form + mark schemes)
 
-Below is a detailed breakdown of each Python script in the folder, including its purpose, features, and functions.
+Tools here handle long-answer question extraction (papers 2–6) and AI-assisted mark-scheme splitting.
 
----
+## `makep4-ai.py`
 
-## **1. makep4-ai.py**
-- **Purpose**: Integrates AI to detect and crop long answer questions' regions dynamically.
-- **Features**:
-  - Communicates with an AI API for question detection.
-  - Dynamically crops questions based on AI-detected bounding boxes.
-  - Generates question-specific images and metadata.
+- Selects one or more PDFs (question papers) through the Tk dialog.
+- Converts each page to an image and trims headers/footers via `strip_images`.
+- Calls the YOLO detection API (`coordinates.py`) for every page, then merges all pages into a single tall canvas so questions spanning multiple pages stitch cleanly.
+- Generates a sorted list of Y coordinates, crops each question using `take_screenshot(..., type="long")`, and copies it into `resources/images/<level>/<subject>/long/`.
+- OCRs + normalizes the cropped text, classifies chapter + level using the syllabus models, and appends a record to the configured `long_db_path` JSON.
 
-### Key Functions:
-1. **`call_ai_api(image)`**:
-   - Sends an image to the AI service.
-   - Returns a list of bounding boxes for detected questions.
+## `p4_ms_maker_ai.py`
 
-2. **`crop_image_by_ai(image, bounding_boxes)`**:
-   - Crops the image into sections based on the AI-detected bounding boxes.
-   - Each bounding box corresponds to a single question.
+- Mirrors the question workflow but operates on mark-scheme PDFs.
+- Uses the same detection API to locate answer boundaries and saves the resulting crops into the MS image folder.
+- Each cropped MS entry can be paired later via `combine_json.py`.
 
-3. **`save_ai_cropped_images(output_path, cropped_images)`**:
-   - Saves the AI-cropped images with filenames indicating the question numbers.
+## Supporting files
 
-4. **`process_with_ai(pdf_path, output_path, subject, paper_number)`**:
-   - Integrates all steps:
-     - Converts the PDF to images.
-     - Calls the AI API for question detection.
-     - Crops and saves question-specific images.
+- `generatePages.py`, `testing.py`, etc., store experimental routines for batching or debugging extraction logic.
+- Long-answer metadata ultimately feeds into classified PDF generation once merged with MS references.
 
----
+## Prerequisites
 
-## **2. p4_ms_maker_ai.py**
-- **Purpose**: AI-assisted mark scheme splitting for increased accuracy.
-- **Features**:
-  - Integrates with an AI service to detect question boundaries in mark schemes.
-  - Handles diverse layouts and formats more effectively than traditional OCR.
+- YOLO server running (`python src/main/coordinates.py --mode best1`).
+- `definitions.json` entries with valid `longPapers`, `long_db_path`, and `long_ms_db_path` values.
+- Destination directories under `resources/images/<level>/<subject>/long/` and `.../ms/` (auto-created if missing).
 
-### Key Functions:
-1. **`call_ai_service(image)`**:
-   - Sends the image to an external AI service for question boundary detection.
-   - Returns bounding boxes for question regions.
+## Outputs
 
-2. **`crop_question_sections(image, bounding_boxes)`**:
-   - Crops question-specific sections using AI-detected bounding boxes.
-
-3. **`save_cropped_mark_schemes(output_path, cropped_sections)`**:
-   - Saves cropped mark scheme images.
-
-4. **`process_mark_scheme_with_ai(pdf_path, output_path)`**:
-   - Executes the full pipeline:
-     - Converts PDFs to images.
-     - Detects question regions using AI.
-     - Crops and saves question-specific sections.
-
----
+- Long-question JPEGs cleaned of whitespace and truncated at content end (`clean_image`).
+- JSON append-only logs containing chapter, question number, source PDF, and formatted text.
+- Optional mark-scheme crops ready for downstream pairing.

@@ -45,17 +45,13 @@ def process_questions():
 
             parts = get_dimensions_from_api(str(image_path))
 
-            # convert to ints
             parts = [[int(v) for v in box] for box in parts]
 
-            # sort by top coordinate (y1)
             parts_sorted = sorted(parts, key=lambda x: x[1])
-
-            q["questionParts"] = parts_sorted
 
             image = Image.open(image_path)
 
-            # crop EACH part
+            question_parts = []
             for idx, box in enumerate(parts_sorted):
                 x1, y1, x2, y2 = box
 
@@ -64,7 +60,14 @@ def process_questions():
                 save_path = Path(IMAGES_DIR) / f"temp_{i}_{idx}.jpg"
                 cropped.save(save_path)
                 part_text = reader.readtext(str(save_path))
-                q[f"part_{idx}"] = part_text
+
+                full_text = " ".join([t[0] for t in part_text])
+
+                question_parts.append(
+                    {"coordinates": [x1, y1, x2, y2], "text": full_text}
+                )
+
+            q["questionParts"] = question_parts
 
             updated_questions.append(q)
 

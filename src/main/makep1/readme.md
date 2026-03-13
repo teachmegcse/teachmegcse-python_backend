@@ -1,64 +1,31 @@
-# Script: makep1Final.py
+# makep1 pipeline (MCQ extraction)
 
-This Python script automates the process of extracting images from PDF files, cropping the images, and generating question images. It is designed for use with Exceed.
+Automates everything needed to convert paper-1 PDFs into cleaned MCQ images, OCR text, per-chapter metadata, and JSON rows.
 
-## Purpose
-- Convert PDF pages into images.
-- Crop and clean the images to extract question sections.
-- Save individual question images with specific dimensions and file naming conventions.
+## Primary script: `makep1Final.py`
 
-## Key Features
+- Launches a Tk file picker so you can select one or more PDF question papers.
+- Calls helpers from `main.utils` to:
+  - Convert PDFs to images (`makeImages`), skipping blank/notes pages.
+  - Invoke the YOLO detection API (`coordinates.py`) to find horizontal cuts between MCQs.
+  - Crop each question via `take_screenshot` and store it under `resources/images/test_images/questions`.
+  - OCR each crop with EasyOCR (`process_image`), normalize text (`formatText`), and classify it into the correct chapter through the syllabus model declared in `definitions.json`.
+  - Copy the cleaned image into `resources/images/<level>/<subject>/mcq/` and update the target JSON file (`mcq_db_path`).
 
-### 1. **PDF to Image Conversion**
-- Utilizes the `pdf2image` library to convert PDF pages into JPEG images.
-- Extracts all pages, excluding those marked "BLANK PAGE."
+## Requirements
 
-### 2. **Image Cropping**
-- Crops images to remove headers and footers based on the `startPixel` variable.
-- Additional cropping ensures images are focused on relevant question content.
+- Detection server running: `python src/main/coordinates.py --mode best1`.
+- `definitions.json` entry for the paper code being processed, including `mcqPapers`, `mcq_db_path`, and the `.joblib` filename.
+- Mark-scheme PDF present in `resources/full_pdfs/<code>/` so `extract_answers_from_pdf` can pull the correct answers.
 
-### 3. **Image Cleaning**
-- Detects and removes excess whitespace from the bottom of images.
-- Ensures all images are cropped cleanly to display only question content.
+## Output
 
-### 4. **Dynamic Dimensions**
-- Automatically calculates the dimensions of each question section within an image.
-- Splits images into separate files for each question based on content detection.
+- Cropped MCQ images per level/subject.
+- Updated JSON (e.g., `ig_chem_mcq.json`) containing `questionName`, `Answer`, `Chapter`, `Level`, `paperNumber`, etc.
+- Temporary working files live in `resources/images/test_images/`; run `cleanup()` when finished or rely on the script’s automatic cleanup.
 
-### 5. **GUI File Selection**
-- Uses `tkinter` for user interaction to select PDF files for processing.
+## Usage tips
 
-## Script Details
-
-### Parameters
-- `subject`: Subject code for file naming.
-- `paper_number`: Paper number for file naming.
-- `startPage`: First page to start processing (default is 1).
-- `startPixel`: Pixel height to begin cropping (default is 150).
-
-### Output Structure
-- Saves processed images into a folder structure:
-  - Original PDF images.
-  - Cropped and cleaned question images.
-- File naming convention: `{subject}_{paper_number}_{question_number}.jpg`
-
-### Libraries Used
-- `pdf2image`: Converts PDF pages to images.
-- `PIL` (Pillow): Image cropping and manipulation.
-- `PyPDF2`: PDF text extraction to detect blank pages.
-- `tkinter`: GUI for file selection.
-- `os`: Directory management.
-
-## How It Works
-1. **File Selection**:
-   - User selects one or more PDF files using a GUI file dialog.
-2. **Image Conversion**:
-   - Converts selected PDF pages to images.
-   - Filters out blank pages.
-3. **Cropping and Cleaning**:
-   - Crops images to remove headers, footers, and excess whitespace.
-   - Splits pages into question-specific sections.
-4. **Question Images**:
-   - Saves individual question images with a unique name.
-5. **Cleanup**:
-   - Ensures all images are properly formatted and stored in the designated directory.
+- Inspect the YOLO confidence (`--mode` weights) if cuts look misaligned; the detector lives under `resources/vision-models/`.
+- `take_screenshot` skips captures that are shorter than configured thresholds; adjust logic in `main.utils` if your papers use different spacing.
+- The script assumes Cambridge naming (`0620_s24_qp_12.pdf`). Update `extract_paper_number` if you ingest other formats.

@@ -1,77 +1,30 @@
-# README: Training, Prediction, and Syllabus Processing Scripts
+# ML Training Utilities
 
-This folder contains Python scripts and pre-trained models (`.joblib` files) for processing syllabus data, training machine learning models, and making predictions. These tools classify academic content into topics or chapters, leveraging NLP and supervised machine learning techniques.
+Scripts and artifacts in this folder build the `.joblib` classifiers referenced in `definitions.json`. Each model maps cleaned question text to an IGCSE/AS/A2 chapter number so downstream pipelines can auto-tag cropped images.
 
----
+## Directory contents
 
-## General Overview of `.joblib` Files
+- `trainModels.py` – shared helper that trains a `CountVectorizer + MultinomialNB` pipeline and writes the result to `resources/sci-kit/<name>.joblib`.
+- `trainWithSyllabus<Subject><Level>.py` – subject/level-specific scripts that:
+  1. Define chapter labels (`allLabels`).
+  2. Provide raw syllabus text snippets per chapter (copied from Cambridge PDFs).
+  3. Call `formatText` from `main.utils` for consistency with runtime cleaning.
+  4. Invoke `trainModels.train()` to produce the classifier.
+- `trainWithPdfs.py` – generic trainer that reads actual syllabus PDFs instead of inline text blocks.
 
-The `.joblib` files are pre-trained machine learning models for various subjects and academic levels (e.g., IGCSE, AS, A2). Each `.joblib` file represents a trained model specific to a subject or syllabus, enabling prediction tasks such as topic classification and chapter identification.
+## Workflow
 
----
+1. Ensure the target syllabus text lives under `resources/full_pdfs/` or is embedded in the script.
+2. Activate the virtualenv and install requirements (`scikit-learn`, `nltk`, etc.).
+3. Run the desired training script, e.g.:
 
-## Detailed File Descriptions
+```bash
+python src/main/sci-kit/trainWithSyllabusChemAS.py
+```
 
----
+4. The resulting `.joblib` file lands in `resources/sci-kit/`. Update `definitions.json` if you change filenames.
 
-### **1. trainModels.py**
+## Notes
 
-- **Purpose**: Trains machine learning models for syllabus classification tasks.
-- **Features**:
-  - Implements an NLP pipeline using `CountVectorizer` and a Naive Bayes classifier.
-  - Saves trained models as `.joblib` files for later use.
-
-#### Key Functions
-
-1. **`train(data, label)`**:
-   - Accepts labeled training data.
-   - Trains a Naive Bayes model using a pipeline that includes text vectorization.
-   - Outputs a `.joblib` file containing the trained model.
-
----
-
-### **2. trainWithPdfs.py**
-
-- **Purpose**: Trains models using text extracted from PDFs of syllabus documents.
-- **Features**:
-  - Reads PDF files containing syllabus content, extracts text, and preprocesses it.
-  - Labels the text based on chapters or topics and trains a classification model.
-
-#### Key Components
-
-1. **PDF Text Extraction**:
-   - Uses `getFormattedTextfromPdf.py` to extract and clean text from PDFs.
-2. **Model Training**:
-   - Calls `trainModels.py` to train a model on the extracted text and its labels.
-
----
-
-### **3. getFormattedTextfromPdf.py**
-
-- **Purpose**: Extracts and preprocesses text from PDF files for training or prediction.
-- **Features**:
-  - Removes unnecessary content like punctuation, stopwords, and digits.
-  - Applies NLP techniques such as stemming and tokenization.
-  - Focuses on educational keywords by removing command words like "analyze" or "describe."
-
-#### Key Functions
-
-1. **`getPdfText(pdfPath)`**:
-   - Extracts raw text from all pages of a PDF.
-2. **`makeText(pdfPath)`**:
-   - Cleans and preprocesses the extracted text for training or prediction.
-3. **`formatText(text)`**:
-   - Applies similar preprocessing to a given string of text.
-
----
-
-### **4. Syllabus-Based Training Scripts**
-
-- **Purpose**: Train machine learning models for specific subjects and academic levels.
-- **Features**:
-  - Prepares labeled training data directly from syllabus content for individual subjects.
-  - Calls `trainModels.py` to train models for each syllabus.
-
-These scripts are specialized for different subjects (e.g., Biology, Chemistry, Economics) and levels (e.g., IGCSE, AS, A2). They produce subject-specific `.joblib` files.
-
----
+- All trainers depend on `main.utils.formatText`; keep that function stable to avoid drift between training and inference.
+- Some scripts reference large multiline strings copied from official syllabi; ensure licensing requirements are respected before distributing those files publicly.
