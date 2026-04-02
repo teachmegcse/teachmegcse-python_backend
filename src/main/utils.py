@@ -22,6 +22,15 @@ CUSTOM_CONFIG = r"--oem 3 --psm 6"
 READER = easyocr.Reader(["en"])
 
 def predict(data, model):
+    """ Takes a text string from a question and a model name that references the level and subject, and returns a predicted chapter label.
+
+    Args:
+        data (str): The text string from the question.
+        model (str): The name of the model to use for prediction.
+    
+    Returns:
+        str: The predicted chapter label.
+    """
     pipeline = load(f"{BASE_PATH}/resources/sci-kit/{model}")
     data = formatText(data)
     predicted_labels = pipeline.predict([data])
@@ -29,12 +38,28 @@ def predict(data, model):
 
 
 def process_image(image_path):
+    """ Takes an image path, processes the image using OCR, and returns the extracted text.
+    
+    Args:
+        image_path (str): The path to the image file.
+    
+    Returns:
+        str: The extracted text from the image (using easyocr).
+
+    """
     img = cv2.imread(image_path)
     results = READER.readtext(img, detail=0)
     return "\n".join(results)
 
 
 def select_files():
+    """ Opens a file dialog for the user to select PDF files and returns a list of the selected past papers.
+
+    Args:
+    Returns:
+        list: A list of past paper paths for the selected PDF files.
+    
+    """
     root = Tk()
     filetypes = [("PDF Files", "*.pdf")]
     files = filedialog.askopenfilenames(filetypes=filetypes)
@@ -44,6 +69,15 @@ def select_files():
 
 
 def makeImages(pdf_path):
+    """ Takes a PDF path, converts the PDF into images, and saves the images in a specified output directory (outputPath).
+      It also skips pages that contain certain predefined strings like "blank page" or "important values".
+
+    Args:
+    pdf_path (str): The path to the PDF file to be processed.
+
+    Returns:
+        None: The function does not return anything, but it saves the processed images to the specified output directory.
+    """
     images = convert_from_path(pdf_path)
     reader = PdfReader(pdf_path)
     number_of_pages = len(reader.pages)
@@ -85,6 +119,17 @@ def makeImages(pdf_path):
 
 
 def formatText(text):
+    """ Takes a text string, processes it by converting to lowercase, removing punctuation and digits,
+      removing Cambridge command words, tokenizing, and stemming the words.
+      (used before chapter prediction to keep only the most relevant information for the model and reduce noise in the data)
+
+    Args:
+        text (str): The input text string from the question to be processed.
+    
+    Returns:
+        str: The processed text string after formatting and removing noise.
+    
+    """
     stemmer = PorterStemmer()
 
     # Convert all text to lowercase
@@ -138,6 +183,17 @@ def formatText(text):
 
 
 def strip_images(mode):
+    """ Takes a mode (either "qp" for question paper or "ms" for mark scheme)
+      and crops the images in the currentPdfImages directory accordingly
+        to remove irrelevant information such as page numbers, headers, and footers.
+
+    Args:
+    mode (str): The mode indicating whether the images are from a question paper ("qp")
+      or a mark scheme ("ms"), which determines the cropping dimensions.
+
+    Returns:
+        None: The function does not return anything, but it modifies the images in place by cropping them and saving the stripped version back to the same location.
+    """
     pages = os.listdir(f"{outputPath}/currentPdfImages")
     for i in range(len(pages)):
         with PIL.Image.open(f"{outputPath}/currentPdfImages/{pages[i]}") as im:
@@ -149,6 +205,23 @@ def strip_images(mode):
 
 
 def take_screenshot(y1, y2, unique_filename, type, page):
+    """ Takes the y1 and y2 coordinates of the question region (x coordinates are fixed),
+      a unique filename for the question image, the type of question (either "mcq" or "long"), and the page number to crop the question from.
+      It crops the corresponding region from the correct image (based on type) and saves it to the questions folder with the unique filename.
+      It also checks if the height of the cropped region is above a certain threshold (300 pixels for long questions and 100 pixels for MCQs)
+        before saving, to filter out any mistakes (they're height is like 30 pixels so obviously wrong).
+
+    Args:
+    y1 (int): The y-coordinate of the top of the question region to be cropped.
+    y2 (int): The y-coordinate of the bottom of the question region to be cropped.
+    unique_filename (str): A unique filename to save the cropped question image as.
+    type (str): The type of question, either "mcq" for multiple-choice questions or "long" for long-answer questions,
+        which determines the cropping dimensions and source image
+    page (int): The page number to crop the question from (used to determine which image to crop from based on type).
+    
+    Returns:
+     bool: True if the question image was successfully saved, False if it was skipped due to being too small or if there was an error during saving.
+    """
     # type can either be mcq or long
     height = y2 - y1
 
@@ -180,10 +253,22 @@ def take_screenshot(y1, y2, unique_filename, type, page):
         return True
     except Exception as e:
         print(f"Error saving question {unique_filename}: {e}")
-
+    return False
 
 def clean_image(level_folder_name, subject, paper_number, image_name):
     # level_folder_name is either "IGCSE" or "A-level"
+    """ Unlike strip_image which removes the same fixed region for all pages before processing,
+    this function is for questions where it removes the whitespace at the bottom dynamically to save space
+
+    Args:
+    level_folder_name (str): The name of the level folder (e.g., "IGCSE" or "A-level") where the image is located (based on the actual folder structure).
+    subject (str): The subject of the paper (e.g., "physics", "chemistry", "biology") where the image is located (based on the actual folder structure).
+    paper_number (str): The paper number (e.g., "p1", "p2") where the image is located (based on the actual folder structure).
+    image_name (str): The name of the image file to be cleaned.
+
+    Returns:
+     None: The function does not return anything, but it modifies the image in place by cropping it and saving the cleaned version back to the same location.
+    """
     im = PIL.Image.open(
         f"{BASE_PATH}/resources/images/{level_folder_name}/{subject}/{paper_number}/{image_name}"
     )
@@ -207,6 +292,17 @@ def clean_image(level_folder_name, subject, paper_number, image_name):
 
 
 def merge_all_images():
+    """ Merges all the page images in the currentPdfImages directory into a single long image and saves it to the final folder as final.jpg.
+     The images are merged vertically in the order of their page numbers (sorted by filename).
+     This is used to create a single image of the entire question paper for easier cropping of long questions that may span multiple pages
+
+     Args:
+        None: The function does not take any arguments, but it processes the images in the currentPdfImages directory
+
+    Returns:
+        None: The function does not return anything, but it saves the merged image to the folder called final as final.jpg.
+    
+    """
     pages = os.listdir(f"{outputPath}/currentPdfImages")
     pages = sorted(pages, key=lambda x: int(x.split(".")[0]))
 
@@ -227,10 +323,20 @@ def merge_all_images():
             current_height += im.height
 
     dst.save(f"{outputPath}/final/final.jpg")
-    return current_height
 
 
 def extract_paper_number(filename):
+    """ Extracts the paper number from a given filename string. The filename uses the format A_B_C_D.pdf
+    where A is a 4 digit integer that represents the subject and level (e.g., 0625 for IGCSE, 9709 for A-level),
+      B is the session and year like m23 so it was released in the march session of 2023,
+    C is either "qp" or "ms" to indicate question paper or mark scheme, and D is the paper number and variant number like 23 for paper 2 variant 3.
+
+    Args:
+    filename (str): The filename string from which to extract the paper number, following the format A_B_C_D.pdf.
+    Returns:
+    int: The extracted paper number (first digit of D) as an integer, or None if the paper number cannot be extracted due to an error or unexpected filename format.
+    
+    """
     try:
         base_name = filename.split(".")[0]
 
@@ -244,6 +350,16 @@ def extract_paper_number(filename):
 
 
 def get_dimensions_from_api(image_path):
+    """ Takes an image path and sends it to the local YOLO model running from coordinates.py
+      to get the predicted bounding box coordinates for the question regions in the image.
+
+    Args:
+    image_path (str): The path to the image file to be processed by the API.
+    Returns:
+        list: A list of bounding box coordinates for the question regions in the image,
+          where each bounding box is represented as a list of four integers [x1, y1, x2, y2].
+    
+    """
     with open(image_path, "rb") as img:
         files = {"file": img}
         response = requests.post("http://127.0.0.1:8000/predict", files=files)
@@ -258,6 +374,13 @@ def get_dimensions_from_api(image_path):
 
 
 def cleanup():
+    """ Cleans up the output directories by deleting all files in the currentPdfImages, final, questions, and vision_output_images folders.
+        This is used to reset the state before processing a new PDF to avoid any interference from previous runs.
+
+    Args:        None: The function does not take any arguments, but it processes the files in the specified output directories.
+    Returns:        None: The function does not return anything, but it deletes the files in the specified output directories to clean up the state for the next run. 
+    
+    """
     for filename in os.listdir(f"{outputPath}/currentPdfImages"):
         file_path = os.path.join(f"{outputPath}/currentPdfImages", filename)
         if os.path.isfile(file_path):  # only delete files
@@ -280,6 +403,21 @@ def cleanup():
 
 
 def get_level_and_chapter(formatted_text, paper_num, paperType, currentDefinitionsData):
+    """ Takes the formatted text of a question, the paper number, the paper type (either "IGCSE" or "A-level"),
+      and the current definitions data loaded from the JSON file.
+    
+      args:
+        formatted_text (str): The formatted text of the question to be used for chapter prediction.
+        paper_num (int): The paper number (e.g., 1 or 2) extracted from the filename, used to determine which model to use for A-level papers.
+        paperType (str): The type of paper, either "IGCSE" or "A-level", used to determine which model and labels to use for chapter prediction.
+        currentDefinitionsData (dict): The definitions data loaded from the JSON file for the current paper code, which contains information about the models and
+            labels for chapter prediction based on the paper type and number.
+
+    Returns:
+        tuple: A tuple containing the predicted level (e.g., "IGCSE", "AS", "A2")
+          and the predicted chapter number (as an integer index based on the labels in the definitions data)
+            for the given question text, paper number, and paper type.
+    """
     # implicit level = IGCSE as all IGCSE have format 06.. while A-level have 97..
     if paperType == "IGCSE":
         IGModel = currentDefinitionsData["IGmodel"]
@@ -311,6 +449,20 @@ def get_level_and_chapter(formatted_text, paper_num, paperType, currentDefinitio
 
 
 def extract_answers_from_pdf(code, pdfName):
+    """ This function is only for mcq as the answers are like A, B etc while in long the answers are images from the mark scheme
+      Takes the paper code and the PDF name, constructs the path to the corresponding mark scheme PDF,
+      extracts the text from the mark scheme using PyPDF2, and processes the text
+        to extract the answers for each question based on the expected format of the mark scheme
+          (where each line contains a question number followed by the answer).
+
+    Args:
+    code (str): The paper code (e.g., "0625" for IGCSE, "9709" for A-level) used to determine the path to the mark scheme PDF based on the folder structure.
+    pdfName (str): The name of the PDF file for which the answers are to be extracted, used to determine the corresponding mark scheme PDF name by replacing "qp" with "ms".
+    
+    Returns:
+        list: A list of answers (30 if economics and 40 otherwise) extracted from the mark scheme PDF, where each answer corresponds to a question in the question paper,
+          and the answers are extracted based on the expected format of the mark
+    """
     pdfName = pdfName.replace("qp", "ms")
     pdfPath = f"{BASE_PATH}/resources/full_pdfs/{code}/{pdfName}"
     pdf_reader = PdfReader(open(pdfPath, "rb"))
