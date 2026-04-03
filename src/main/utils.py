@@ -381,25 +381,18 @@ def cleanup() -> None:
     Returns:        None: The function does not return anything, but it deletes the files in the specified output directories to clean up the state for the next run. 
     
     """
-    for filename in os.listdir(f"{outputPath}/currentPdfImages"):
-        file_path = os.path.join(f"{outputPath}/currentPdfImages", filename)
-        if os.path.isfile(file_path):  # only delete files
-            os.remove(file_path)
+    dirs = [
+        f"{outputPath}/currentPdfImages",
+        f"{outputPath}/final",
+        f"{outputPath}/questions",
+        f"{BASE_PATH}/resources/images/vision_output_images"
+    ]
 
-    for filename in os.listdir(f"{outputPath}/final"):
-        file_path = os.path.join(f"{outputPath}/final", filename)
-        if os.path.isfile(file_path):  # only delete files
-            os.remove(file_path)
-
-    for filename in os.listdir(f"{outputPath}/questions"):
-        file_path = os.path.join(f"{outputPath}/questions", filename)
-        if os.path.isfile(file_path):  # only delete files
-            os.remove(file_path)
-
-    for filename in os.listdir(f"{BASE_PATH}/resources/images/vision_output_images"):
-        file_path = os.path.join(f"{BASE_PATH}/resources/images/vision_output_images", filename)
-        if os.path.isfile(file_path):  # only delete files
-            os.remove(file_path)
+    for d in dirs:
+        for filename in os.listdir(d):
+            file_path = os.path.join(d, filename)
+            if os.path.isfile(file_path):
+                os.remove(file_path)
 
 
 def get_level_and_chapter(formatted_text: str, paper_num: int, paperType: str, currentDefinitionsData: dict) -> tuple[str, int]:
