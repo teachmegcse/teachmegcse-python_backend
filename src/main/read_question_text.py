@@ -106,6 +106,8 @@ def check_json_validity(json_object, pdf_dir) -> json:
         qnum = record["questionNum"]
         if qnum - 1 < len(split_questions):
             block_text = split_questions[qnum - 1]
+            # Clean the text: remove non-ASCII chars and replace newlines
+            block_text = block_text.encode('ascii', 'ignore').decode('ascii').replace('\n', ' ').strip()
             record["questionText"] = block_text
             # Extract the marks from the trailing [Total: X] within this block
             m = re.search(r"\[\s*Total\s*:?\s*([0-9]+\+?)\s*\]", block_text, flags=re.IGNORECASE)

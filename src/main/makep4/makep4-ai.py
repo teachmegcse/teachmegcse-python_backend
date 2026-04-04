@@ -5,6 +5,7 @@ import shutil
 import sys
 from pathlib import Path
 import easyocr
+import subprocess
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
 sys.path.append(BASE_PATH)
@@ -296,4 +297,17 @@ if __name__ == "__main__":
             json.dump(updated_questions, f, indent=2, ensure_ascii=False)
         
         print(f"✅ Parts processing complete for {db_path}")
+        
+        # Now call read_question_text to update questionText from PDFs
+        print(f"Running read_question_text on {os.path.basename(db_path)}...")
+        result = subprocess.run(
+            ["python", "../read_question_text.py", os.path.basename(db_path)],
+            cwd=os.path.dirname(__file__),  # src/main/makep4/
+            capture_output=True,
+            text=True
+        )
+        if result.returncode == 0:
+            print("✅ read_question_text completed successfully")
+        else:
+            print(f"❌ read_question_text failed: {result.stderr}")
 
