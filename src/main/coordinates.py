@@ -12,30 +12,31 @@ BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../..", "sr
 app = FastAPI()
 current_question_num = 0
 
-# Argument parser for model selection
+# Argument parser for model selection - now loading both
 parser = argparse.ArgumentParser(
-    description="Start FastAPI app with specific YOLO model"
-)
-parser.add_argument(
-    "--mode",
-    type=str,
-    default="best1",
-    help="Model name without .pt extension (e.g., 'mcq' for mcq.pt)",
+    description="Start FastAPI app with YOLO models"
 )
 args, unknown = parser.parse_known_args()
 
-model_path = f"{BASE_PATH}/resources/vision-models/{args.mode}.pt"
+import glob
 
-# Load the trained model
-try:
-    model = YOLO(model_path)
-    print(f"Loaded model: {model_path}")
-except Exception as e:
-    raise RuntimeError(f"Failed to load YOLO model '{model_path}': {e}")
+# Load all models
+models = {}
+model_files = glob.glob(f"{BASE_PATH}/resources/vision-models/*.pt")
+for model_file in model_files:
+    mode = os.path.splitext(os.path.basename(model_file))[0]
+    try:
+        models[mode] = YOLO(model_file)
+        print(f"Loaded model: {model_file}")
+    except Exception as e:
+        raise RuntimeError(f"Failed to load YOLO model '{model_file}': {e}")
+
+# Confidence levels
+conf_levels = {"long-double": 0.15, "parts": 0.3}  # Add others if needed, default 0.15
 
 
 @app.post("/predict")
-async def predict(file: UploadFile = File(...)) -> List[List[float]]:
+async def predict(mode: str = "long-double", file: UploadFile = File(...)) -> List[List[float]]:
     global current_question_num
     try:
         contents = await file.read()
@@ -45,7 +46,9 @@ async def predict(file: UploadFile = File(...)) -> List[List[float]]:
         if image is None:
             raise ValueError("Invalid image file provided")
 
-        results = model(image, save=False, conf=0.15)
+        model = models.get(mode, models["long-double"])
+        conf = conf_levels.get(mode, 0.15)
+        results = model(image, save=False, conf=conf)
 
         boxes = []
         for box in results[0].boxes.xyxy:

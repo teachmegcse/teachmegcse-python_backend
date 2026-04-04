@@ -3,6 +3,8 @@ import os
 import json
 import shutil
 import sys
+from pathlib import Path
+import easyocr
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
 sys.path.append(BASE_PATH)
@@ -25,6 +27,8 @@ from main.utils import (
 outputPath = f"{BASE_PATH}/resources/images/test_images"
 definitionsPath = f"{BASE_PATH}/main/definitions.json"
 
+reader = easyocr.Reader(["en"])
+
 
 def get_all_page_coordinates():
     print("Getting coordinates for all pages...")
@@ -38,7 +42,7 @@ def get_all_page_coordinates():
 
         # Get coordinates for this page
         try:
-            bounding_boxes = get_dimensions_from_api(page_path)
+            bounding_boxes = get_dimensions_from_api(page_path, mode="long-double")
 
             if not bounding_boxes:  # Skip if no questions found
                 # Still need to account for page height!
@@ -100,6 +104,7 @@ if __name__ == "__main__":
     print(f"Selected files: {files}")
 
     # Process each question paper
+    processed_db_paths = set()
     for file_path in files:
         print(f"\nProcessing file : {file_path}")
         if file_path.find("ms") == -1:
@@ -111,6 +116,8 @@ if __name__ == "__main__":
             subject = currentDefinitionsData["subjectName"]
             long_db_path = currentDefinitionsData["long_db_path"]
             db_path = f"{BASE_PATH}/resources/json/{long_db_path}"
+
+            processed_db_paths.add(db_path)
 
             # Extract paper number from filename
             paper_num = extract_paper_number(current_file)
@@ -206,4 +213,87 @@ if __name__ == "__main__":
             print(f"Finished processing file: {file_path}")
         else:
             pass
+
+    # Now process parts for all questions in processed DBs
+    for db_path in processed_db_paths:
+        print(f"Processing parts for {db_path}...")
+        
+        with open(db_path, "r") as f:
+            content = f.read()
+        parts = content.split(',\n')
+        questions = [json.loads(part) for part in parts if part.strip()]
+        
+        updated_questions = []
+        
+        for q in questions:
+            image_filename = q.get("questionName")
+            if not image_filename:
+                print(f"⚠️ Skipping: no questionName")
+                updated_questions.append(q)
+                continue
+            
+            paperType = "IGCSE" if q["Level"] == "IGCSE" else "A-level"
+            subject = q["Subject"]
+            IMAGES_DIR = f"{BASE_PATH}/resources/images/{paperType}/{subject}/long"
+            image_path = Path(IMAGES_DIR) / image_filename
+            
+            if not image_path.exists():
+                print(f"⚠️ Image not found: {image_path}")
+                updated_questions.append(q)
+                continue
+            
+            print(f"Processing parts for {image_filename}...")
+            
+            parts = get_dimensions_from_api(str(image_path), mode="parts")
+            parts = [[int(v) for v in box] for box in parts]
+            parts_sorted = sorted(parts, key=lambda x: x[1])
+            
+            image = PIL.Image.open(image_path)
+            height = image.height
+            
+            if height <= 3000:
+                parts = get_dimensions_from_api(str(image_path), mode="parts")
+            else:
+                parts = []
+                y_offset = 0
+                section_idx = 0
+                while y_offset < height:
+                    y_end = min(y_offset + 3000, height)
+                    section = image.crop((0, y_offset, image.width, y_end))
+                    section_path = Path(IMAGES_DIR) / f"temp_section_{image_filename}_{section_idx}.jpg"
+                    section.save(section_path)
+                    section_parts = get_dimensions_from_api(str(section_path), mode="parts")
+                    # Adjust coordinates
+                    adjusted_parts = [[x1, y1 + y_offset, x2, y2 + y_offset] for x1, y1, x2, y2 in section_parts]
+                    parts.extend(adjusted_parts)
+                    os.remove(section_path)
+                    y_offset = y_end
+                    section_idx += 1
+            
+            parts = [[int(v) for v in box] for box in parts]
+            parts_sorted = sorted(parts, key=lambda x: x[1])
+            
+            question_parts = []
+            for idx, box in enumerate(parts_sorted):
+                x1, y1, x2, y2 = box
+                if x1 > 250:
+                    continue
+                cropped = image.crop((x1, y1, x2, y2))
+                save_path = Path(IMAGES_DIR) / f"temp_{image_filename}_{idx}.jpg"
+                cropped.save(save_path)
+                part_text = reader.readtext(str(save_path))
+                full_text = " ".join([t[1] for t in part_text]) if part_text else "(i)"
+                if '(' not in full_text and ')' not in full_text:
+                    os.remove(save_path)  # cleanup temp
+                    continue
+                question_parts.append({"coordinates": [x1, y1, x2, y2], "text": full_text})
+                os.remove(save_path)  # cleanup temp
+            
+            q["questionParts"] = question_parts
+            updated_questions.append(q)
+        
+        with open(db_path, "w", encoding="utf-8") as f:
+            json.dump(updated_questions, f, indent=2, ensure_ascii=False)
+        
+        print(f"✅ Parts processing complete for {db_path}")
 

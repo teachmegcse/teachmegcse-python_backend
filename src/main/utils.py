@@ -349,7 +349,7 @@ def extract_paper_number(filename: str) -> int | None:
     return None
 
 
-def get_dimensions_from_api(image_path: str) -> list:
+def get_dimensions_from_api(image_path: str, mode: str = "long-double") -> list:
     """ Takes an image path and sends it to the local YOLO model running from coordinates.py
       to get the predicted bounding box coordinates for the question regions in the image.
 
@@ -362,7 +362,7 @@ def get_dimensions_from_api(image_path: str) -> list:
     """
     with open(image_path, "rb") as img:
         files = {"file": img}
-        response = requests.post("http://127.0.0.1:8000/predict", files=files)
+        response = requests.post(f"http://127.0.0.1:8000/predict?mode={mode}", files=files)
         if response.status_code == 200:
             coordinates = response.json()
             return coordinates
