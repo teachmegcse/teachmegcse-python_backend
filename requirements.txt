@@ -20,4 +20,4 @@ dotenv
 google-generativeai
 pillow
 pdfplumber==0.11.7
-python-multipart
+httpx==0.28.1

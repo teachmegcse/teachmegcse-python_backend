@@ -13,6 +13,7 @@ from fastapi import FastAPI, HTTPException
 import logging
 import sys
 import os
+import tempfile
 
 # Add the directory two levels up to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -132,18 +133,18 @@ async def generate_pdf(questionData: QuestionsList):
         classifiedPdf.set_xy(questionNumX, currentYClassified)
         classifiedPdf.cell(w=10, txt=f"{currentQuestionNum})")
 
-        # Save image to BytesIO and add to PDF
-        image_buffer = BytesIO()
-        currentImageCropped.save(image_buffer, format="JPEG")
-        image_buffer.seek(0)
+        # Save image to temporary file and add to PDF
+        temp_image_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+        currentImageCropped.save(temp_image_path.name, format="JPEG")
+        temp_image_path.close()
         classifiedPdf.image(
-            image_buffer,
+            temp_image_path.name,
             questionImageX,
             currentYClassified,
             1420,
             currentImageCropped.height,
         )
-        image_buffer.close()
+        os.remove(temp_image_path.name)
 
         Answers.append(
             {
@@ -193,17 +194,17 @@ async def generate_pdf(questionData: QuestionsList):
                             classifiedPdf.add_page()
                             classifiedPdf.set_xy(questionNumX, currentYClassified)
                             classifiedPdf.cell(w=10, txt=f"{currentQuestionNum})")
-                            image_buffer = BytesIO()
-                            croppedImage.save(image_buffer, format="JPEG")
-                            image_buffer.seek(0)
+                            temp_image_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+                            croppedImage.save(temp_image_path.name, format="JPEG")
+                            temp_image_path.close()
                             classifiedPdf.image(
-                                image_buffer,
+                                temp_image_path.name,
                                 questionImageX,
                                 currentYClassified,
                                 1420,
                                 croppedImage.height,
                             )
-                            image_buffer.close()
+                            os.remove(temp_image_path.name)
                         break
                     else:
                         croppedImage = currentImage.crop(
@@ -218,33 +219,33 @@ async def generate_pdf(questionData: QuestionsList):
                             classifiedPdf.add_page()
                             classifiedPdf.set_xy(questionNumX, currentYClassified)
                             classifiedPdf.cell(w=10, txt=f"{currentQuestionNum})")
-                            image_buffer = BytesIO()
-                            croppedImage.save(image_buffer, format="JPEG")
-                            image_buffer.seek(0)
+                            temp_image_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+                            croppedImage.save(temp_image_path.name, format="JPEG")
+                            temp_image_path.close()
                             classifiedPdf.image(
-                                image_buffer,
+                                temp_image_path.name,
                                 questionImageX,
                                 currentYClassified,
                                 1420,
                                 croppedImage.height,
                             )
-                            image_buffer.close()
+                            os.remove(temp_image_path.name)
                         currentIndex += 1
             else:
                 classifiedPdf.add_page()
                 classifiedPdf.set_xy(questionNumX, currentYClassified)
                 classifiedPdf.cell(w=10, txt=f"{currentQuestionNum})")
-                image_buffer = BytesIO()
-                currentImage.save(image_buffer, format="JPEG")
-                image_buffer.seek(0)
+                temp_image_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+                currentImage.save(temp_image_path.name, format="JPEG")
+                temp_image_path.close()
                 classifiedPdf.image(
-                    image_buffer,
+                    temp_image_path.name,
                     questionImageX,
                     currentYClassified,
                     1420,
                     currentImage.height,
                 )
-                image_buffer.close()
+                os.remove(temp_image_path.name)
             currentQuestionNum += 1
     logger.info("Generating answers PDF")
     mcqAnswers = []
@@ -298,10 +299,10 @@ async def generate_pdf(questionData: QuestionsList):
             # Rotate the image 90 degrees counter-clockwise
             rotated_image = currentAnswerImage.rotate(90, expand=True)
 
-            # Save the rotated image to a BytesIO buffer
-            image_buffer = BytesIO()
-            rotated_image.save(image_buffer, format="JPEG")
-            image_buffer.seek(0)
+            # Save the rotated image to a temporary file
+            temp_image_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+            rotated_image.save(temp_image_path.name, format="JPEG")
+            temp_image_path.close()
 
             # Add the rotated image and question number to the PDF
             answerPdf.add_page()
@@ -310,7 +311,7 @@ async def generate_pdf(questionData: QuestionsList):
             answerPdf.cell(w=10, txt=f"{currentQuestionNum})")
 
             answerPdf.image(
-                image_buffer,
+                temp_image_path.name,
                 questionImageX,
                 currentYAnswers + 10,
                 1420,
@@ -318,8 +319,8 @@ async def generate_pdf(questionData: QuestionsList):
             )
             currentQuestionNum += 1
 
-            # Close the image buffer
-            image_buffer.close()
+            # Remove the temporary file
+            os.remove(temp_image_path.name)
         except Exception as e:
             logger.error(f"Error processing answer image {currentAnswerPath}: {e}")
 

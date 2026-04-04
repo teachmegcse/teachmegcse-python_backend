@@ -13,3 +13,6 @@ pathConst.py
 src/resources/pdfs
 .venv
 src/main/__pycache__
+src/tests/test_output.zip
+src/tests/answers.pdf
+src/tests/questions.pdf
