@@ -12,7 +12,7 @@ from main.utils import get_dimensions_from_api
 
 INPUT_JSON = f"{BASE_PATH}/resources/json/a_phy_theory.json"
 OUTPUT_JSON = "questions_updated.json"
-IMAGES_DIR = f"{BASE_PATH}/resources/images/test_images/questions"
+IMAGES_DIR = f"{BASE_PATH}/resources/images/A-level/physics/long"
 
 reader = easyocr.Reader(["en"])
 
@@ -55,13 +55,16 @@ def process_questions():
             for idx, box in enumerate(parts_sorted):
                 x1, y1, x2, y2 = box
 
+                if x1 > 250:
+                    continue
+
                 cropped = image.crop((x1, y1, x2, y2))
 
                 save_path = Path(IMAGES_DIR) / f"temp_{i}_{idx}.jpg"
                 cropped.save(save_path)
                 part_text = reader.readtext(str(save_path))
 
-                full_text = " ".join([t[0] for t in part_text])
+                full_text = " ".join([t[1] for t in part_text]) if part_text else "(i)"
 
                 question_parts.append(
                     {"coordinates": [x1, y1, x2, y2], "text": full_text}
