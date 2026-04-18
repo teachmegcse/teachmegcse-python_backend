@@ -1,10 +1,9 @@
 import numpy as np
-from io import BytesIO
 from typing import Optional
 import uvicorn
 from zipfile import ZipFile
 from typing import List
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 from fpdf import FPDF
 from PIL import Image
@@ -28,6 +27,12 @@ logging.basicConfig(
 )
 
 
+class QuestionPart(BaseModel):
+    id: int
+    coordinates: List[int]
+    text: str
+
+
 class Question(BaseModel):
     Level: str
     Answer: Optional[str] = None
@@ -40,6 +45,8 @@ class Question(BaseModel):
     questionText: str
     questionNumber: Optional[int] = None
     year: Optional[str] = None
+    questionParts: List[QuestionPart] = Field(default_factory=list)
+    selectedQuestionPartIds: List[int] = Field(default_factory=list)
 
 
 class QuestionsList(BaseModel):
@@ -168,17 +175,158 @@ async def generate_pdf(questionData: QuestionsList):
                 raise HTTPException(
                     status_code=404, detail=f"Image not found: {currentImagePath}"
                 )
-            Answers.append(
-                {
-                    "questionNum": currentQuestionNum,
-                    "Answer": currentQuestionObject.MSName,
-                    "Source": currentQuestionObject.pdfName,
-                    "type": "Long",
-                }
-            )
             currentImage = Image.open(currentImagePath)
             modifier = 2000
-            if currentImage.height > modifier:
+            selected_parts = []
+            if currentQuestionObject.selectedQuestionPartIds:
+                if not currentQuestionObject.questionParts:
+                    currentImage.close()
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"selectedQuestionPartIds provided without questionParts for {currentQuestionObject.questionName}",
+                    )
+
+                ordered_parts = sorted(
+                    currentQuestionObject.questionParts,
+                    key=lambda part: (
+                        int(part.coordinates[1]),
+                        int(part.coordinates[0]),
+                        part.id,
+                    ),
+                )
+                selected_part_ids = set(currentQuestionObject.selectedQuestionPartIds)
+                available_part_ids = {part.id for part in ordered_parts}
+                missing_part_ids = sorted(selected_part_ids - available_part_ids)
+                if missing_part_ids:
+                    currentImage.close()
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Unknown question part IDs for {currentQuestionObject.questionName}: {missing_part_ids}",
+                    )
+
+                for index, part in enumerate(ordered_parts):
+                    if part.id not in selected_part_ids:
+                        continue
+
+                    start_y = max(0, int(part.coordinates[1]))
+                    end_y = currentImage.height
+                    current_x1 = int(part.coordinates[0])
+                    for next_part in ordered_parts[index + 1 :]:
+                        next_y1 = int(next_part.coordinates[1])
+                        next_x1 = int(next_part.coordinates[0])
+                        if next_y1 > start_y and next_x1 <= current_x1 + 10:
+                            end_y = max(start_y + 1, next_y1)
+                            break
+
+                    if end_y > start_y:
+                        selected_parts.append(
+                            currentImage.crop((0, start_y, currentImage.width, end_y))
+                        )
+
+                if not selected_parts:
+                    currentImage.close()
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"No renderable question parts selected for {currentQuestionObject.questionName}",
+                    )
+
+            if selected_parts:
+                for croppedImage in selected_parts:
+                    Answers.append(
+                        {
+                            "questionNum": currentQuestionNum,
+                            "Answer": currentQuestionObject.MSName,
+                            "Source": currentQuestionObject.pdfName,
+                            "type": "Long",
+                        }
+                    )
+                    if croppedImage.height > modifier:
+                        currentIndex = 0
+                        while True:
+                            if (currentIndex + 1) * modifier > croppedImage.height:
+                                currentSplitImage = croppedImage.crop(
+                                    (
+                                        0,
+                                        currentIndex * modifier,
+                                        croppedImage.width,
+                                        croppedImage.height,
+                                    )
+                                )
+                                if not is_all_white(currentSplitImage):
+                                    classifiedPdf.add_page()
+                                    currentYClassified = 100
+                                    classifiedPdf.set_xy(questionNumX, currentYClassified)
+                                    classifiedPdf.cell(w=10, txt=f"{currentQuestionNum})")
+                                    temp_image_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+                                    currentSplitImage.save(temp_image_path.name, format="JPEG")
+                                    temp_image_path.close()
+                                    classifiedPdf.image(
+                                        temp_image_path.name,
+                                        questionImageX,
+                                        currentYClassified,
+                                        1420,
+                                        currentSplitImage.height,
+                                    )
+                                    os.remove(temp_image_path.name)
+                                break
+                            else:
+                                currentSplitImage = croppedImage.crop(
+                                    (
+                                        0,
+                                        currentIndex * modifier,
+                                        croppedImage.width,
+                                        (currentIndex + 1) * modifier,
+                                    )
+                                )
+                                if not is_all_white(currentSplitImage):
+                                    classifiedPdf.add_page()
+                                    currentYClassified = 100
+                                    classifiedPdf.set_xy(questionNumX, currentYClassified)
+                                    classifiedPdf.cell(w=10, txt=f"{currentQuestionNum})")
+                                    temp_image_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+                                    currentSplitImage.save(temp_image_path.name, format="JPEG")
+                                    temp_image_path.close()
+                                    classifiedPdf.image(
+                                        temp_image_path.name,
+                                        questionImageX,
+                                        currentYClassified,
+                                        1420,
+                                        currentSplitImage.height,
+                                    )
+                                    os.remove(temp_image_path.name)
+                                currentIndex += 1
+                    else:
+                        if (
+                            currentYClassified + croppedImage.height + 100 > maxHeight
+                            or currentYClassified == 100
+                        ):
+                            classifiedPdf.add_page()
+                            currentYClassified = 100
+
+                        classifiedPdf.set_xy(questionNumX, currentYClassified)
+                        classifiedPdf.cell(w=10, txt=f"{currentQuestionNum})")
+                        temp_image_path = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+                        croppedImage.save(temp_image_path.name, format="JPEG")
+                        temp_image_path.close()
+                        classifiedPdf.image(
+                            temp_image_path.name,
+                            questionImageX,
+                            currentYClassified,
+                            1420,
+                            croppedImage.height,
+                        )
+                        os.remove(temp_image_path.name)
+                        currentYClassified += croppedImage.height + 100
+                    currentQuestionNum += 1
+            elif currentImage.height > modifier:
+                Answers.append(
+                    {
+                        "questionNum": currentQuestionNum,
+                        "Answer": currentQuestionObject.MSName,
+                        "Source": currentQuestionObject.pdfName,
+                        "type": "Long",
+                    }
+                )
                 currentIndex = 0
                 while True:
                     if (currentIndex + 1) * modifier > currentImage.height:
@@ -232,6 +380,14 @@ async def generate_pdf(questionData: QuestionsList):
                             os.remove(temp_image_path.name)
                         currentIndex += 1
             else:
+                Answers.append(
+                    {
+                        "questionNum": currentQuestionNum,
+                        "Answer": currentQuestionObject.MSName,
+                        "Source": currentQuestionObject.pdfName,
+                        "type": "Long",
+                    }
+                )
                 classifiedPdf.add_page()
                 classifiedPdf.set_xy(questionNumX, currentYClassified)
                 classifiedPdf.cell(w=10, txt=f"{currentQuestionNum})")
@@ -246,7 +402,11 @@ async def generate_pdf(questionData: QuestionsList):
                     currentImage.height,
                 )
                 os.remove(temp_image_path.name)
-            currentQuestionNum += 1
+
+            currentImage.close()
+
+            if not selected_parts:
+                currentQuestionNum += 1
     logger.info("Generating answers PDF")
     mcqAnswers = []
     longAnswers = []
