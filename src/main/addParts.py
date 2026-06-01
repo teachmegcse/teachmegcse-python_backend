@@ -12,7 +12,7 @@ from main.utils import get_dimensions_from_api
 
 INPUT_JSON = f"{BASE_PATH}/resources/json/a_chem_theory.json"
 OUTPUT_JSON = "questions_updated.json"
-IMAGES_DIR = f"{BASE_PATH}/resources/images/A-level/chemistry/long"
+IMAGES_DIR = f"{BASE_PATH}/resources/images/a-level/chemistry/long"
 
 reader = easyocr.Reader(["en"])
 
@@ -43,7 +43,7 @@ def process_questions():
 
             print(f"Processing {image_filename}...")
 
-            parts = get_dimensions_from_api(str(image_path))
+            parts = get_dimensions_from_api(str(image_path), mode="parts")
 
             parts = [[int(v) for v in box] for box in parts]
 
