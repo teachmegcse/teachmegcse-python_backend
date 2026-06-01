@@ -32,7 +32,7 @@ for model_file in model_files:
         raise RuntimeError(f"Failed to load YOLO model '{model_file}': {e}")
 
 # Confidence levels
-conf_levels = {"long-double": 0.15, "parts": 0.3}  # Add others if needed, default 0.15
+conf_levels = {"long-double": 0.15, "parts": 0.3, "mcq" : 0.15, "ms": 0.15}  # Add others if needed, default 0.15
 
 
 @app.post("/predict")

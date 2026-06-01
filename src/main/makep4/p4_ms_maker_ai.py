@@ -1,8 +1,6 @@
 import PIL
 import os
 import easyocr
-import requests
-from io import BytesIO
 import json
 import re
 import sys
@@ -12,13 +10,21 @@ BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", 
 sys.path.append(BASE_PATH)
 
 from main.utils import (
-    select_files, strip_images, take_screenshot, makeImages,
-    merge_all_images, extract_paper_number, cleanup, clean_image
+    select_files,
+    strip_images,
+    take_screenshot,
+    makeImages,
+    merge_all_images,
+    extract_paper_number,
+    cleanup,
+    clean_image,
+    get_dimensions_from_api,
 )
 
 reader = easyocr.Reader(["en"])
 output_path = f"{BASE_PATH}/resources/images/test_images"
 definitionsPath = f"{BASE_PATH}/main/definitions.json"
+
 
 def extract_question_number(im, current_question_num, output_path):
     returnArray = []
@@ -37,16 +43,13 @@ def extract_question_number(im, current_question_num, output_path):
             "}": ")",
         }
 
-        buffer = BytesIO()
-        im.save(buffer, format="JPEG")
-        buffer.seek(0)
-        files = {"file": buffer}
-        response = requests.post("http://127.0.0.1:8000/predict", files=files)
+        os.makedirs(f"{output_path}/questions", exist_ok=True)
+        temp_api_path = f"{output_path}/questions/temp_api.jpg"
+        im.save(temp_api_path, format="JPEG")
+        bounding_boxes = get_dimensions_from_api(temp_api_path, mode="ms")
 
-        if response.status_code != 200 or not response.json():
+        if not bounding_boxes:
             return []
-
-        bounding_boxes = response.json()
         bounding_boxes.sort(key=lambda x: x[1])
 
         for box in bounding_boxes:
@@ -89,10 +92,9 @@ def extract_question_number(im, current_question_num, output_path):
 
 
 if __name__ == "__main__":
-    
     with open(definitionsPath, "r") as db:
         definitionsData = json.load(db)
-    
+
     files = select_files()
     files = [file for file in files if "ms" in file.lower()]
 
@@ -102,21 +104,21 @@ if __name__ == "__main__":
             file_path = os.path.join(f"{output_path}/currentPdfImages", filename)
             if os.path.isfile(file_path):  # only delete files
                 os.remove(file_path)
-        
+
         filename = files[i].split("/")[-1]
         filename = filename.replace(".pdf", "")
         paperCode = filename.split("_")[0]
 
-        if filename[0] == '0':
-            paperType = 'IGCSE'
+        if filename[0] == "0":
+            paperType = "IGCSE"
         else:
-            paperType = 'A-level'
+            paperType = "A-level"
 
         currentDefintionsData = definitionsData[paperCode]
         subject = currentDefintionsData["subjectName"]
         db_name = currentDefintionsData["long_ms_db_path"]
         longPapers = currentDefintionsData["longPapers"]
-        
+
         JSON_FILE_LOCATION = f"{BASE_PATH}/resources/json/{db_name}"
         if not os.path.exists(JSON_FILE_LOCATION):
             with open(JSON_FILE_LOCATION, "w") as f:
@@ -126,17 +128,17 @@ if __name__ == "__main__":
         with open(JSON_FILE_LOCATION, "r") as json_file:
             ms_data = json.load(json_file)
 
-
         print(f"Processing PDF: {filename}")
         makeImages(files[i])
-        strip_images(mode='ms')
+        strip_images(mode="ms")
         merge_all_images()
         currentQuestionNum = 1
         previous_y = 0
 
         # Sort pages numerically
         number_of_pages = sorted(
-            os.listdir(f"{output_path}/currentPdfImages"), key=lambda x: int(x.split(".")[0])
+            os.listdir(f"{output_path}/currentPdfImages"),
+            key=lambda x: int(x.split(".")[0]),
         )
 
         paper_number = extract_paper_number(filename)
@@ -161,8 +163,8 @@ if __name__ == "__main__":
                             # Include a small buffer below
                             y1 + (j) * 1300 + 10,
                             image_file_name,
-                            'long',
-                            ''
+                            "long",
+                            "",
                         )
 
                         ms_data.append(
@@ -176,8 +178,12 @@ if __name__ == "__main__":
                         currentQuestionNum += 1
                         filename_num += 1
 
-                        if not os.path.exists(f"{BASE_PATH}/resources/images/{paperType}/{subject}/long"):
-                            os.makedirs(f"{BASE_PATH}/resources/images/{paperType}/{subject}/long")
+                        if not os.path.exists(
+                            f"{BASE_PATH}/resources/images/{paperType}/{subject}/long"
+                        ):
+                            os.makedirs(
+                                f"{BASE_PATH}/resources/images/{paperType}/{subject}/long"
+                            )
 
                         shutil.copy(
                             f"{output_path}/questions/{image_file_name}.jpg",
@@ -186,17 +192,15 @@ if __name__ == "__main__":
                             }.jpg",
                         )
 
-                        clean_image(paperType, subject, "long", f"{image_file_name}.jpg")
+                        clean_image(
+                            paperType, subject, "long", f"{image_file_name}.jpg"
+                        )
 
         image_file_name = (
             f"{subject}_p{paper_number}_ms_{filename_num}_{currentQuestionNum}"
         )
         take_screenshot(
-            previous_y,
-            (len(number_of_pages)) * 1300,
-            image_file_name,
-            'long',
-            ''
+            previous_y, (len(number_of_pages)) * 1300, image_file_name, "long", ""
         )
         ms_data.append(
             {
@@ -207,12 +211,12 @@ if __name__ == "__main__":
         )
 
         shutil.copy(
-                    f"{output_path}/questions/{image_file_name}.jpg",
-                    f"{BASE_PATH}/resources/images/{paperType}/{subject}/long/{
-                        image_file_name
-                    }.jpg",
-                )
-        
+            f"{output_path}/questions/{image_file_name}.jpg",
+            f"{BASE_PATH}/resources/images/{paperType}/{subject}/long/{
+                image_file_name
+            }.jpg",
+        )
+
         clean_image(paperType, subject, "long", f"{image_file_name}.jpg")
 
         filename_num += 1

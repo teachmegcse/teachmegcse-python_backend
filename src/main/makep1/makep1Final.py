@@ -63,7 +63,8 @@ for currentFileIndex in range(len(files)):
     current_question_num = 1
     for k in range(len(pages)):
         y_coordinates = get_dimensions_from_api(
-            f"{outputPath}/currentPdfImages/{k + 1}.jpg"
+            f"{outputPath}/currentPdfImages/{k + 1}.jpg",
+            mode="mcq"
         )
         # Filter boxes where x1 < 250 and extract their y2 (i.e. box[1])
         raw_y2_list = sorted(box[1] for box in y_coordinates if box[0] < 160)
