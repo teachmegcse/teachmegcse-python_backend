@@ -19,6 +19,11 @@ class PartsViewer(tk.Tk):
         self.current_photo = None
         self.current_scale = 1.0
         self.current_offset = (0, 0)
+        self.zoom_factor = 1.0
+        self.min_zoom = 0.2
+        self.max_zoom = 5.0
+        self.pan_offset = (0, 0)
+        self.drag_start = None
 
         self._build_ui()
         self._bind_keys()
@@ -54,11 +59,20 @@ class PartsViewer(tk.Tk):
         self.canvas = tk.Canvas(left, bg="#1f1f1f", highlightthickness=0)
         self.canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         self.canvas.bind("<Configure>", self._on_canvas_resize)
+        self.canvas.bind("<ButtonPress-1>", self._start_pan)
+        self.canvas.bind("<B1-Motion>", self._pan)
 
         nav = ttk.Frame(left, padding=(0, 8, 0, 0))
         nav.pack(side=tk.BOTTOM, fill=tk.X)
         ttk.Button(nav, text="Prev", command=self._prev_question).pack(side=tk.LEFT)
         ttk.Button(nav, text="Next", command=self._next_question).pack(
+            side=tk.LEFT, padx=6
+        )
+        ttk.Button(nav, text="Zoom -", command=self._zoom_out).pack(
+            side=tk.LEFT, padx=6
+        )
+        ttk.Button(nav, text="Zoom +", command=self._zoom_in).pack(side=tk.LEFT)
+        ttk.Button(nav, text="Reset Zoom", command=self._reset_zoom).pack(
             side=tk.LEFT, padx=6
         )
         self.status_label = ttk.Label(nav, text="No data loaded")
@@ -89,6 +103,12 @@ class PartsViewer(tk.Tk):
         self.bind("<Down>", lambda _event: self._next_question())
         self.bind("<Prior>", lambda _event: self._prev_question())
         self.bind("<Next>", lambda _event: self._next_question())
+        self.bind("<plus>", lambda _event: self._zoom_in())
+        self.bind("<minus>", lambda _event: self._zoom_out())
+        self.bind("<Key-0>", lambda _event: self._reset_zoom())
+        self.bind("<MouseWheel>", self._on_mousewheel)
+        self.bind("<Button-4>", self._on_mousewheel)
+        self.bind("<Button-5>", self._on_mousewheel)
 
     def _browse_json(self) -> None:
         path = filedialog.askopenfilename(
@@ -172,6 +192,7 @@ class PartsViewer(tk.Tk):
 
         self._update_question_text(question)
         self._load_image(question)
+        self._reset_zoom()
         self._render_image()
 
         name = question.get("questionName", "(no name)")
@@ -217,6 +238,47 @@ class PartsViewer(tk.Tk):
     def _on_canvas_resize(self, _event: tk.Event) -> None:
         self._render_image()
 
+    def _zoom_in(self) -> None:
+        self._set_zoom(self.zoom_factor * 1.2)
+
+    def _zoom_out(self) -> None:
+        self._set_zoom(self.zoom_factor / 1.2)
+
+    def _reset_zoom(self) -> None:
+        self.pan_offset = (0, 0)
+        self._set_zoom(1.0)
+
+    def _set_zoom(self, value: float) -> None:
+        self.zoom_factor = max(self.min_zoom, min(self.max_zoom, value))
+        self._render_image()
+
+    def _on_mousewheel(self, event: tk.Event) -> None:
+        if hasattr(event, "delta") and event.delta != 0:
+            if event.delta > 0:
+                self._zoom_in()
+            else:
+                self._zoom_out()
+            return
+
+        if getattr(event, "num", None) == 4:
+            self._zoom_in()
+        elif getattr(event, "num", None) == 5:
+            self._zoom_out()
+
+    def _start_pan(self, event: tk.Event) -> None:
+        self.drag_start = (event.x, event.y)
+
+    def _pan(self, event: tk.Event) -> None:
+        if self.drag_start is None:
+            return
+        start_x, start_y = self.drag_start
+        dx = event.x - start_x
+        dy = event.y - start_y
+        current_x, current_y = self.pan_offset
+        self.pan_offset = (current_x + dx, current_y + dy)
+        self.drag_start = (event.x, event.y)
+        self._render_image()
+
     def _render_image(self) -> None:
         self.canvas.delete("all")
         if self.current_image is None:
@@ -233,14 +295,24 @@ class PartsViewer(tk.Tk):
         canvas_height = max(self.canvas.winfo_height(), 1)
         image_width, image_height = self.current_image.size
 
-        scale = min(
-            canvas_width / image_width,
-            canvas_height / image_height,
+        scale = (
+            min(
+                canvas_width / image_width,
+                canvas_height / image_height,
+            )
+            * self.zoom_factor
         )
         scaled_width = int(image_width * scale)
         scaled_height = int(image_height * scale)
         offset_x = (canvas_width - scaled_width) // 2
         offset_y = (canvas_height - scaled_height) // 2
+        if offset_x < 0:
+            offset_x = 0
+        if offset_y < 0:
+            offset_y = 0
+        pan_x, pan_y = self.pan_offset
+        offset_x += pan_x
+        offset_y += pan_y
 
         resized = self.current_image.resize((scaled_width, scaled_height))
         self.current_photo = ImageTk.PhotoImage(resized)
@@ -254,6 +326,8 @@ class PartsViewer(tk.Tk):
 
         question = self.data[self.current_index]
         parts = question.get("questionParts", [])
+        label_size = max(8, int(12 * self.zoom_factor))
+        label_padding = max(2, int(4 * self.zoom_factor))
         for part in parts:
             coords = part.get("coordinates", [])
             if len(coords) != 4:
@@ -267,10 +341,11 @@ class PartsViewer(tk.Tk):
             label = part.get("text", "")
             if label:
                 self.canvas.create_text(
-                    sx1 + 4,
-                    sy1 + 4,
+                    sx1 + label_padding,
+                    sy1 + label_padding,
                     anchor=tk.NW,
-                    fill="#00ff66",
+                    fill="#ffd200",
+                    font=("TkDefaultFont", label_size),
                     text=label,
                 )
 
