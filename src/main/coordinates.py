@@ -13,9 +13,7 @@ app = FastAPI()
 current_question_num = 0
 
 # Argument parser for model selection - now loading both
-parser = argparse.ArgumentParser(
-    description="Start FastAPI app with YOLO models"
-)
+parser = argparse.ArgumentParser(description="Start FastAPI app with YOLO models")
 args, unknown = parser.parse_known_args()
 
 import glob
@@ -32,19 +30,29 @@ for model_file in model_files:
         raise RuntimeError(f"Failed to load YOLO model '{model_file}': {e}")
 
 # Confidence levels
-conf_levels = {"long-double": 0.15, "parts": 0.3, "mcq" : 0.15, "ms": 0.15}  # Add others if needed, default 0.15
+conf_levels = {
+    "long-double": 0.15,
+    "parts": 0.3,
+    "mcq": 0.15,
+    "ms": 0.15,
+}  # Add others if needed, default 0.15
 
 
 @app.post("/predict")
-async def predict(mode: str = "long-double", file: UploadFile = File(...)) -> List[List[float]]:
+async def predict(
+    mode: str = "long-double", file: UploadFile = File(...)
+) -> List[List[float]]:
     global current_question_num
     try:
         contents = await file.read()
         nparr = np.frombuffer(contents, np.uint8)
         image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
-        if image is None:
+        if image is None or image.size == 0:
             raise ValueError("Invalid image file provided")
+        height, width = image.shape[:2]
+        if height <= 0 or width <= 0:
+            raise ValueError("Invalid image dimensions")
 
         model = models.get(mode, models["long-double"])
         conf = conf_levels.get(mode, 0.15)

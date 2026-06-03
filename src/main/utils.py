@@ -365,19 +365,22 @@ def get_dimensions_from_api(image_path: str, mode: str = "long-double") -> list:
           where each bounding box is represented as a list of four integers [x1, y1, x2, y2].
 
     """
-    with open(image_path, "rb") as img:
-        files = {"file": img}
-        response = requests.post(
-            f"http://127.0.0.1:8000/predict?mode={mode}", files=files
-        )
-        if response.status_code == 200:
-            coordinates = response.json()
-            return coordinates
-        else:
+    try:
+        with open(image_path, "rb") as img:
+            files = {"file": img}
+            response = requests.post(
+                f"http://127.0.0.1:8000/predict?mode={mode}", files=files
+            )
+            if response.status_code == 200:
+                coordinates = response.json()
+                return coordinates
             print(f"API response text: {response.text}")
             raise Exception(
                 f"API request failed with status code {response.status_code}"
             )
+    except Exception as exc:
+        print(f"⚠️ API request failed for {image_path}: {exc}")
+        return []
 
 
 def cleanup() -> None:

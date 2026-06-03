@@ -75,7 +75,7 @@ def check_json_validity(json_object, pdf_dir) -> json:
                 # Extract each question block: everything from start to each "[Total: x]" (colon optional), and spaces could be there
                 split_questions = []
                 # Support marks like 10 or 10+
-                pattern = re.compile(r'\[\s*Total\s*:?\s*\d+\+?\s*\]', re.IGNORECASE)
+                pattern = re.compile(r"\[\s*Total\s*:?\s*\d+\+?\s*\]", re.IGNORECASE)
                 start = 0
                 for match in pattern.finditer(question_text):
                     block = question_text[start : match.end()]
@@ -107,15 +107,27 @@ def check_json_validity(json_object, pdf_dir) -> json:
         if qnum - 1 < len(split_questions):
             block_text = split_questions[qnum - 1]
             # Clean the text: remove non-ASCII chars and replace newlines
-            block_text = block_text.encode('ascii', 'ignore').decode('ascii').replace('\n', ' ').strip()
+            block_text = re.sub(r"\(cid:\d+\)", "", block_text)
+            block_text = re.sub(
+                r"AM SIHT NI ETIRW TON OD NIGRAM", "", block_text, flags=re.IGNORECASE
+            )
+            block_text = re.sub(r"\b[A-Z][A-Z\s]{3,}\b", "", block_text)
+            block_text = (
+                block_text.encode("ascii", "ignore")
+                .decode("ascii")
+                .replace("\n", " ")
+                .strip()
+            )
             record["questionText"] = block_text
             # Extract the marks from the trailing [Total: X] within this block
-            m = re.search(r"\[\s*Total\s*:?\s*([0-9]+\+?)\s*\]", block_text, flags=re.IGNORECASE)
+            m = re.search(
+                r"\[\s*Total\s*:?\s*([0-9]+\+?)\s*\]", block_text, flags=re.IGNORECASE
+            )
             if m:
                 record["marks"] = int(m.group(1))
         else:
             # The expected question index was not found in the parsed blocks
-            #logging.debug(question_text)
+            # logging.debug(question_text)
             pass
     return json_object
 
@@ -145,7 +157,11 @@ def main():
     with open(json_file, "r") as f:
         json_object = json.load(f)
     pdf_directory = os.path.join(
-        SCRIPT_DIR, "..", "resources", "full_pdfs", json_object[0]["pdfName"].split("_")[0]
+        SCRIPT_DIR,
+        "..",
+        "resources",
+        "full_pdfs",
+        json_object[0]["pdfName"].split("_")[0],
     )
     new_json = check_json_validity(json_object, pdf_directory)
     with open(json_file, "w") as f:
@@ -154,4 +170,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
