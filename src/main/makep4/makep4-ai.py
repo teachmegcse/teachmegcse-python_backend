@@ -42,7 +42,7 @@ def get_all_page_coordinates():
 
         # Get coordinates for this page
         try:
-            bounding_boxes = get_dimensions_from_api(page_path, mode="long-double")
+            bounding_boxes = get_dimensions_from_api(page_path, mode="long-double-p3")
 
             if not bounding_boxes:  # Skip if no questions found
                 # Still need to account for page height!

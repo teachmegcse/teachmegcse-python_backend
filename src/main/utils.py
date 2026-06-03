@@ -93,6 +93,7 @@ def makeImages(pdf_path: str) -> None:
         "next page",
         "marking principle",
         "correct answer only",
+        "use this page for any rough working",
     ]
 
     current_index = 1
