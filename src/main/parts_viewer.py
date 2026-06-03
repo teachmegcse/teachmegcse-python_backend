@@ -86,6 +86,11 @@ class PartsViewer(tk.Tk):
         self.listbox.pack(fill=tk.X, pady=(0, 8))
         self.listbox.bind("<<ListboxSelect>>", self._on_listbox_select)
 
+        ttk.Label(right, text="Metadata").pack(anchor=tk.W)
+        self.meta_text = tk.Text(right, height=8, wrap=tk.WORD)
+        self.meta_text.pack(fill=tk.BOTH, expand=False, pady=(0, 8))
+        self.meta_text.configure(state=tk.DISABLED)
+
         ttk.Label(right, text="Question text").pack(anchor=tk.W)
         self.question_text = tk.Text(right, height=14, wrap=tk.WORD)
         self.question_text.pack(fill=tk.BOTH, expand=False, pady=(0, 8))
@@ -199,6 +204,15 @@ class PartsViewer(tk.Tk):
         self.status_label.configure(text=f"{index + 1}/{len(self.data)} - {name}")
 
     def _update_question_text(self, question: dict) -> None:
+        self.meta_text.configure(state=tk.NORMAL)
+        self.meta_text.delete("1.0", tk.END)
+        for key in sorted(question.keys()):
+            if key in {"questionText", "questionParts"}:
+                continue
+            value = question.get(key)
+            self.meta_text.insert(tk.END, f"{key}: {value}\n")
+        self.meta_text.configure(state=tk.DISABLED)
+
         text = question.get("questionText", "")
         self.question_text.configure(state=tk.NORMAL)
         self.question_text.delete("1.0", tk.END)

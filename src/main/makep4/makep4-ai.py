@@ -1,4 +1,4 @@
-import PIL
+from PIL import Image
 import os
 import json
 import shutil
@@ -11,7 +11,6 @@ BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", 
 sys.path.append(BASE_PATH)
 
 from main.utils import (
-    process_image,
     select_files,
     makeImages,
     get_level_and_chapter,
@@ -47,7 +46,7 @@ def get_all_page_coordinates():
 
             if not bounding_boxes:  # Skip if no questions found
                 # Still need to account for page height!
-                with PIL.Image.open(page_path) as im:
+                with Image.open(page_path) as im:
                     current_height += im.height
                 continue
 
@@ -58,7 +57,7 @@ def get_all_page_coordinates():
 
             # Skip based on x threshold
             if x1 > 150:
-                with PIL.Image.open(page_path) as im:
+                with Image.open(page_path) as im:
                     current_height += im.height
                 continue
 
@@ -67,7 +66,7 @@ def get_all_page_coordinates():
             all_coordinates.append(adjusted_y)
 
             # Update current height based on page height
-            with PIL.Image.open(page_path) as im:
+            with Image.open(page_path) as im:
                 current_height += im.height
 
         except Exception as e:
@@ -122,10 +121,22 @@ if __name__ == "__main__":
 
             # Extract paper number from filename
             paper_num = extract_paper_number(current_file)
+            if paper_num is None:
+                print(
+                    f"Could not extract paper number from {current_file}, skipping file."
+                )
+                continue
+            if paper_num is None:
+                print(
+                    f"Could not extract paper number from {current_file}, skipping file."
+                )
+                continue
 
             longPapers = currentDefinitionsData["longPapers"]
             if paper_num not in longPapers:
-                print(f"Paper number {paper_num} not in longPapers list, skipping file.")
+                print(
+                    f"Paper number {paper_num} not in longPapers list, skipping file."
+                )
                 continue
 
             # Process the paper
@@ -153,13 +164,10 @@ if __name__ == "__main__":
                     unique_filename = (
                         f"{subject}_p{paper_num}_qp_{unique_num}_{current_question_num}"
                     )
-                    take_screenshot(y1, y2, unique_filename, "long", "")
+                    take_screenshot(y1, y2, unique_filename, "long", 0)
 
                     # Clean the cropped image
                     image_path = f"{outputPath}/questions/{unique_filename}.jpg"
-                    question_text = process_image(image_path)
-                    formatted_text = formatText(question_text)
-
                     if current_file[0] == "0":
                         paperType = "IGCSE"
                     else:
@@ -167,10 +175,6 @@ if __name__ == "__main__":
 
                     if os.path.exists(image_path):
                         current_file = current_file.replace(".pdf", "")
-
-                        level, chapter_num = get_level_and_chapter(
-                            formatted_text, paper_num, paperType, currentDefinitionsData
-                        )
 
                         if not os.path.exists(
                             f"{BASE_PATH}/resources/images/{paperType}/{subject}/long"
@@ -197,12 +201,11 @@ if __name__ == "__main__":
                             "questionName": f"{unique_filename}.jpg",
                             "questionNum": current_question_num,
                             "Subject": subject,
-                            "Level": level,
-                            "Chapter": chapter_num,
+                            "Level": None,
+                            "Chapter": None,
                             "pdfName": current_file,
                             "year": year,
                             "paperNumber": paper_num,
-                            "questionText": formatted_text,
                         }
                         answerObjectFormatted = json.dumps(answerObject)
                         db.write(answerObjectFormatted + ",\n")
@@ -218,40 +221,41 @@ if __name__ == "__main__":
     # Now process parts for all questions in processed DBs
     for db_path in processed_db_paths:
         print(f"Processing parts for {db_path}...")
-        
+
         with open(db_path, "r") as f:
             content = f.read()
-        parts = content.split(',\n')
+        parts = content.split(",\n")
         questions = [json.loads(part) for part in parts if part.strip()]
-        
+
         updated_questions = []
-        
+
         for q in questions:
             image_filename = q.get("questionName")
             if not image_filename:
                 print(f"⚠️ Skipping: no questionName")
                 updated_questions.append(q)
                 continue
-            
-            paperType = "IGCSE" if q["Level"] == "IGCSE" else "A-level"
+
+            paper_code = q.get("pdfName", "").split("_")[0]
+            paper_type = "IGCSE" if paper_code.startswith("0") else "A-level"
             subject = q["Subject"]
-            IMAGES_DIR = f"{BASE_PATH}/resources/images/{paperType}/{subject}/long"
+            IMAGES_DIR = f"{BASE_PATH}/resources/images/{paper_type}/{subject}/long"
             image_path = Path(IMAGES_DIR) / image_filename
-            
+
             if not image_path.exists():
                 print(f"⚠️ Image not found: {image_path}")
                 updated_questions.append(q)
                 continue
-            
+
             print(f"Processing parts for {image_filename}...")
-            
+
             parts = get_dimensions_from_api(str(image_path), mode="parts")
             parts = [[int(v) for v in box] for box in parts]
             parts_sorted = sorted(parts, key=lambda x: x[1])
-            
-            image = PIL.Image.open(image_path)
+
+            image = Image.open(image_path)
             height = image.height
-            
+
             if height <= 3000:
                 parts = get_dimensions_from_api(str(image_path), mode="parts")
             else:
@@ -261,19 +265,27 @@ if __name__ == "__main__":
                 while y_offset < height:
                     y_end = min(y_offset + 3000, height)
                     section = image.crop((0, y_offset, image.width, y_end))
-                    section_path = Path(IMAGES_DIR) / f"temp_section_{image_filename}_{section_idx}.jpg"
+                    section_path = (
+                        Path(IMAGES_DIR)
+                        / f"temp_section_{image_filename}_{section_idx}.jpg"
+                    )
                     section.save(section_path)
-                    section_parts = get_dimensions_from_api(str(section_path), mode="parts")
+                    section_parts = get_dimensions_from_api(
+                        str(section_path), mode="parts"
+                    )
                     # Adjust coordinates
-                    adjusted_parts = [[x1, y1 + y_offset, x2, y2 + y_offset] for x1, y1, x2, y2 in section_parts]
+                    adjusted_parts = [
+                        [x1, y1 + y_offset, x2, y2 + y_offset]
+                        for x1, y1, x2, y2 in section_parts
+                    ]
                     parts.extend(adjusted_parts)
                     os.remove(section_path)
                     y_offset = y_end
                     section_idx += 1
-            
+
             parts = [[int(v) for v in box] for box in parts]
             parts_sorted = sorted(parts, key=lambda x: x[1])
-            
+
             question_parts = []
             for idx, box in enumerate(parts_sorted):
                 x1, y1, x2, y2 = box
@@ -283,31 +295,83 @@ if __name__ == "__main__":
                 save_path = Path(IMAGES_DIR) / f"temp_{image_filename}_{idx}.jpg"
                 cropped.save(save_path)
                 part_text = reader.readtext(str(save_path))
-                full_text = " ".join([t[1] for t in part_text]) if part_text else "(i)"
-                if '(' not in full_text and ')' not in full_text:
+                if part_text:
+                    pieces = []
+                    for entry in part_text:
+                        if isinstance(entry, (list, tuple)) and len(entry) > 1:
+                            pieces.append(str(entry[1]))
+                        elif isinstance(entry, dict):
+                            text_value = entry.get("text")
+                            if text_value:
+                                pieces.append(str(text_value))
+                    full_text = " ".join(pieces) if pieces else "(i)"
+                else:
+                    full_text = "(i)"
+                if "(" not in full_text and ")" not in full_text:
                     os.remove(save_path)  # cleanup temp
                     continue
-                question_parts.append({"coordinates": [x1, y1, x2, y2], "text": full_text})
+                question_parts.append(
+                    {"coordinates": [x1, y1, x2, y2], "text": full_text}
+                )
                 os.remove(save_path)  # cleanup temp
-            
+
             q["questionParts"] = question_parts
             updated_questions.append(q)
-        
+
         with open(db_path, "w", encoding="utf-8") as f:
             json.dump(updated_questions, f, indent=2, ensure_ascii=False)
-        
+
         print(f"✅ Parts processing complete for {db_path}")
-        
+
         # Now call read_question_text to update questionText from PDFs
         print(f"Running read_question_text on {os.path.basename(db_path)}...")
         result = subprocess.run(
             ["python", "../read_question_text.py", os.path.basename(db_path)],
             cwd=os.path.dirname(__file__),  # src/main/makep4/
             capture_output=True,
-            text=True
+            text=True,
         )
         if result.returncode == 0:
             print("✅ read_question_text completed successfully")
+            try:
+                with open(db_path, "r", encoding="utf-8") as f:
+                    updated_questions = json.load(f)
+            except (OSError, json.JSONDecodeError) as exc:
+                print(f"❌ Failed to reload {db_path}: {exc}")
+                continue
+
+            for q in updated_questions:
+                question_text = q.get("questionText", "")
+                if not question_text:
+                    continue
+
+                formatted_text = formatText(question_text)
+                paper_num = q.get("paperNumber")
+                paper_code = q.get("pdfName", "").split("_")[0]
+                if not paper_code or paper_code not in definitionsData:
+                    print(f"⚠️ Missing definitions for {q.get('pdfName')}")
+                    continue
+                if paper_num is None:
+                    print(f"⚠️ Missing paper number for {q.get('questionName')}")
+                    continue
+                paper_type = "IGCSE" if paper_code.startswith("0") else "A-level"
+                try:
+                    level, chapter_num = get_level_and_chapter(
+                        formatted_text,
+                        int(paper_num),
+                        paper_type,
+                        definitionsData[paper_code],
+                    )
+                except Exception as exc:
+                    print(
+                        f"⚠️ Chapter extraction failed for {q.get('questionName')}: {exc}"
+                    )
+                    continue
+                q["Level"] = level
+                q["Chapter"] = chapter_num
+
+            with open(db_path, "w", encoding="utf-8") as f:
+                json.dump(updated_questions, f, indent=2, ensure_ascii=False)
+            print(f"✅ Chapter extraction updated for {os.path.basename(db_path)}")
         else:
             print(f"❌ read_question_text failed: {result.stderr}")
-

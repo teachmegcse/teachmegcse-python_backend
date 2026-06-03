@@ -1,6 +1,7 @@
 from pdf2image import convert_from_path
 import PIL
 from PyPDF2 import PdfReader
+import pdfplumber
 from tkinter import filedialog, Tk
 import os
 from nltk.stem import PorterStemmer
@@ -21,13 +22,14 @@ outputPath = f"{BASE_PATH}/resources/images/test_images"
 CUSTOM_CONFIG = r"--oem 3 --psm 6"
 READER = easyocr.Reader(["en"])
 
+
 def predict(data: str, model: str) -> str:
-    """ Takes a text string from a question and a model name that references the level and subject, and returns a predicted chapter label.
+    """Takes a text string from a question and a model name that references the level and subject, and returns a predicted chapter label.
 
     Args:
         data (str): The text string from the question.
         model (str): The name of the model to use for prediction.
-    
+
     Returns:
         str: The predicted chapter label.
     """
@@ -38,11 +40,11 @@ def predict(data: str, model: str) -> str:
 
 
 def process_image(image_path: str) -> str:
-    """ Takes an image path, processes the image using OCR, and returns the extracted text.
-    
+    """Takes an image path, processes the image using OCR, and returns the extracted text.
+
     Args:
         image_path (str): The path to the image file.
-    
+
     Returns:
         str: The extracted text from the image (using easyocr).
 
@@ -53,12 +55,12 @@ def process_image(image_path: str) -> str:
 
 
 def select_files() -> list:
-    """ Opens a file dialog for the user to select PDF files and returns a list of the selected past papers.
+    """Opens a file dialog for the user to select PDF files and returns a list of the selected past papers.
 
     Args:
     Returns:
         list: A list of past paper paths for the selected PDF files.
-    
+
     """
     root = Tk()
     filetypes = [("PDF Files", "*.pdf")]
@@ -67,9 +69,8 @@ def select_files() -> list:
     return list(files)
 
 
-
 def makeImages(pdf_path: str) -> None:
-    """ Takes a PDF path, converts the PDF into images, and saves the images in a specified output directory (outputPath).
+    """Takes a PDF path, converts the PDF into images, and saves the images in a specified output directory (outputPath).
       It also skips pages that contain certain predefined strings like "blank page" or "important values".
 
     Args:
@@ -96,39 +97,38 @@ def makeImages(pdf_path: str) -> None:
 
     current_index = 1
 
-    for x in range(1, number_of_pages):
-        page = reader.pages[x]
-        text = (page.extract_text() or "").lower()
+    with pdfplumber.open(pdf_path) as plumber:
+        for x in range(1, number_of_pages):
+            try:
+                page = plumber.pages[x]
+                text = (page.extract_text() or "").lower()
+            except Exception as exc:
+                print(f"[WARN] Page {x + 1} → pdfplumber extract_text failed: {exc}")
+                text = ""
 
-        matched = [s for s in skip_strings if s in text]
+            matched = [s for s in skip_strings if s in text]
 
-        if matched:
-            print(
-                f"[SKIPPED] Page {x + 1} → matched: {', '.join(matched)}"
-            )
-            continue
+            if matched:
+                print(f"[SKIPPED] Page {x + 1} → matched: {', '.join(matched)}")
+                continue
 
-        images[x].save(
-            f"{path}/{current_index}.jpg",
-            "JPEG"
-        )
-        print(f"[SAVED] Page {x + 1} → image {current_index}.jpg")
+            images[x].save(f"{path}/{current_index}.jpg", "JPEG")
+            print(f"[SAVED] Page {x + 1} → image {current_index}.jpg")
 
-        current_index += 1
-
+            current_index += 1
 
 
 def formatText(text: str) -> str:
-    """ Takes a text string, processes it by converting to lowercase, removing punctuation and digits,
+    """Takes a text string, processes it by converting to lowercase, removing punctuation and digits,
       removing Cambridge command words, tokenizing, and stemming the words.
       (used before chapter prediction to keep only the most relevant information for the model and reduce noise in the data)
 
     Args:
         text (str): The input text string from the question to be processed.
-    
+
     Returns:
         str: The processed text string after formatting and removing noise.
-    
+
     """
     stemmer = PorterStemmer()
 
@@ -183,7 +183,7 @@ def formatText(text: str) -> str:
 
 
 def strip_images(mode: str) -> None:
-    """ Takes a mode (either "qp" for question paper or "ms" for mark scheme)
+    """Takes a mode (either "qp" for question paper or "ms" for mark scheme)
       and crops the images in the currentPdfImages directory accordingly
         to remove irrelevant information such as page numbers, headers, and footers.
 
@@ -204,8 +204,10 @@ def strip_images(mode: str) -> None:
             im_crop.save(f"{outputPath}/currentPdfImages/{pages[i]}")
 
 
-def take_screenshot(y1: int, y2: int, unique_filename: str, type: str, page: int) -> bool:
-    """ Takes the y1 and y2 coordinates of the question region (x coordinates are fixed),
+def take_screenshot(
+    y1: int, y2: int, unique_filename: str, type: str, page: int
+) -> bool:
+    """Takes the y1 and y2 coordinates of the question region (x coordinates are fixed),
       a unique filename for the question image, the type of question (either "mcq" or "long"), and the page number to crop the question from.
       It crops the corresponding region from the correct image (based on type) and saves it to the questions folder with the unique filename.
       It also checks if the height of the cropped region is above a certain threshold (300 pixels for long questions and 100 pixels for MCQs)
@@ -218,7 +220,7 @@ def take_screenshot(y1: int, y2: int, unique_filename: str, type: str, page: int
     type (str): The type of question, either "mcq" for multiple-choice questions or "long" for long-answer questions,
         which determines the cropping dimensions and source image
     page (int): The page number to crop the question from (used to determine which image to crop from based on type).
-    
+
     Returns:
      bool: True if the question image was successfully saved, False if it was skipped due to being too small or if there was an error during saving.
     """
@@ -255,9 +257,12 @@ def take_screenshot(y1: int, y2: int, unique_filename: str, type: str, page: int
         print(f"Error saving question {unique_filename}: {e}")
     return False
 
-def clean_image(level_folder_name: str, subject: str, paper_number: str, image_name: str) -> None:
+
+def clean_image(
+    level_folder_name: str, subject: str, paper_number: str, image_name: str
+) -> None:
     # level_folder_name is either "IGCSE" or "A-level"
-    """ Unlike strip_image which removes the same fixed region for all pages before processing,
+    """Unlike strip_image which removes the same fixed region for all pages before processing,
     this function is for questions where it removes the whitespace at the bottom dynamically to save space
 
     Args:
@@ -292,7 +297,7 @@ def clean_image(level_folder_name: str, subject: str, paper_number: str, image_n
 
 
 def merge_all_images() -> None:
-    """ Merges all the page images in the currentPdfImages directory into a single long image and saves it to the final folder as final.jpg.
+    """Merges all the page images in the currentPdfImages directory into a single long image and saves it to the final folder as final.jpg.
      The images are merged vertically in the order of their page numbers (sorted by filename).
      This is used to create a single image of the entire question paper for easier cropping of long questions that may span multiple pages
 
@@ -301,7 +306,7 @@ def merge_all_images() -> None:
 
     Returns:
         None: The function does not return anything, but it saves the merged image to the folder called final as final.jpg.
-    
+
     """
     pages = os.listdir(f"{outputPath}/currentPdfImages")
     pages = sorted(pages, key=lambda x: int(x.split(".")[0]))
@@ -326,7 +331,7 @@ def merge_all_images() -> None:
 
 
 def extract_paper_number(filename: str) -> int | None:
-    """ Extracts the paper number from a given filename string. The filename uses the format A_B_C_D.pdf
+    """Extracts the paper number from a given filename string. The filename uses the format A_B_C_D.pdf
     where A is a 4 digit integer that represents the subject and level (e.g., 0625 for IGCSE, 9709 for A-level),
       B is the session and year like m23 so it was released in the march session of 2023,
     C is either "qp" or "ms" to indicate question paper or mark scheme, and D is the paper number and variant number like 23 for paper 2 variant 3.
@@ -335,7 +340,7 @@ def extract_paper_number(filename: str) -> int | None:
     filename (str): The filename string from which to extract the paper number, following the format A_B_C_D.pdf.
     Returns:
     int: The extracted paper number (first digit of D) as an integer, or None if the paper number cannot be extracted due to an error or unexpected filename format.
-    
+
     """
     try:
         base_name = filename.split(".")[0]
@@ -350,7 +355,7 @@ def extract_paper_number(filename: str) -> int | None:
 
 
 def get_dimensions_from_api(image_path: str, mode: str = "long-double") -> list:
-    """ Takes an image path and sends it to the local YOLO model running from coordinates.py
+    """Takes an image path and sends it to the local YOLO model running from coordinates.py
       to get the predicted bounding box coordinates for the question regions in the image.
 
     Args:
@@ -358,11 +363,13 @@ def get_dimensions_from_api(image_path: str, mode: str = "long-double") -> list:
     Returns:
         list: A list of bounding box coordinates for the question regions in the image,
           where each bounding box is represented as a list of four integers [x1, y1, x2, y2].
-    
+
     """
     with open(image_path, "rb") as img:
         files = {"file": img}
-        response = requests.post(f"http://127.0.0.1:8000/predict?mode={mode}", files=files)
+        response = requests.post(
+            f"http://127.0.0.1:8000/predict?mode={mode}", files=files
+        )
         if response.status_code == 200:
             coordinates = response.json()
             return coordinates
@@ -374,18 +381,18 @@ def get_dimensions_from_api(image_path: str, mode: str = "long-double") -> list:
 
 
 def cleanup() -> None:
-    """ Cleans up the output directories by deleting all files in the currentPdfImages, final, questions, and vision_output_images folders.
+    """Cleans up the output directories by deleting all files in the currentPdfImages, final, questions, and vision_output_images folders.
         This is used to reset the state before processing a new PDF to avoid any interference from previous runs.
 
     Args:        None: The function does not take any arguments, but it processes the files in the specified output directories.
-    Returns:        None: The function does not return anything, but it deletes the files in the specified output directories to clean up the state for the next run. 
-    
+    Returns:        None: The function does not return anything, but it deletes the files in the specified output directories to clean up the state for the next run.
+
     """
     dirs = [
         f"{outputPath}/currentPdfImages",
         f"{outputPath}/final",
         f"{outputPath}/questions",
-        f"{BASE_PATH}/resources/images/vision_output_images"
+        f"{BASE_PATH}/resources/images/vision_output_images",
     ]
 
     for d in dirs:
@@ -395,10 +402,12 @@ def cleanup() -> None:
                 os.remove(file_path)
 
 
-def get_level_and_chapter(formatted_text: str, paper_num: int, paperType: str, currentDefinitionsData: dict) -> tuple[str, int]:
-    """ Takes the formatted text of a question, the paper number, the paper type (either "IGCSE" or "A-level"),
+def get_level_and_chapter(
+    formatted_text: str, paper_num: int, paperType: str, currentDefinitionsData: dict
+) -> tuple[str, int]:
+    """Takes the formatted text of a question, the paper number, the paper type (either "IGCSE" or "A-level"),
       and the current definitions data loaded from the JSON file.
-    
+
       args:
         formatted_text (str): The formatted text of the question to be used for chapter prediction.
         paper_num (int): The paper number (e.g., 1 or 2) extracted from the filename, used to determine which model to use for A-level papers.
@@ -442,7 +451,7 @@ def get_level_and_chapter(formatted_text: str, paper_num: int, paperType: str, c
 
 
 def extract_answers_from_pdf(code: str, pdfName: str) -> list:
-    """ This function is only for mcq as the answers are like A, B etc while in long the answers are images from the mark scheme
+    """This function is only for mcq as the answers are like A, B etc while in long the answers are images from the mark scheme
       Takes the paper code and the PDF name, constructs the path to the corresponding mark scheme PDF,
       extracts the text from the mark scheme using PyPDF2, and processes the text
         to extract the answers for each question based on the expected format of the mark scheme
@@ -451,7 +460,7 @@ def extract_answers_from_pdf(code: str, pdfName: str) -> list:
     Args:
     code (str): The paper code (e.g., "0625" for IGCSE, "9709" for A-level) used to determine the path to the mark scheme PDF based on the folder structure.
     pdfName (str): The name of the PDF file for which the answers are to be extracted, used to determine the corresponding mark scheme PDF name by replacing "qp" with "ms".
-    
+
     Returns:
         list: A list of answers (30 if economics and 40 otherwise) extracted from the mark scheme PDF, where each answer corresponds to a question in the question paper,
           and the answers are extracted based on the expected format of the mark
@@ -480,4 +489,3 @@ def extract_answers_from_pdf(code: str, pdfName: str) -> list:
             answers.append(answer)
 
     return answers
-
