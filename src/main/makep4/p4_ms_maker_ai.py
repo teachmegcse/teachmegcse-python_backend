@@ -131,7 +131,7 @@ if __name__ == "__main__":
         print(f"Processing PDF: {filename}")
         makeImages(files[i])
         strip_images(mode="ms")
-        merge_all_images()
+        merge_all_images(mode="ms")
         currentQuestionNum = 1
         previous_y = 0
 
@@ -165,6 +165,7 @@ if __name__ == "__main__":
                             image_file_name,
                             "long",
                             "",
+                            mode="ms"
                         )
 
                         ms_data.append(
@@ -200,7 +201,7 @@ if __name__ == "__main__":
             f"{subject}_p{paper_number}_ms_{filename_num}_{currentQuestionNum}"
         )
         take_screenshot(
-            previous_y, (len(number_of_pages)) * 1300, image_file_name, "long", ""
+            previous_y, (len(number_of_pages)) * 1300, image_file_name, "long", "", mode="ms"
         )
         ms_data.append(
             {

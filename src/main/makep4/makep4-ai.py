@@ -75,6 +75,8 @@ def get_all_page_coordinates():
 
     # Remove duplicates + sort
     all_coordinates = sorted(set(all_coordinates))
+    if all_coordinates and all_coordinates[0] >= 500:
+        all_coordinates.insert(0, 0)
 
     # Add ending coordinate
     all_coordinates.append(current_height)
@@ -138,19 +140,24 @@ if __name__ == "__main__":
                     f"Paper number {paper_num} not in longPapers list, skipping file."
                 )
                 continue
+            
+            # Extract year from filename (e.g., m15 -> 2015)
+            year = "20" + current_file.split("_")[1][1:3]
+
 
             # Process the paper
             print("Converting PDF to images...")
             makeImages(file_path)
             # Removing periodic table page for A-level Chemistry 9701 papers
-            if paperCode == "9701":
+            if paperCode == "9701" and int(year) >= 2020:
                 images_dir = f"{outputPath}/currentPdfImages"
                 pages = [p for p in os.listdir(images_dir) if p.endswith(".jpg")]
                 if pages:
                     pages = sorted(pages, key=lambda x: int(x.split(".")[0]))
-                    last_page = os.path.join(images_dir, pages[-1])
-                    os.remove(last_page)
-                    print(f"[SKIPPED] Removed last page image: {pages[-1]}")
+                    last_page_name = pages[-1]
+                    last_page_path = os.path.join(images_dir, last_page_name)
+                    os.remove(last_page_path)
+                    print(f"[SKIPPED] Removed last page image: {last_page_name}")
             print("Stripping images...")
             strip_images(mode="qp")
 
@@ -160,7 +167,7 @@ if __name__ == "__main__":
 
             # Merge images after getting coordinates
             print("Merging images...")
-            merge_all_images()
+            merge_all_images(mode='qp')
 
             # Open the database file in append mode
             with open(db_path, "a") as db:
@@ -174,7 +181,7 @@ if __name__ == "__main__":
                     unique_filename = (
                         f"{subject}_p{paper_num}_qp_{unique_num}_{current_question_num}"
                     )
-                    take_screenshot(y1, y2, unique_filename, "long", 0)
+                    take_screenshot(y1, y2, unique_filename, "long", 0, mode="qp")
 
                     # Clean the cropped image
                     image_path = f"{outputPath}/questions/{unique_filename}.jpg"
@@ -186,6 +193,7 @@ if __name__ == "__main__":
                     if os.path.exists(image_path):
                         current_file = current_file.replace(".pdf", "")
 
+                        # Removes bottom 700px of Q2 and appends to Q3 for 9701 papers, to account for qualitative notes header
                         if paperCode == "9701" and paper_num == 3:
                             try:
                                 image = Image.open(image_path)
@@ -225,9 +233,6 @@ if __name__ == "__main__":
                         clean_image(
                             paperType, subject, "long", f"{unique_filename}.jpg"
                         )
-
-                        # Extract year from filename (e.g., m15 -> 2015)
-                        year = "20" + current_file.split("_")[1][1:3]
 
                         answerObject = {
                             "questionName": f"{unique_filename}.jpg",

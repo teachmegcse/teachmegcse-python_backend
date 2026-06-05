@@ -32,6 +32,7 @@ for model_file in model_files:
 # Confidence levels
 conf_levels = {
     "long-double": 0.15,
+    "long-double-p3": 0.1,    
     "parts": 0.3,
     "mcq": 0.15,
     "ms": 0.15,

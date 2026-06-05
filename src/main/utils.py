@@ -210,7 +210,7 @@ def strip_images(mode: str) -> None:
 
 
 def take_screenshot(
-    y1: int, y2: int, unique_filename: str, type: str, page: int
+    y1: int, y2: int, unique_filename: str, type: str, page: int, mode: str
 ) -> bool:
     """Takes the y1 and y2 coordinates of the question region (x coordinates are fixed),
       a unique filename for the question image, the type of question (either "mcq" or "long"), and the page number to crop the question from.
@@ -249,7 +249,10 @@ def take_screenshot(
     try:
         with PIL.Image.open(image_path) as im:
             # Crop the region
-            im_crop = im.crop((100, y1, 1600, y2))
+            if mode == "qp":
+                im_crop = im.crop((100, y1, 1600, y2))
+            else:
+                im_crop = im.crop((0, y1, 2300, y2))
 
             # Save to questions folder
             save_path = f"{outputPath}/questions/{unique_filename}.jpg"
@@ -301,7 +304,7 @@ def clean_image(
         )
 
 
-def merge_all_images() -> None:
+def merge_all_images(mode: str) -> None:
     """Merges all the page images in the currentPdfImages directory into a single long image and saves it to the final folder as final.jpg.
      The images are merged vertically in the order of their page numbers (sorted by filename).
      This is used to create a single image of the entire question paper for easier cropping of long questions that may span multiple pages
@@ -322,7 +325,10 @@ def merge_all_images() -> None:
         with PIL.Image.open(f"{outputPath}/currentPdfImages/{page_file}") as im:
             total_height += im.height
 
-    dst = PIL.Image.new("RGB", (1654, total_height), color="white")
+    if mode == "qp":
+        dst = PIL.Image.new("RGB", (1654, total_height), color="white")
+    else:
+        dst = PIL.Image.new("RGB", (2300, total_height), color="white")
     current_height = 0
 
     # Second pass to merge images
