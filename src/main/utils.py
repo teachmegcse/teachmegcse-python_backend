@@ -94,6 +94,8 @@ def makeImages(pdf_path: str) -> None:
         "marking principle",
         "correct answer only",
         "use this page for any rough working",
+        "test and test result",
+        "reactions of cations",
     ]
 
     current_index = 1

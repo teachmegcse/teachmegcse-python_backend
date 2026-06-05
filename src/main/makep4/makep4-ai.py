@@ -142,6 +142,15 @@ if __name__ == "__main__":
             # Process the paper
             print("Converting PDF to images...")
             makeImages(file_path)
+            # Removing periodic table page for A-level Chemistry 9701 papers
+            if paperCode == "9701":
+                images_dir = f"{outputPath}/currentPdfImages"
+                pages = [p for p in os.listdir(images_dir) if p.endswith(".jpg")]
+                if pages:
+                    pages = sorted(pages, key=lambda x: int(x.split(".")[0]))
+                    last_page = os.path.join(images_dir, pages[-1])
+                    os.remove(last_page)
+                    print(f"[SKIPPED] Removed last page image: {pages[-1]}")
             print("Stripping images...")
             strip_images(mode="qp")
 
