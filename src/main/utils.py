@@ -96,6 +96,8 @@ def makeImages(pdf_path: str) -> None:
         "use this page for any rough working",
         "test and test result",
         "reactions of cations",
+        "reactions of aqueous anions",
+        "reactions of aqueous cations",
     ]
 
     current_index = 1

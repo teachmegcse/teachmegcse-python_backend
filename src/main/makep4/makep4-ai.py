@@ -164,6 +164,7 @@ if __name__ == "__main__":
 
             # Open the database file in append mode
             with open(db_path, "a") as db:
+                transferred_tail = None
                 # Process each question based on the adjusted coordinates
                 for i in range(len(coordinates) - 1):
                     y1 = coordinates[i]
@@ -184,6 +185,28 @@ if __name__ == "__main__":
 
                     if os.path.exists(image_path):
                         current_file = current_file.replace(".pdf", "")
+
+                        if paperCode == "9701" and paper_num == 3:
+                            try:
+                                image = Image.open(image_path)
+                                width, height = image.size
+                                if current_question_num == 2 and height > 700:
+                                    transferred_tail = image.crop(
+                                        (0, height - 700, width, height)
+                                    )
+                                    image = image.crop((0, 0, width, height - 700))
+                                    image.save(image_path)
+                                elif current_question_num == 3 and transferred_tail:
+                                    new_height = transferred_tail.height + height
+                                    combined = Image.new("RGB", (width, new_height))
+                                    combined.paste(transferred_tail, (0, 0))
+                                    combined.paste(image, (0, transferred_tail.height))
+                                    combined.save(image_path)
+                                    transferred_tail = None
+                            except Exception as exc:
+                                print(
+                                    f"⚠️ Failed to adjust Q2/Q3 for {image_path}: {exc}"
+                                )
 
                         if not os.path.exists(
                             f"{BASE_PATH}/resources/images/{paperType}/{subject}/long"
