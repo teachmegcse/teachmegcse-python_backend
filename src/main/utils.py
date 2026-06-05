@@ -267,7 +267,7 @@ def take_screenshot(
 
 
 def clean_image(
-    level_folder_name: str, subject: str, paper_number: str, image_name: str
+    level_folder_name: str, subject: str, paper_number: str, image_name: str, mode: str
 ) -> None:
     # level_folder_name is either "IGCSE" or "A-level"
     """Unlike strip_image which removes the same fixed region for all pages before processing,
@@ -298,7 +298,10 @@ def clean_image(
                         break
             if flag:
                 break
-        cleaned_image = im.crop((0, 0, 1500, y + 10))
+        if mode == "qp":
+            cleaned_image = im.crop((0, 0, 1500, y + 10))
+        else:
+            cleaned_image = im.crop((0, 0, 2300, y + 10))
         cleaned_image.save(
             f"{BASE_PATH}/resources/images/{level_folder_name}/{subject}/{paper_number}/{image_name}"
         )

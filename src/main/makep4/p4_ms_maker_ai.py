@@ -60,7 +60,6 @@ def extract_question_number(im, current_question_num, output_path):
             if text_in_box:
                 text_in_box = text_in_box[0][1]  # Extract text from OCR result
                 text_in_box = "".join([ocr_corrections.get(c, c) for c in text_in_box])
-                print(f"Raw OCR text: {text_in_box}")
 
                 isPaperCode = re.match(r"\d{4}/\d{2}", text_in_box)
                 # Extract leading digits manually (no regex)
@@ -71,17 +70,10 @@ def extract_question_number(im, current_question_num, output_path):
                     else:
                         break  # stop at first non-digit character
 
-                print(f"Extracted digits: {digits_only}")
-
                 if digits_only and (not isPaperCode):
                     number = int(digits_only)
                     if number > current_question_num:
                         returnArray.append(int(box[1]))
-                        print(
-                            f"Question number {current_question_num} found at y1: {
-                                int(box[1])
-                            }"
-                        )
                         current_question_num += 1
 
         return returnArray
@@ -194,7 +186,7 @@ if __name__ == "__main__":
                         )
 
                         clean_image(
-                            paperType, subject, "long", f"{image_file_name}.jpg"
+                            paperType, subject, "long", f"{image_file_name}.jpg", mode="ms"
                         )
 
         image_file_name = (
@@ -218,7 +210,7 @@ if __name__ == "__main__":
             }.jpg",
         )
 
-        clean_image(paperType, subject, "long", f"{image_file_name}.jpg")
+        clean_image(paperType, subject, "long", f"{image_file_name}.jpg", mode="ms")
 
         filename_num += 1
         try:

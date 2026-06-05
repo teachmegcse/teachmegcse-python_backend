@@ -231,7 +231,7 @@ if __name__ == "__main__":
                         )
 
                         clean_image(
-                            paperType, subject, "long", f"{unique_filename}.jpg"
+                            paperType, subject, "long", f"{unique_filename}.jpg", mode="qp"
                         )
 
                         answerObject = {
