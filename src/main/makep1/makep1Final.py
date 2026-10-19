@@ -4,6 +4,7 @@ import os
 import shutil
 import json
 import sys
+from concurrent.futures import ThreadPoolExecutor
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
 sys.path.append(BASE_PATH)
@@ -23,23 +24,24 @@ from main.utils import (
     cleanup,
     extract_answers_from_pdf,
     extract_paper_number,
+    make_work_dir,
+    start_detection_server,
+    wait_for_detection_server,
+    PDF_WORKERS,
 )
 
 with open(definitionsPath, "r") as db:
     definitionsData = json.load(db)
 
-files = select_files()
-questionObjects = []
 
-for currentFileIndex in range(len(files)):
-    current_file = files[currentFileIndex][-18:]
+def process_pdf(currentFileIndex: int, file_path: str) -> list:
+    """Splits one MCQ question paper into question images and returns its question objects.
+    Each PDF works in its own work_dir, so several can run at the same time."""
+    current_file = file_path[-18:]
     paperCode = current_file.split("_")[0]  # like 0620
-    currentDefintionsData = definitionsData[paperCode]
 
     currentDefintionsData = definitionsData[paperCode]
     subject = currentDefintionsData["subjectName"]
-    mcq_db_path = currentDefintionsData["mcq_db_path"]
-    db_path = f"{BASE_PATH}/resources/json/{mcq_db_path}"
     num_of_questions = currentDefintionsData["mcqNumberOfQuestions"]
     mcqPapers = currentDefintionsData["mcqPapers"]
 
@@ -53,17 +55,20 @@ for currentFileIndex in range(len(files)):
 
     if paper_number not in mcqPapers:
         print(f"Paper number {paper_number} not in mcqPapers list, skipping file.")
-        continue
+        return []
 
-    makeImages(files[currentFileIndex])
+    work_dir = make_work_dir(current_file.replace(".pdf", ""))
+    questionObjects = []
 
-    strip_images(mode="qp")
-    pages = os.listdir(f"{outputPath}/currentPdfImages")
+    makeImages(file_path, work_dir)
+
+    strip_images(mode="qp", work_dir=work_dir)
+    pages = os.listdir(f"{work_dir}/currentPdfImages")
     answers = extract_answers_from_pdf(paperCode, current_file)
     current_question_num = 1
     for k in range(len(pages)):
         y_coordinates = get_dimensions_from_api(
-            f"{outputPath}/currentPdfImages/{k + 1}.jpg",
+            f"{work_dir}/currentPdfImages/{k + 1}.jpg",
             mode="mcq"
         )
         # Filter boxes where x1 < 250 and extract their y2 (i.e. box[1])
@@ -79,7 +84,7 @@ for currentFileIndex in range(len(files)):
 
                 if j == len(y2_list) - 1:
                     taken = take_screenshot(
-                        y2_list[j], 2050, image_file_name, "mcq", f"{k + 1}.jpg"
+                        y2_list[j], 2050, image_file_name, "mcq", f"{k + 1}.jpg", mode="qp", work_dir=work_dir
                     )
                 else:
                     taken = take_screenshot(
@@ -88,12 +93,14 @@ for currentFileIndex in range(len(files)):
                         image_file_name,
                         "mcq",
                         f"{k + 1}.jpg",
+                        mode="qp",
+                        work_dir=work_dir,
                     )
                 if not taken:
                     current_question_num -= 1
-                if os.path.exists(f"{outputPath}/questions/{image_file_name}.jpg"):
+                if os.path.exists(f"{work_dir}/questions/{image_file_name}.jpg"):
                     question_text = (
-                        process_image(f"{outputPath}/questions/{image_file_name}.jpg")
+                        process_image(f"{work_dir}/questions/{image_file_name}.jpg")
                         .lower()
                         .strip()
                     )
@@ -103,19 +110,17 @@ for currentFileIndex in range(len(files)):
                         formatted_text, paper_number, paperType, currentDefintionsData
                     )
 
-                    if not os.path.exists(
-                        f"{BASE_PATH}/resources/images/{paperType}/{subject}/mcq"
-                    ):
-                        os.makedirs(
-                            f"{BASE_PATH}/resources/images/{paperType}/{subject}/mcq"
-                        )
+                    os.makedirs(
+                        f"{BASE_PATH}/resources/images/{paperType}/{subject}/mcq",
+                        exist_ok=True,
+                    )
 
                     shutil.copy(
-                        f"{outputPath}/questions/{image_file_name}.jpg",
+                        f"{work_dir}/questions/{image_file_name}.jpg",
                         f"{BASE_PATH}/resources/images/{paperType}/{subject}/mcq/{image_file_name}.jpg",
                     )
 
-                    clean_image(paperType, subject, "mcq", f"{image_file_name}.jpg")
+                    clean_image(paperType, subject, "mcq", f"{image_file_name}.jpg", mode="qp")
 
                     answer_object = {
                         "questionName": f"{image_file_name}.jpg",
@@ -131,8 +136,21 @@ for currentFileIndex in range(len(files)):
                     questionObjects.append(answer_object)
                 current_question_num += 1
 
-    print(f"Finished processing {files[currentFileIndex]}...")
-    cleanup()
+    print(f"Finished processing {file_path}...")
+    shutil.rmtree(work_dir, ignore_errors=True)
+    return questionObjects
+
+
+start_detection_server()
+files = select_files()
+wait_for_detection_server()
+questionObjects = []
+
+# PDFs are processed in parallel, results are collected in the order the files were selected
+with ThreadPoolExecutor(max_workers=PDF_WORKERS) as pool:
+    for file_objects in pool.map(process_pdf, range(len(files)), files):
+        questionObjects.extend(file_objects)
+cleanup()
 
 
 with open(f"{BASE_PATH}/resources/json/test_images.json", "w") as f:

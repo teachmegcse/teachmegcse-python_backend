@@ -23,7 +23,8 @@ Tools here handle long-answer question extraction (papers 2–6) and AI-assisted
 
 ## Prerequisites
 
-- YOLO server running (`python src/main/coordinates.py --mode best1`).
+- YOLO server: started automatically in the background (and stopped when the script ends); an already running `python src/main/coordinates.py` is reused instead. Its output goes to `resources/images/test_images/coordinates.log`.
+- PDFs are processed in parallel, `PDF_WORKERS` in `main/utils.py` sets how many at once (default 4, override with the `PDF_WORKERS` environment variable).
 - `definitions.json` entries with valid `longPapers`, `long_db_path`, and `long_ms_db_path` values.
 - Destination directories under `resources/images/<level>/<subject>/long/` and `.../ms/` (auto-created if missing).
 

@@ -26,20 +26,39 @@ def process_entry(args):
     """Process a single entry."""
     qp_entry, ms_lookup = args
 
+    required_qp_fields = [
+        "pdfName",
+        "questionNum",
+        "questionName",
+        "year",
+        "Subject",
+        "Level",
+        "Chapter",
+        "paperNumber",
+        "questionText",
+    ]
+
+    # Skip if any required QP field is missing or None
+    if any(qp_entry.get(field) is None for field in required_qp_fields):
+        return None
+
     qp_code = normalize_paper_code(qp_entry["pdfName"])
     key = (qp_entry["questionNum"], qp_code)
+
     if key not in ms_lookup:
-        return None  # Skip if no match
+        return None
 
-    # Paths and processing
-    question_name = qp_entry["questionName"]
     ms_entry = ms_lookup[key]
-    ms_name = ms_entry["fileName"]
 
-    # Return processed data
+    required_ms_fields = ["fileName", "questionNumber"]
+
+    # Skip if any required MS field is missing or None
+    if any(ms_entry.get(field) is None for field in required_ms_fields):
+        return None
+
     return {
-        "questionName": question_name,
-        "MSName": ms_name,
+        "questionName": qp_entry["questionName"],
+        "MSName": ms_entry["fileName"],
         "questionNumber": ms_entry["questionNumber"],
         "pdfName": qp_entry["pdfName"],
         "year": qp_entry["year"],

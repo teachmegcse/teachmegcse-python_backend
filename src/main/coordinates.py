@@ -6,6 +6,7 @@ from typing import List
 import uvicorn
 import os
 import argparse
+import threading
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../..", "src"))
 
@@ -18,21 +19,31 @@ args, unknown = parser.parse_known_args()
 
 import glob
 
+# Models that are redundant and not worth the load time / GPU memory
+SKIPPED_MODELS = {"long-double", "best"}
+
 # Load all models
 models = {}
 model_files = glob.glob(f"{BASE_PATH}/resources/vision-models/*.pt")
 for model_file in model_files:
     mode = os.path.splitext(os.path.basename(model_file))[0]
+    if mode in SKIPPED_MODELS:
+        continue
     try:
         models[mode] = YOLO(model_file)
         print(f"Loaded model: {model_file}")
     except Exception as e:
         raise RuntimeError(f"Failed to load YOLO model '{model_file}': {e}")
 
+# YOLO models aren't safe to call from several threads at once, so each model gets a lock.
+# Requests are handled on FastAPI's thread pool, so decoding and saving images still overlap between requests.
+model_locks = {mode: threading.Lock() for mode in models}
+# Protects current_question_num, which numbers the saved debug images
+counter_lock = threading.Lock()
+
 # Confidence levels
 conf_levels = {
-    "long-double": 0.15,
-    "long-double-p3": 0.1,    
+    "long-double-p3": 0.05,
     "parts": 0.3,
     "mcq": 0.15,
     "ms": 0.15,
@@ -40,12 +51,12 @@ conf_levels = {
 
 
 @app.post("/predict")
-async def predict(
-    mode: str = "long-double", file: UploadFile = File(...)
+def predict(
+    mode: str = "long-double-p3", file: UploadFile = File(...)
 ) -> List[List[float]]:
     global current_question_num
     try:
-        contents = await file.read()
+        contents = file.file.read()
         nparr = np.frombuffer(contents, np.uint8)
         image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
@@ -55,9 +66,11 @@ async def predict(
         if height <= 0 or width <= 0:
             raise ValueError("Invalid image dimensions")
 
-        model = models.get(mode, models["long-double"])
         conf = conf_levels.get(mode, 0.15)
-        results = model(image, save=False, conf=conf)
+        if mode not in models:
+            mode = "long-double-p3"
+        with model_locks[mode]:
+            results = models[mode](image, save=False, conf=conf)
 
         boxes = []
         for box in results[0].boxes.xyxy:
@@ -67,8 +80,9 @@ async def predict(
             x1, y1, x2, y2 = map(int, coords)
             cv2.rectangle(image, (x1, y1), (x2, y2), color=(0, 255, 0), thickness=2)
 
-        filename = f"{current_question_num}.jpg"
-        current_question_num += 1
+        with counter_lock:
+            filename = f"{current_question_num}.jpg"
+            current_question_num += 1
         save_path = os.path.join(
             BASE_PATH, "resources", "images", "vision_output_images", filename
         )
@@ -88,4 +102,5 @@ async def predict(
 
 
 if __name__ == "__main__":
-    uvicorn.run("coordinates:app", host="127.0.0.1", port=8000, reload=False)
+    # Pass the app object rather than "coordinates:app" so uvicorn doesn't re-import this module and load every model twice
+    uvicorn.run(app, host="127.0.0.1", port=8000, reload=False)

@@ -1,10 +1,11 @@
 import PIL
 import os
-import easyocr
+import numpy as np
 import json
 import re
 import sys
 import shutil
+from concurrent.futures import ThreadPoolExecutor
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
 sys.path.append(BASE_PATH)
@@ -17,11 +18,15 @@ from main.utils import (
     merge_all_images,
     extract_paper_number,
     cleanup,
-    clean_image,
+    clean_image_file,
     get_dimensions_from_api,
+    make_work_dir,
+    read_text,
+    start_detection_server,
+    wait_for_detection_server,
+    PDF_WORKERS,
 )
 
-reader = easyocr.Reader(["en"])
 output_path = f"{BASE_PATH}/resources/images/test_images"
 definitionsPath = f"{BASE_PATH}/main/definitions.json"
 
@@ -53,9 +58,8 @@ def extract_question_number(im, current_question_num, output_path):
         bounding_boxes.sort(key=lambda x: x[1])
 
         for box in bounding_boxes:
-            current_box = im.crop((box[0], box[1], box[2], box[3]))
-            current_box.save(f"{output_path}/questions/temp.jpg")
-            text_in_box = reader.readtext(f"{output_path}/questions/temp.jpg")
+            current_box = im.crop((box[0], box[1], box[2], box[3])).convert("RGB")
+            text_in_box = read_text(np.asarray(current_box))
 
             if text_in_box:
                 text_in_box = text_in_box[0][1]  # Extract text from OCR result
@@ -83,139 +87,127 @@ def extract_question_number(im, current_question_num, output_path):
         return returnArray
 
 
+def split_mark_scheme(file_path: str) -> tuple[str, list] | None:
+    """Splits one mark scheme into cleaned question images inside its own work_dir, so several mark schemes can be
+    split at the same time. Final filenames depend on how many questions earlier mark schemes had, so they're given
+    in the main thread; this returns the work_dir (to delete once the images are copied out) and
+    (local image path or None if the crop failed, question number) for each question, or None if the paper isn't a long paper."""
+    filename = file_path.split("/")[-1].replace(".pdf", "")
+    paperCode = filename.split("_")[0]
+    longPapers = definitionsData[paperCode]["longPapers"]
+
+    paper_number = extract_paper_number(filename)
+    if paper_number not in longPapers:
+        print(f"Paper number {paper_number} not in longPapers list, skipping file.")
+        return None
+
+    work_dir = make_work_dir(filename)
+
+    print(f"Processing PDF: {filename}")
+    makeImages(file_path, work_dir)
+    strip_images(mode="ms", work_dir=work_dir)
+    # Kept in memory since final.jpg would be shared between mark schemes
+    merged = merge_all_images(mode="ms", work_dir=work_dir, save=False)
+    currentQuestionNum = 1
+    previous_y = 0
+    questions = []
+
+    def save_question(y1: int, y2: int) -> None:
+        local_filename = f"q{currentQuestionNum}"
+        take_screenshot(
+            y1, y2, local_filename, "long", "", mode="ms", work_dir=work_dir, merged=merged
+        )
+        image_path = f"{work_dir}/questions/{local_filename}.jpg"
+        # sometimes the screenshot fails if the size is too small or for other random reasons, this prevents a breaking error
+        if os.path.exists(image_path):
+            clean_image_file(image_path, mode="ms")
+            questions.append((image_path, currentQuestionNum))
+        else:
+            questions.append((None, currentQuestionNum))
+
+    # Sort pages numerically
+    number_of_pages = sorted(
+        os.listdir(f"{work_dir}/currentPdfImages"),
+        key=lambda x: int(x.split(".")[0]),
+    )
+
+    for j in range(len(number_of_pages)):
+        image_path = f"{work_dir}/currentPdfImages/{number_of_pages[j]}"
+        with PIL.Image.open(image_path) as im:
+            y_coordinates = extract_question_number(
+                im, currentQuestionNum, work_dir
+            )
+            if y_coordinates:
+                # Loop through each detected question Y-coordinate
+                for y1 in y_coordinates:
+                    # Include a small buffer below
+                    save_question(previous_y, y1 + (j) * 1300 + 10)
+                    previous_y = y1 + (j) * 1300
+                    currentQuestionNum += 1
+
+    save_question(previous_y, (len(number_of_pages)) * 1300)
+    return work_dir, questions
+
+
 if __name__ == "__main__":
     with open(definitionsPath, "r") as db:
         definitionsData = json.load(db)
 
+    start_detection_server()
     files = select_files()
     files = [file for file in files if "ms" in file.lower()]
+    wait_for_detection_server()
 
     filename_num = 1
-    for i in range(len(files)):
-        for filename in os.listdir(f"{output_path}/currentPdfImages"):
-            file_path = os.path.join(f"{output_path}/currentPdfImages", filename)
-            if os.path.isfile(file_path):  # only delete files
-                os.remove(file_path)
+    # Split the mark schemes in parallel, then name and save their questions in the order the files were selected
+    with ThreadPoolExecutor(max_workers=PDF_WORKERS) as pool:
+        for file_path, split in zip(files, pool.map(split_mark_scheme, files)):
+            filename = file_path.split("/")[-1].replace(".pdf", "")
+            paperCode = filename.split("_")[0]
 
-        filename = files[i].split("/")[-1]
-        filename = filename.replace(".pdf", "")
-        paperCode = filename.split("_")[0]
+            if filename[0] == "0":
+                paperType = "IGCSE"
+            else:
+                paperType = "A-level"
 
-        if filename[0] == "0":
-            paperType = "IGCSE"
-        else:
-            paperType = "A-level"
+            currentDefintionsData = definitionsData[paperCode]
+            subject = currentDefintionsData["subjectName"]
+            db_name = currentDefintionsData["long_ms_db_path"]
 
-        currentDefintionsData = definitionsData[paperCode]
-        subject = currentDefintionsData["subjectName"]
-        db_name = currentDefintionsData["long_ms_db_path"]
-        longPapers = currentDefintionsData["longPapers"]
+            JSON_FILE_LOCATION = f"{BASE_PATH}/resources/json/{db_name}"
+            if not os.path.exists(JSON_FILE_LOCATION):
+                with open(JSON_FILE_LOCATION, "w") as f:
+                    json.dump([], f)  # Use [] if you expect a list
 
-        JSON_FILE_LOCATION = f"{BASE_PATH}/resources/json/{db_name}"
-        if not os.path.exists(JSON_FILE_LOCATION):
-            with open(JSON_FILE_LOCATION, "w") as f:
-                json.dump([], f)  # Use [] if you expect a list
+            # Load the file
+            with open(JSON_FILE_LOCATION, "r") as json_file:
+                ms_data = json.load(json_file)
 
-        # Load the file
-        with open(JSON_FILE_LOCATION, "r") as json_file:
-            ms_data = json.load(json_file)
+            if split is None:
+                continue
+            work_dir, questions = split
 
-        print(f"Processing PDF: {filename}")
-        makeImages(files[i])
-        strip_images(mode="ms")
-        merge_all_images(mode="ms")
-        currentQuestionNum = 1
-        previous_y = 0
+            paper_number = extract_paper_number(filename)
+            images_dir = f"{BASE_PATH}/resources/images/{paperType}/{subject}/long"
+            os.makedirs(images_dir, exist_ok=True)
 
-        # Sort pages numerically
-        number_of_pages = sorted(
-            os.listdir(f"{output_path}/currentPdfImages"),
-            key=lambda x: int(x.split(".")[0]),
-        )
-
-        paper_number = extract_paper_number(filename)
-        if paper_number not in longPapers:
-            print(f"Paper number {paper_number} not in longPapers list, skipping file.")
-            continue
-
-        for j in range(len(number_of_pages)):
-            image_path = f"{output_path}/currentPdfImages/{number_of_pages[j]}"
-            with PIL.Image.open(image_path) as im:
-                y_coordinates = extract_question_number(
-                    im, currentQuestionNum, output_path
+            for local_path, currentQuestionNum in questions:
+                image_file_name = f"{subject}_p{paper_number}_ms_{filename_num}_{currentQuestionNum}"
+                ms_data.append(
+                    {
+                        "fileName": image_file_name + ".jpg",
+                        "questionNumber": currentQuestionNum,
+                        "paperCode": filename,
+                    }
                 )
-                if y_coordinates:
-                    # Loop through each detected question Y-coordinate
-                    for y1 in y_coordinates:
-                        image_file_name = f"{subject}_p{paper_number}_ms_{
-                            filename_num
-                        }_{currentQuestionNum}"
-                        take_screenshot(
-                            previous_y,
-                            # Include a small buffer below
-                            y1 + (j) * 1300 + 10,
-                            image_file_name,
-                            "long",
-                            "",
-                            mode="ms"
-                        )
+                if local_path:
+                    shutil.copy(local_path, f"{images_dir}/{image_file_name}.jpg")
+                filename_num += 1
+            shutil.rmtree(work_dir, ignore_errors=True)
 
-                        ms_data.append(
-                            {
-                                "fileName": image_file_name + ".jpg",
-                                "questionNumber": currentQuestionNum,
-                                "paperCode": filename,
-                            }
-                        )
-                        previous_y = y1 + (j) * 1300
-                        currentQuestionNum += 1
-                        filename_num += 1
-
-                        if not os.path.exists(
-                            f"{BASE_PATH}/resources/images/{paperType}/{subject}/long"
-                        ):
-                            os.makedirs(
-                                f"{BASE_PATH}/resources/images/{paperType}/{subject}/long"
-                            )
-
-                        shutil.copy(
-                            f"{output_path}/questions/{image_file_name}.jpg",
-                            f"{BASE_PATH}/resources/images/{paperType}/{subject}/long/{
-                                image_file_name
-                            }.jpg",
-                        )
-
-                        clean_image(
-                            paperType, subject, "long", f"{image_file_name}.jpg", mode="ms"
-                        )
-
-        image_file_name = (
-            f"{subject}_p{paper_number}_ms_{filename_num}_{currentQuestionNum}"
-        )
-        take_screenshot(
-            previous_y, (len(number_of_pages)) * 1300, image_file_name, "long", "", mode="ms"
-        )
-        ms_data.append(
-            {
-                "fileName": image_file_name + ".jpg",
-                "questionNumber": currentQuestionNum,
-                "paperCode": filename,
-            }
-        )
-
-        shutil.copy(
-            f"{output_path}/questions/{image_file_name}.jpg",
-            f"{BASE_PATH}/resources/images/{paperType}/{subject}/long/{
-                image_file_name
-            }.jpg",
-        )
-
-        clean_image(paperType, subject, "long", f"{image_file_name}.jpg", mode="ms")
-
-        filename_num += 1
-        try:
-            with open(JSON_FILE_LOCATION, "w") as json_file:
-                json.dump(ms_data, json_file, indent=1)
-                cleanup()
-        except Exception as e:
-            print(f"Error saving JSON data: {str(e)}")
+            try:
+                with open(JSON_FILE_LOCATION, "w") as json_file:
+                    json.dump(ms_data, json_file, indent=1)
+            except Exception as e:
+                print(f"Error saving JSON data: {str(e)}")
+    cleanup()

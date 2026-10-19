@@ -30,14 +30,14 @@ def process_questions():
             image_filename = q.get("questionName")
 
             if not image_filename:
-                print(f"⚠️ Skipping index {i}: no questionName")
+                print(f"[WARN] Skipping index {i}: no questionName")
                 updated_questions.append(q)
                 continue
 
             image_path = Path(IMAGES_DIR) / image_filename
 
             if not image_path.exists():
-                print(f"⚠️ Image not found: {image_path}")
+                print(f"[WARN] Image not found: {image_path}")
                 updated_questions.append(q)
                 continue
 
@@ -75,13 +75,13 @@ def process_questions():
             updated_questions.append(q)
 
         except Exception as e:
-            print(f"❌ Error processing {q.get('questionName')}: {e}")
+            print(f"[ERROR] Error processing {q.get('questionName')}: {e}")
             updated_questions.append(q)
 
     with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
         json.dump(updated_questions, f, indent=2, ensure_ascii=False)
 
-    print("✅ Done! Saved to", OUTPUT_JSON)
+    print("[DONE] Done! Saved to", OUTPUT_JSON)
 
 
 if __name__ == "__main__":

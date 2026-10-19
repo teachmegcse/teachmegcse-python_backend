@@ -1,7 +1,7 @@
 from pdf2image import convert_from_path
 import PIL
 from PyPDF2 import PdfReader
-import pdfplumber
+import pypdfium2 as pdfium
 from tkinter import filedialog, Tk
 import os
 from nltk.stem import PorterStemmer
@@ -14,6 +14,13 @@ from sklearn.exceptions import InconsistentVersionWarning
 import requests
 import easyocr
 import numpy as np
+import shutil
+import threading
+import subprocess
+import sys
+import atexit
+import time
+from functools import lru_cache
 
 warnings.filterwarnings("ignore", category=InconsistentVersionWarning)
 
@@ -21,6 +28,39 @@ BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../..", "sr
 outputPath = f"{BASE_PATH}/resources/images/test_images"
 CUSTOM_CONFIG = r"--oem 3 --psm 6"
 READER = easyocr.Reader(["en"])
+# EasyOCR isn't safe to call from several threads at once, so all OCR goes through read_text()
+OCR_LOCK = threading.Lock()
+# Number of PDFs processed at the same time (override with the PDF_WORKERS environment variable)
+PDF_WORKERS = int(os.environ.get("PDF_WORKERS", 4))
+# Where coordinates.py serves the YOLO models
+DETECTION_SERVER_URL = "http://127.0.0.1:8000"
+# The coordinates.py process started by start_detection_server(), if any
+_detection_server = None
+# One requests session per thread, reused across API calls so each request doesn't open a new TCP connection
+_thread_local = threading.local()
+
+
+def read_text(image, **kwargs) -> list:
+    """Thread-safe wrapper around READER.readtext, takes the same arguments."""
+    with OCR_LOCK:
+        return READER.readtext(image, **kwargs)
+
+
+def make_work_dir(name: str) -> str:
+    """Creates an empty scratch folder (with currentPdfImages and questions subfolders) for processing a single PDF,
+    so PDFs processed in parallel never read or overwrite each other's page or question images.
+
+    Args:
+    name (str): A name unique to the PDF being processed (e.g. its filename without .pdf).
+
+    Returns:
+        str: The path to the scratch folder, to pass as work_dir to the other helpers.
+    """
+    work_dir = f"{outputPath}/work/{name}"
+    shutil.rmtree(work_dir, ignore_errors=True)
+    os.makedirs(f"{work_dir}/currentPdfImages")
+    os.makedirs(f"{work_dir}/questions")
+    return work_dir
 
 
 def predict(data: str, model: str) -> str:
@@ -33,10 +73,16 @@ def predict(data: str, model: str) -> str:
     Returns:
         str: The predicted chapter label.
     """
-    pipeline = load(f"{BASE_PATH}/resources/sci-kit/{model}")
+    pipeline = _load_pipeline(model)
     data = formatText(data)
     predicted_labels = pipeline.predict([data])
     return predicted_labels[0]
+
+
+@lru_cache(maxsize=None)
+def _load_pipeline(model: str):
+    # Loading a joblib pipeline from disk is slow, so each model is only loaded once per run
+    return load(f"{BASE_PATH}/resources/sci-kit/{model}")
 
 
 def process_image(image_path: str) -> str:
@@ -50,7 +96,7 @@ def process_image(image_path: str) -> str:
 
     """
     img = cv2.imread(image_path)
-    results = READER.readtext(img, detail=0)
+    results = read_text(img, detail=0)
     return "\n".join(results)
 
 
@@ -69,58 +115,94 @@ def select_files() -> list:
     return list(files)
 
 
-def makeImages(pdf_path: str) -> None:
+# Pages containing any of these are left out: blank and rough-working pages, data/reference pages
+# (periodic table, qualitative analysis notes, important values) and mark scheme guidance pages
+SKIP_STRINGS = [
+    "blank page",
+    "important values",
+    "guidance for chemical equations",
+    "next page",
+    "marking principle",
+    "correct answer only",
+    "use this page for any rough working",
+    "test and test result",
+    "reactions of cations",
+    "reactions of anions",
+    "reactions of aqueous anions",
+    "reactions of aqueous cations",
+    "notes for use in qualitative analysis",
+    "the periodic table of elements",
+    "the periodic table of the elements",
+]
+
+
+def page_skip_reason(text: str) -> str | None:
+    """Takes the text of a page and returns why it should be left out, or None if it should be kept.
+
+    Args:
+    text (str): The text of the page.
+
+    Returns:
+        str | None: A short reason like "matched: blank page" or "copyright page", or None to keep the page.
+    """
+    text = " ".join(text.lower().split())
+    matched = [s for s in SKIP_STRINGS if s in text]
+    if matched:
+        return f"matched: {', '.join(matched)}"
+    # Some papers end with a page holding only the copyright acknowledgements. Question pages can have the same
+    # notice as a footer (and the notice can come first in the page's text), so the notice is removed and the page
+    # is only left out when (almost) nothing else is left. The notice always ends "... university of cambridge."
+    if "[total" not in text and ("permission to reproduce items" in text or "to avoid the issue of disclosure" in text):
+        rest = re.sub(
+            r"(permission to reproduce items|to avoid the issue of disclosure).*?university of cambridge\s*\.", "", text
+        )
+        rest = re.sub(r"©\s*ucles\s*\d{4}|\d{4}/\d{2}/[a-z]/[a-z]/\d{2}", "", rest)
+        if len(re.findall(r"[a-z]", rest)) < 30:
+            return "copyright page"
+    return None
+
+
+def makeImages(pdf_path: str, work_dir: str = outputPath) -> None:
     """Takes a PDF path, converts the PDF into images, and saves the images in a specified output directory (outputPath).
-      It also skips pages that contain certain predefined strings like "blank page" or "important values".
+      It also skips the first page and pages that aren't questions (see page_skip_reason), like blank pages,
+      the periodic table or the qualitative analysis notes.
 
     Args:
     pdf_path (str): The path to the PDF file to be processed.
+    work_dir (str): The folder whose currentPdfImages subfolder the pages are saved to (see make_work_dir).
 
     Returns:
         None: The function does not return anything, but it saves the processed images to the specified output directory.
     """
-    images = convert_from_path(pdf_path)
-    reader = PdfReader(pdf_path)
-    number_of_pages = len(reader.pages)
+    images = convert_from_path(pdf_path, thread_count=os.cpu_count() or 1)
+    number_of_pages = len(images)
 
-    path = f"{outputPath}/currentPdfImages"
+    path = f"{work_dir}/currentPdfImages"
     os.makedirs(path, exist_ok=True)
-
-    skip_strings = [
-        "blank page",
-        "important values",
-        "guidance for chemical equations",
-        "next page",
-        "marking principle",
-        "correct answer only",
-        "use this page for any rough working",
-        "test and test result",
-        "reactions of cations",
-        "reactions of aqueous anions",
-        "reactions of aqueous cations",
-    ]
 
     current_index = 1
 
-    with pdfplumber.open(pdf_path) as plumber:
+    # pypdfium2 rather than pdfplumber, as pdfplumber can't read the text of some recent papers (it comes out as "(cid:44)...")
+    document = pdfium.PdfDocument(pdf_path)
+    try:
         for x in range(1, number_of_pages):
             try:
-                page = plumber.pages[x]
-                text = (page.extract_text() or "").lower()
+                text = document[x].get_textpage().get_text_range()
             except Exception as exc:
-                print(f"[WARN] Page {x + 1} → pdfplumber extract_text failed: {exc}")
+                print(f"[WARN] Page {x + 1} → text extraction failed: {exc}")
                 text = ""
 
-            matched = [s for s in skip_strings if s in text]
-
-            if matched:
-                print(f"[SKIPPED] Page {x + 1} → matched: {', '.join(matched)}")
+            reason = page_skip_reason(text)
+            if reason:
+                print(f"[SKIPPED] Page {x + 1} → {reason}")
                 continue
 
             images[x].save(f"{path}/{current_index}.jpg", "JPEG")
             print(f"[SAVED] Page {x + 1} → image {current_index}.jpg")
 
             current_index += 1
+    finally:
+        document.close()
 
 
 def formatText(text: str) -> str:
@@ -187,7 +269,7 @@ def formatText(text: str) -> str:
     return " ".join(words)
 
 
-def strip_images(mode: str) -> None:
+def strip_images(mode: str, work_dir: str = outputPath) -> None:
     """Takes a mode (either "qp" for question paper or "ms" for mark scheme)
       and crops the images in the currentPdfImages directory accordingly
         to remove irrelevant information such as page numbers, headers, and footers.
@@ -195,22 +277,30 @@ def strip_images(mode: str) -> None:
     Args:
     mode (str): The mode indicating whether the images are from a question paper ("qp")
       or a mark scheme ("ms"), which determines the cropping dimensions.
+    work_dir (str): The folder whose currentPdfImages subfolder holds the pages (see make_work_dir).
 
     Returns:
         None: The function does not return anything, but it modifies the images in place by cropping them and saving the stripped version back to the same location.
     """
-    pages = os.listdir(f"{outputPath}/currentPdfImages")
+    pages = os.listdir(f"{work_dir}/currentPdfImages")
     for i in range(len(pages)):
-        with PIL.Image.open(f"{outputPath}/currentPdfImages/{pages[i]}") as im:
+        with PIL.Image.open(f"{work_dir}/currentPdfImages/{pages[i]}") as im:
             if mode == "qp":
                 im_crop = im.crop((0, 150, 1654, 2200))
             else:
                 im_crop = im.crop((100, 200, 2300, 1500))
-            im_crop.save(f"{outputPath}/currentPdfImages/{pages[i]}")
+            im_crop.save(f"{work_dir}/currentPdfImages/{pages[i]}")
 
 
 def take_screenshot(
-    y1: int, y2: int, unique_filename: str, type: str, page: int, mode: str
+    y1: int,
+    y2: int,
+    unique_filename: str,
+    type: str,
+    page: int,
+    mode: str,
+    work_dir: str = outputPath,
+    merged: PIL.Image.Image | None = None,
 ) -> bool:
     """Takes the y1 and y2 coordinates of the question region (x coordinates are fixed),
       a unique filename for the question image, the type of question (either "mcq" or "long"), and the page number to crop the question from.
@@ -225,6 +315,9 @@ def take_screenshot(
     type (str): The type of question, either "mcq" for multiple-choice questions or "long" for long-answer questions,
         which determines the cropping dimensions and source image
     page (int): The page number to crop the question from (used to determine which image to crop from based on type).
+    work_dir (str): The folder holding the pages and where the question is saved, in its questions subfolder (see make_work_dir).
+    merged (PIL.Image.Image | None): For "long" questions, the in-memory merged image from merge_all_images to crop from
+        instead of final/final.jpg.
 
     Returns:
      bool: True if the question image was successfully saved, False if it was skipped due to being too small or if there was an error during saving.
@@ -242,28 +335,53 @@ def take_screenshot(
 
     # Open the correct image based on type
     if type == "long":
-        image_path = f"{outputPath}/final/final.jpg"
+        image_path = f"{work_dir}/final/final.jpg"
     else:
-        image_path = f"{outputPath}/currentPdfImages/{page}"
+        image_path = f"{work_dir}/currentPdfImages/{page}"
 
     try:
-        with PIL.Image.open(image_path) as im:
+        im = merged if (type == "long" and merged is not None) else PIL.Image.open(image_path)
+        try:
             # Crop the region
             if mode == "qp":
                 im_crop = im.crop((100, y1, 1600, y2))
             else:
                 im_crop = im.crop((0, y1, 2300, y2))
+        finally:
+            if im is not merged:
+                im.close()
 
-            # Save to questions folder
-            save_path = f"{outputPath}/questions/{unique_filename}.jpg"
-            im_crop.save(save_path)
+        # Save to questions folder
+        save_path = f"{work_dir}/questions/{unique_filename}.jpg"
+        im_crop.save(save_path)
 
-            print(f"Saved question {unique_filename}")
+        print(f"Saved question {unique_filename}")
 
         return True
     except Exception as e:
         print(f"Error saving question {unique_filename}: {e}")
     return False
+
+
+def _last_content_row(im: PIL.Image.Image) -> int:
+    """Finds the lowest row containing content, using the same sampling as the original per-pixel loop:
+    every 2nd row/column scanning up from the bottom, stopping at the first row where a pixel and its
+    right neighbour are both non-white. Rows are checked in growing blocks with numpy so it stays fast
+    without losing the early exit when content reaches the bottom of the image.
+    """
+    lowest, highest = im.height - 2, 2 + (im.height % 2)  # sampled rows: lowest, lowest-2, ..., highest
+    first_x = 2 + (im.width % 2)  # sampled columns: first_x, first_x+2, ..., width-2
+    bottom, block = lowest, 32
+    while bottom >= highest:
+        top = max(highest, bottom - block + 2)
+        region = np.asarray(im.crop((0, top, im.width, bottom + 1)).convert("RGB"))[::2]
+        nonwhite = (region != 255).any(axis=2)
+        hits = (nonwhite[:, first_x:-1:2] & nonwhite[:, first_x + 1 :: 2]).any(axis=1)
+        found = np.flatnonzero(hits)
+        if found.size:
+            return top + 2 * int(found[-1])
+        bottom, block = top - 2, block * 2
+    return highest
 
 
 def clean_image(
@@ -282,50 +400,47 @@ def clean_image(
     Returns:
      None: The function does not return anything, but it modifies the image in place by cropping it and saving the cleaned version back to the same location.
     """
-    im = PIL.Image.open(
-        f"{BASE_PATH}/resources/images/{level_folder_name}/{subject}/{paper_number}/{image_name}"
+    clean_image_file(
+        f"{BASE_PATH}/resources/images/{level_folder_name}/{subject}/{paper_number}/{image_name}",
+        mode,
     )
-    pix = im.load()
-    flag = False
-    if not flag:
-        for y in range(im.height - 2, 1, -2):
-            for x in range(im.width - 2, 1, -2):
-                value = pix[x, y]
-                if value != (255, 255, 255):
-                    value2 = pix[x + 1, y]
-                    if value2 != (255, 255, 255):
-                        flag = True
-                        break
-            if flag:
-                break
-        if mode == "qp":
-            cleaned_image = im.crop((0, 0, 1500, y + 10))
-        else:
-            cleaned_image = im.crop((0, 0, 2300, y + 10))
-        cleaned_image.save(
-            f"{BASE_PATH}/resources/images/{level_folder_name}/{subject}/{paper_number}/{image_name}"
-        )
 
 
-def merge_all_images(mode: str) -> None:
+def clean_image_file(image_path: str, mode: str) -> None:
+    """Same as clean_image, but takes the path of the image to clean directly (e.g. a question still in a work_dir)."""
+    im = PIL.Image.open(image_path)
+    y = _last_content_row(im)
+    if mode == "qp":
+        cleaned_image = im.crop((0, 0, 1500, y + 10))
+    else:
+        cleaned_image = im.crop((0, 0, 2300, y + 10))
+    cleaned_image.save(image_path)
+
+
+def merge_all_images(
+    mode: str, work_dir: str = outputPath, save: bool = True
+) -> PIL.Image.Image:
     """Merges all the page images in the currentPdfImages directory into a single long image and saves it to the final folder as final.jpg.
      The images are merged vertically in the order of their page numbers (sorted by filename).
      This is used to create a single image of the entire question paper for easier cropping of long questions that may span multiple pages
 
      Args:
-        None: The function does not take any arguments, but it processes the images in the currentPdfImages directory
+        mode (str): "qp" or "ms", which determines the width of the merged image.
+        work_dir (str): The folder whose currentPdfImages subfolder holds the pages (see make_work_dir).
+        save (bool): Whether to also save the merged image as final/final.jpg. Pass False when processing PDFs in parallel
+            and hand the returned image to take_screenshot(merged=...) instead.
 
     Returns:
-        None: The function does not return anything, but it saves the merged image to the folder called final as final.jpg.
+        PIL.Image.Image: The merged image.
 
     """
-    pages = os.listdir(f"{outputPath}/currentPdfImages")
+    pages = os.listdir(f"{work_dir}/currentPdfImages")
     pages = sorted(pages, key=lambda x: int(x.split(".")[0]))
 
     # First pass to get total height
     total_height = 0
     for page_file in pages:
-        with PIL.Image.open(f"{outputPath}/currentPdfImages/{page_file}") as im:
+        with PIL.Image.open(f"{work_dir}/currentPdfImages/{page_file}") as im:
             total_height += im.height
 
     if mode == "qp":
@@ -336,12 +451,15 @@ def merge_all_images(mode: str) -> None:
 
     # Second pass to merge images
     for page_file in pages:
-        image_path = f"{outputPath}/currentPdfImages/{page_file}"
+        image_path = f"{work_dir}/currentPdfImages/{page_file}"
         with PIL.Image.open(image_path) as im:
             dst.paste(im, (0, current_height))
             current_height += im.height
 
-    dst.save(f"{outputPath}/final/final.jpg")
+    if save:
+        os.makedirs(f"{work_dir}/final", exist_ok=True)
+        dst.save(f"{work_dir}/final/final.jpg")
+    return dst
 
 
 def extract_paper_number(filename: str) -> int | None:
@@ -368,7 +486,58 @@ def extract_paper_number(filename: str) -> int | None:
     return None
 
 
-def get_dimensions_from_api(image_path: str, mode: str = "long-double") -> list:
+def _detection_server_is_up() -> bool:
+    try:
+        return requests.get(f"{DETECTION_SERVER_URL}/docs", timeout=1).status_code == 200
+    except requests.RequestException:
+        return False
+
+
+def _stop_detection_server() -> None:
+    if _detection_server and _detection_server.poll() is None:
+        print("Stopping detection server...")
+        _detection_server.terminate()
+        try:
+            _detection_server.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            _detection_server.kill()
+
+
+def start_detection_server() -> None:
+    """Starts coordinates.py in the background, unless a detection server is already running (then that one is reused).
+    A server started here is stopped automatically when the script exits. Call it early (e.g. before select_files)
+    so the models load while files are being picked, then call wait_for_detection_server() before using it.
+    The server's output goes to resources/images/test_images/coordinates.log.
+    """
+    global _detection_server
+    if _detection_server or _detection_server_is_up():
+        return
+    print("Starting detection server (coordinates.py)...")
+    os.makedirs(outputPath, exist_ok=True)
+    with open(f"{outputPath}/coordinates.log", "w") as log:
+        _detection_server = subprocess.Popen(
+            [sys.executable, "coordinates.py"],
+            cwd=f"{BASE_PATH}/main",
+            stdout=log,
+            stderr=subprocess.STDOUT,
+        )
+    atexit.register(_stop_detection_server)
+
+
+def wait_for_detection_server(timeout: int = 300) -> None:
+    """Blocks until the detection server answers, raising an error if it exits or doesn't start within timeout seconds."""
+    deadline = time.time() + timeout
+    while not _detection_server_is_up():
+        if _detection_server and _detection_server.poll() is not None:
+            raise RuntimeError(
+                f"coordinates.py exited with code {_detection_server.returncode}, see {outputPath}/coordinates.log"
+            )
+        if time.time() > deadline:
+            raise RuntimeError(f"Detection server didn't start within {timeout}s, see {outputPath}/coordinates.log")
+        time.sleep(0.5)
+
+
+def get_dimensions_from_api(image_path: str, mode: str = "long-double-p3") -> list:
     """Takes an image path and sends it to the local YOLO model running from coordinates.py
       to get the predicted bounding box coordinates for the question regions in the image.
 
@@ -382,8 +551,10 @@ def get_dimensions_from_api(image_path: str, mode: str = "long-double") -> list:
     try:
         with open(image_path, "rb") as img:
             files = {"file": img}
-            response = requests.post(
-                f"http://127.0.0.1:8000/predict?mode={mode}", files=files
+            if not hasattr(_thread_local, "session"):
+                _thread_local.session = requests.Session()
+            response = _thread_local.session.post(
+                f"{DETECTION_SERVER_URL}/predict?mode={mode}", files=files
             )
             if response.status_code == 200:
                 coordinates = response.json()
@@ -393,7 +564,7 @@ def get_dimensions_from_api(image_path: str, mode: str = "long-double") -> list:
                 f"API request failed with status code {response.status_code}"
             )
     except Exception as exc:
-        print(f"⚠️ API request failed for {image_path}: {exc}")
+        print(f"[WARN] API request failed for {image_path}: {exc}")
         return []
 
 

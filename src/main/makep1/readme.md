@@ -14,7 +14,8 @@ Automates everything needed to convert paper-1 PDFs into cleaned MCQ images, OCR
 
 ## Requirements
 
-- Detection server running: `python src/main/coordinates.py --mode best1`.
+- Detection server: started automatically in the background (and stopped when the script ends); an already running `python src/main/coordinates.py` is reused instead. Its output goes to `resources/images/test_images/coordinates.log`.
+- PDFs are processed in parallel, `PDF_WORKERS` in `main/utils.py` sets how many at once (default 4, override with the `PDF_WORKERS` environment variable).
 - `definitions.json` entry for the paper code being processed, including `mcqPapers`, `mcq_db_path`, and the `.joblib` filename.
 - Mark-scheme PDF present in `resources/full_pdfs/<code>/` so `extract_answers_from_pdf` can pull the correct answers.
 
