@@ -4,7 +4,6 @@ import json
 import re
 import pdfplumber
 import logging
-from multiprocessing import Pool, cpu_count
 
 # Add the directory two levels up to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -84,6 +83,8 @@ def check_json_validity(json_object, pdf_dir) -> json:
             if not os.path.exists(qp_path):
                 logging.warning(f"QP PDF not found: {qp_pdf_name}")
                 current_pdf_name = qp_pdf_name
+                # Don't fill this paper's records from the previous paper's questions
+                split_questions = []
                 continue
             try:
                 # Crop top and bottom of each page to remove headers/footers (e.g., 60 points from top, 60 from bottom)
@@ -204,11 +205,9 @@ def combine_and_validate_json(MSjson, QPjson, jsonDirectory):
         key = (ms_entry["questionNumber"], normalize_paper_code(ms_entry["paperCode"]))
         ms_lookup[key] = ms_entry
 
-    # Use multiprocessing to process entries
-    with Pool(processes=cpu_count()) as pool:
-        results = pool.map(
-            process_entry, [(qp_entry, ms_lookup) for qp_entry in QPData]
-        )
+    # Each entry is only a dictionary lookup, so a process pool would cost more than it saves (and forking
+    # makep4-ai.py, which has the OCR/torch models loaded, can hang)
+    results = [process_entry((qp_entry, ms_lookup)) for qp_entry in QPData]
 
     # Filter out None results and save the combined data
     totalData = list(filter(None, results))
@@ -229,8 +228,4 @@ def combine_and_validate_json(MSjson, QPjson, jsonDirectory):
 
 
 if __name__ == "__main__":
-    import multiprocessing
-
-    multiprocessing.freeze_support()  # Optional for compatibility on some systems
-
     combine_and_validate_json(MSjsonDirectory, QuestionJsonDirectory, jsondirectory)

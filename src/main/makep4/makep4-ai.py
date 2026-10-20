@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 import subprocess
 import re
+import argparse
 from concurrent.futures import ThreadPoolExecutor
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
@@ -30,9 +31,16 @@ from main.utils import (
     wait_for_detection_server,
     PDF_WORKERS,
 )
+from main.combine_and_validate_json import combine_and_validate_json
+from p4_ms_maker_ai import process_mark_schemes
 
 outputPath = f"{BASE_PATH}/resources/images/test_images"
 definitionsPath = f"{BASE_PATH}/main/definitions.json"
+
+with open(definitionsPath, "r") as db:
+    definitionsData = json.load(db)
+
+STEPS = ["qp", "ms", "combine"]
 
 
 def load_question_db(db_path: str) -> list:
@@ -322,31 +330,19 @@ def add_question_parts(q: dict) -> dict:
     return q
 
 
-if __name__ == "__main__":
-    print("Starting script...")
-
-    with open(definitionsPath, "r") as db:
-        definitionsData = json.load(db)
-
-    print("Creating directories...")
+def process_question_papers(files: list) -> None:
+    """Splits the selected question papers into question images, adds them to each subject's long_db_path DB, then
+    detects their parts and fills in their text, level and chapter.
+    The detection server must already be running (see start_detection_server/wait_for_detection_server)."""
     for dir_path in [outputPath, f"{outputPath}/final", f"{outputPath}/questions"]:
-        if not os.path.exists(dir_path):
-            os.makedirs(dir_path)
-
-    # Select files and process them
-    start_detection_server()
-    print("Selecting files...")
-    files = select_files()
-    if not files:
-        print("No files selected")
-        exit()
-    wait_for_detection_server()
-
-    print(f"Selected files: {files}")
+        os.makedirs(dir_path, exist_ok=True)
 
     # Split the question papers in parallel, then name and save their questions in the order the files were selected
     processed_db_paths = set()
-    qp_files = [file_path for file_path in files if file_path.find("ms") == -1]
+    qp_files = [file_path for file_path in files if "ms" not in os.path.basename(file_path).lower()]
+    if not qp_files:
+        print("No question papers selected")
+        return
     target_db_paths = {
         f"{BASE_PATH}/resources/json/{definitionsData[code]['long_db_path']}"
         for code in {file_path[-18:].split("_")[0] for file_path in qp_files}
@@ -457,3 +453,57 @@ if __name__ == "__main__":
             print(f"[DONE] Chapter extraction updated for {os.path.basename(db_path)}")
         else:
             print(f"[ERROR] read_question_text failed: {result.stderr}")
+
+
+def combine_paper_codes(paper_codes: set) -> None:
+    """Pairs each subject's questions with their mark schemes and validates them against the PDFs, writing the
+    subject's long_final_db_path DB."""
+    for code in sorted(paper_codes):
+        definitions = definitionsData.get(code, {})
+        if not all(key in definitions for key in ["long_db_path", "long_ms_db_path", "long_final_db_path"]):
+            print(f"[WARN] {code} has no long_db_path/long_ms_db_path/long_final_db_path in definitions.json, skipping combine.")
+            continue
+        json_dir = f"{BASE_PATH}/resources/json"
+        print(f"Combining {definitions['long_db_path']} + {definitions['long_ms_db_path']} -> {definitions['long_final_db_path']}")
+        combine_and_validate_json(
+            f"{json_dir}/{definitions['long_ms_db_path']}",
+            f"{json_dir}/{definitions['long_db_path']}",
+            f"{json_dir}/{definitions['long_final_db_path']}",
+        )
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Long-answer pipeline: split question papers (qp), split mark schemes (ms), then pair them into "
+        "the final DB (combine). Select the question papers and their mark schemes together."
+    )
+    parser.add_argument(
+        "--steps",
+        default=",".join(STEPS),
+        help="Comma-separated steps to run, e.g. --steps qp to only split question papers (default: qp,ms,combine)",
+    )
+    args = parser.parse_args()
+    steps = [step.strip() for step in args.steps.split(",") if step.strip()]
+    unknown = [step for step in steps if step not in STEPS]
+    if unknown:
+        parser.error(f"Unknown steps {unknown}, choose from {STEPS}")
+    print(f"Running steps: {', '.join(steps)}")
+
+    needs_detection = "qp" in steps or "ms" in steps
+    if needs_detection:
+        start_detection_server()
+    print("Selecting files...")
+    files = select_files()
+    if not files:
+        print("No files selected")
+        exit()
+    print(f"Selected files: {files}")
+    if needs_detection:
+        wait_for_detection_server()
+
+    if "qp" in steps:
+        process_question_papers(files)
+    if "ms" in steps:
+        process_mark_schemes(files)
+    if "combine" in steps:
+        combine_paper_codes({os.path.basename(file).split("_")[0] for file in files})

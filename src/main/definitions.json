@@ -19,6 +19,7 @@
     "mcq_db_path" : "ig_bio_mcq.json",
     "long_db_path" : "ig_bio_theory.json",
     "long_ms_db_path" : "ig_bio_ms.json",
+    "long_final_db_path" : "ig_bio_final_long.json",
     "mcqNumberOfQuestions" : 40
   },
 
@@ -40,6 +41,7 @@
     "mcq_db_path" : "ig_chem_mcq.json",
     "long_db_path" : "ig_chem_theory.json",
     "long_ms_db_path" : "ig_chem_ms.json",
+    "long_final_db_path" : "ig_chem_final_long.json",
     "mcqNumberOfQuestions" : 40
   },
 
@@ -59,6 +61,7 @@
     "mcq_db_path" : "ig_phy_mcq.json",
     "long_db_path" : "ig_phy_theory.json",
     "long_ms_db_path" : "ig_phy_ms.json",
+    "long_final_db_path" : "ig_phy_final.json",
     "mcqNumberOfQuestions" : 40
   },
 
@@ -107,6 +110,7 @@
     "mcq_db_path" : "a_bio_mcq.json",
     "long_db_path" : "a_bio_theory.json",
     "long_ms_db_path" : "a_bio_ms.json",
+    "long_final_db_path" : "a_bio_final_long.json",
     "mcqNumberOfQuestions" : 40
   },
 
@@ -144,6 +148,7 @@
     "mcq_db_path" : "a_chem_mcq.json",
     "long_db_path" : "a_chem_theory.json",
     "long_ms_db_path" : "a_chem_ms.json",
+    "long_final_db_path" : "a_chem_final_long.json",
     "mcqNumberOfQuestions" : 40
   },
 
@@ -173,6 +178,7 @@
     "mcq_db_path" : "a_phy_mcq.json",
     "long_db_path" : "a_phy_theory.json",
     "long_ms_db_path" : "a_phy_ms.json",
+    "long_final_db_path" : "a_phy_final_long.json",
     "mcqNumberOfQuestions" : 40
   },
 

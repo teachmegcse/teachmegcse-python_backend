@@ -30,6 +30,24 @@ from main.utils import (
 output_path = f"{BASE_PATH}/resources/images/test_images"
 definitionsPath = f"{BASE_PATH}/main/definitions.json"
 
+with open(definitionsPath, "r") as db:
+    definitionsData = json.load(db)
+
+
+def next_ms_num(db_paths: set) -> int:
+    """Returns the number to continue mark-scheme filenames from ({subject}_p{paper}_ms_{num}_{question}.jpg),
+    so a new run never reuses (and overwrites) the image of a mark scheme already in one of the DBs."""
+    highest = 0
+    for db_path in db_paths:
+        if not os.path.exists(db_path):
+            continue
+        with open(db_path, "r") as f:
+            for record in json.load(f):
+                match = re.search(r"_ms_(\d+)_\d+\.jpg$", record.get("fileName", ""))
+                if match:
+                    highest = max(highest, int(match.group(1)))
+    return highest + 1
+
 
 def extract_question_number(im, current_question_num, output_path):
     returnArray = []
@@ -149,16 +167,20 @@ def split_mark_scheme(file_path: str) -> tuple[str, list] | None:
     return work_dir, questions
 
 
-if __name__ == "__main__":
-    with open(definitionsPath, "r") as db:
-        definitionsData = json.load(db)
+def process_mark_schemes(files: list) -> None:
+    """Splits the selected mark schemes into question images and adds them to each subject's long_ms_db_path DB.
+    The detection server must already be running (see start_detection_server/wait_for_detection_server)."""
+    files = [file for file in files if "ms" in os.path.basename(file).lower()]
+    if not files:
+        print("No mark schemes selected")
+        return
 
-    start_detection_server()
-    files = select_files()
-    files = [file for file in files if "ms" in file.lower()]
-    wait_for_detection_server()
-
-    filename_num = 1
+    target_db_paths = {
+        f"{BASE_PATH}/resources/json/{definitionsData[code]['long_ms_db_path']}"
+        for code in {os.path.basename(file).split("_")[0] for file in files}
+        if "long_ms_db_path" in definitionsData.get(code, {})
+    }
+    filename_num = next_ms_num(target_db_paths)
     # Split the mark schemes in parallel, then name and save their questions in the order the files were selected
     with ThreadPoolExecutor(max_workers=PDF_WORKERS) as pool:
         for file_path, split in zip(files, pool.map(split_mark_scheme, files)):
@@ -211,3 +233,10 @@ if __name__ == "__main__":
             except Exception as e:
                 print(f"Error saving JSON data: {str(e)}")
     cleanup()
+
+
+if __name__ == "__main__":
+    start_detection_server()
+    files = select_files()
+    wait_for_detection_server()
+    process_mark_schemes(files)
