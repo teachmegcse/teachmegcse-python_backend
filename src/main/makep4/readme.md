@@ -33,6 +33,19 @@ and marks against the PDFs in `resources/full_pdfs/<code>/`.
 - Filenames continue from the highest number already in the MS DB, so a new run never overwrites earlier MS images.
 - Each cropped MS entry is paired with its question by the combine step (`combine_and_validate_json.py`).
 
+## `question_numbers.py`
+
+- Finds where each question starts from the PDF's text layer (pypdfium2) instead of the YOLO detection server: the
+  numbers 1, 2, 3, ... in the left margin, at the question-number position and size. No GPU or server needed.
+- Uses the same page handling as `makep4-ai.py` (pages skipped by `page_skip_reason`, `strip_images`, merged canvas),
+  so `get_text_coordinates(pdf)` returns the same kind of coordinates as `get_all_page_coordinates`.
+- A "Qualitative analysis" heading just above a question number (9701 paper 3) starts that question.
+- Warns when the number of questions found differs from the number of `[Total: N]` markers (some papers' last
+  question has no marker, e.g. 9701 s21 41/43 Q9).
+- Run on its own to save question images: `python question_numbers.py paper.pdf ... [--out DIR]`
+  (default `resources/images/test_images/text_questions/`, named `<pdf name>_q<number>.jpg`). Doesn't touch the DBs.
+- Needs a text layer: scanned papers or papers whose text can't be extracted find no questions.
+
 ## Supporting files
 
 - `generatePages.py`, `testing.py`, etc., store experimental routines for batching or debugging extraction logic.
