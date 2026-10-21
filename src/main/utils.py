@@ -127,6 +127,12 @@ SKIP_STRINGS = [
     "the periodic table of elements",
     "the periodic table of the elements",
 ]
+# Mark scheme guidance pages can show marks like "[1]" in their examples, so these skip a page even with marks on it
+MARK_SCHEME_GUIDANCE = {"marking principle", "correct answer only", "guidance for chemical equations"}
+# A mark like "[2]" or "[Total: 7]", only ever printed next to a question. A page with one is kept even when it also
+# has a skip string, e.g. the end of a question on the same page as the "Important values" box (9701 s23 42) or the
+# copyright notice (0625 w22 53), or a page saying "... on the next page" (0620 m18 32)
+MARK_BRACKET = re.compile(r"\[\s*(total\s*:?\s*)?\d+\+?\s*\]", re.I)
 
 
 def page_skip_reason(text: str) -> str | None:
@@ -139,13 +145,14 @@ def page_skip_reason(text: str) -> str | None:
         str | None: A short reason like "matched: blank page" or "copyright page", or None to keep the page.
     """
     text = " ".join(text.lower().split())
+    has_marks = MARK_BRACKET.search(text) is not None
     matched = [s for s in SKIP_STRINGS if s in text]
-    if matched:
+    if matched and (not has_marks or any(s in MARK_SCHEME_GUIDANCE for s in matched)):
         return f"matched: {', '.join(matched)}"
     # Some papers end with a page holding only the copyright acknowledgements. Question pages can have the same
     # notice as a footer (and the notice can come first in the page's text), so the notice is removed and the page
     # is only left out when (almost) nothing else is left. The notice always ends "... university of cambridge."
-    if "[total" not in text and ("permission to reproduce items" in text or "to avoid the issue of disclosure" in text):
+    if not has_marks and ("permission to reproduce items" in text or "to avoid the issue of disclosure" in text):
         rest = re.sub(
             r"(permission to reproduce items|to avoid the issue of disclosure).*?university of cambridge\s*\.", "", text
         )
