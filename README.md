@@ -17,7 +17,7 @@ Automation toolkit for turning Cambridge IGCSE and A-level PDFs into structured 
 
 - Python 3.10+ and `pip`
 - System deps for `pdf2image` (Poppler) and OpenCV
-- Tesseract is not required because OCR is handled through EasyOCR
+- No OCR engine is needed: question text is read from each PDF's text layer
 - Optional: Google Generative AI access for explanation generation (`GOOGLE_API_KEY2`)
 
 ## Setup
@@ -36,7 +36,7 @@ Place raw PDFs under `src/resources/full_pdfs/<paper_code>/`. The ML classifiers
 ### 1. MCQ ingestion (`makep1`)
 - Run `python src/main/makep1/makep1Final.py` (requires a GUI session for the Tk file picker)
 - Questions are found from each PDF's text layer (`get_mcq_text_coordinates` in `main/utils.py`), no detection server or GPU needed
-- The script calls EasyOCR, classifies each cropped MCQ via the syllabus model, and copies cleaned images to `resources/images/<level>/<subject>/mcq`
+- The script reads each MCQ's text from the PDF's text layer (`get_mcq_question_texts`), classifies it via the syllabus model, and copies cleaned images to `resources/images/<level>/<subject>/mcq`
 - Outputs JSON rows to `resources/json/<mcq_db_path>` as configured in `definitions.json`
 
 ### 2. Long question ingestion (`makep4`)
@@ -57,7 +57,7 @@ Place raw PDFs under `src/resources/full_pdfs/<paper_code>/`. The ML classifiers
 ### 5. Supporting utilities
 - `download_pdfs.py`: batch fetch raw papers given metadata
 - `clean_folder.py`: remove unwanted PDFs (e.g. GT/CI) from staging folders
-- `read_question_text.py`: fills in `questionText` and marks from each question's region of the question paper (`get_question_texts` in `main/utils.py`)
+- `check_json_validity` in `main/utils.py`: fills in `questionText` and marks from each question's region of the question paper (used by `makep4-ai.py` and the combine step)
 - `final_combine.py`: aggregates subject-level JSON files into a single CSV/JSON pair for analytics
 
 ## Data & Model Locations
@@ -76,4 +76,4 @@ Place raw PDFs under `src/resources/full_pdfs/<paper_code>/`. The ML classifiers
 
 - Keep `definitions.json` in sync with available PDFs, classifiers, and JSON destinations
 - The Tk-based scripts need a desktop session or X forwarding
-- For reproducible OCR output, delete `resources/images/test_images` between runs using `main.utils.cleanup()`
+- To start from a clean scratch folder, delete `resources/images/test_images` between runs using `main.utils.cleanup()`

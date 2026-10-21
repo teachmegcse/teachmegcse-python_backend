@@ -1,6 +1,6 @@
 # makep1 pipeline (MCQ extraction)
 
-Automates everything needed to convert paper-1 PDFs into cleaned MCQ images, OCR text, per-chapter metadata, and JSON rows.
+Automates everything needed to convert paper-1 PDFs into cleaned MCQ images, question text, per-chapter metadata, and JSON rows.
 
 ## Primary script: `makep1Final.py`
 
@@ -9,7 +9,7 @@ Automates everything needed to convert paper-1 PDFs into cleaned MCQ images, OCR
   - Convert PDFs to images (`makeImages`), skipping blank/notes pages.
   - Find where each MCQ starts on its page from the PDF's text layer (`get_mcq_text_coordinates`, see below).
   - Crop each question via `take_screenshot` and store it under `resources/images/test_images/questions`.
-  - OCR each crop with EasyOCR (`process_image`), normalize text (`formatText`), and classify it into the correct chapter through the syllabus model declared in `definitions.json`.
+  - Read each question's text from the PDF's text layer (`get_mcq_question_texts`), normalize it (`formatText`), and classify it into the correct chapter through the syllabus model declared in `definitions.json`.
   - Copy the cleaned image into `resources/images/<level>/<subject>/mcq/` and update the target JSON file (`mcq_db_path`).
 
 ## Finding the questions from the text layer

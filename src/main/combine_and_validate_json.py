@@ -5,8 +5,7 @@ import json
 # Add the directory two levels up to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from main.read_question_text import check_json_validity
-from main.utils import load_json_db
+from main.utils import check_json_validity, load_json_db
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -88,7 +87,7 @@ def combine_and_validate_json(MSjson, QPjson, jsonDirectory):
         ms_lookup[key] = ms_entry
 
     # Each entry is only a dictionary lookup, so a process pool would cost more than it saves (and forking
-    # makep4-ai.py, which has the OCR/torch models loaded, can hang)
+    # makep4-ai.py, which has the scikit-learn models loaded, can hang)
     results = [process_entry((qp_entry, ms_lookup)) for qp_entry in QPData]
 
     # Filter out None results and save the combined data

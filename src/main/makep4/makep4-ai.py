@@ -2,7 +2,6 @@ import os
 import json
 import shutil
 import sys
-import subprocess
 import re
 import argparse
 from concurrent.futures import ThreadPoolExecutor
@@ -24,6 +23,7 @@ from main.utils import (
     make_work_dir,
     get_text_coordinates,
     find_question_parts,
+    check_json_validity,
     PDF_WORKERS,
 )
 from main.combine_and_validate_json import combine_and_validate_json
@@ -224,22 +224,12 @@ def process_question_papers(files: list) -> None:
             save_question_db(db_path, db_records)
 
     for db_path in processed_db_paths:
-        # Now call read_question_text to update questionText from PDFs
-        print(f"Running read_question_text on {os.path.basename(db_path)}...")
-        result = subprocess.run(
-            ["python", "../read_question_text.py", os.path.basename(db_path)],
-            cwd=os.path.dirname(__file__),  # src/main/makep4/
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode == 0:
-            print("[DONE] read_question_text completed successfully")
-            try:
-                with open(db_path, "r", encoding="utf-8") as f:
-                    updated_questions = json.load(f)
-            except (OSError, json.JSONDecodeError) as exc:
-                print(f"[ERROR] Failed to reload {db_path}: {exc}")
-                continue
+        # Fill in every question's text and marks from its question paper, then its level and chapter from the text
+        print(f"Reading question text for {os.path.basename(db_path)}...")
+        updated_questions = load_question_db(db_path)
+        if updated_questions:
+            paper_code = updated_questions[0]["pdfName"].split("_")[0]
+            check_json_validity(updated_questions, f"{BASE_PATH}/resources/full_pdfs/{paper_code}")
 
             for q in updated_questions:
                 question_text = q.get("questionText", "")
@@ -271,11 +261,8 @@ def process_question_papers(files: list) -> None:
                 q["Level"] = level
                 q["Chapter"] = chapter_num
 
-            with open(db_path, "w", encoding="utf-8") as f:
-                json.dump(updated_questions, f, indent=2, ensure_ascii=False)
-            print(f"[DONE] Chapter extraction updated for {os.path.basename(db_path)}")
-        else:
-            print(f"[ERROR] read_question_text failed: {result.stderr}")
+            save_question_db(db_path, updated_questions)
+            print(f"[DONE] Question text and chapters updated for {os.path.basename(db_path)}")
 
 
 def combine_paper_codes(paper_codes: set) -> None:

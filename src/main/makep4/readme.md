@@ -25,7 +25,7 @@ and marks against the PDFs in `resources/full_pdfs/<code>/`.
 - Finds where each question starts from the PDF's text layer (`get_text_coordinates`, see `question_numbers.py` below), then merges all pages into a single tall canvas so questions spanning multiple pages stitch cleanly.
 - Reads each question's parts ((a), (i), ...) from the text layer too (`find_question_parts`) and stores them in `questionParts`.
 - Generates a sorted list of Y coordinates, crops each question using `take_screenshot(..., type="long")`, and copies it into `resources/images/<level>/<subject>/long/`.
-- OCRs + normalizes the cropped text, classifies chapter + level using the syllabus models, and appends a record to the configured `long_db_path` JSON.
+- Reads each question's text from the PDF's text layer (`check_json_validity` in `main/utils.py`), normalizes it, classifies chapter + level using the syllabus models, and appends a record to the configured `long_db_path` JSON.
 
 ## `p4_ms_maker_ai.py`
 

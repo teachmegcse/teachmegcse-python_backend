@@ -12,7 +12,6 @@ definitionsPath = f"{BASE_PATH}/main/definitions.json"
 outputPath = f"{BASE_PATH}/resources/images/test_images"
 
 from main.utils import (
-    process_image,
     select_files,
     makeImages,
     get_level_and_chapter,
@@ -25,6 +24,7 @@ from main.utils import (
     extract_paper_number,
     make_work_dir,
     get_mcq_text_coordinates,
+    get_mcq_question_texts,
     MCQ_PAGE_END,
     PDF_WORKERS,
 )
@@ -65,6 +65,8 @@ def process_pdf(currentFileIndex: int, file_path: str) -> list:
     answers = extract_answers_from_pdf(paperCode, current_file)
     # Where each question starts on its page, read from the PDF's text layer: {page image number: [(question number, y)]}
     coordinates = get_mcq_text_coordinates(file_path)
+    # Each question's text, read from the same region of the PDF's text layer its image is cropped from
+    question_texts = get_mcq_question_texts(file_path)
     question_count = sum(len(questions) for questions in coordinates.values())
     # Questions removed from the paper are left out of both, so the answers line up with the questions in order
     if question_count != len(answers):
@@ -83,11 +85,7 @@ def process_pdf(currentFileIndex: int, file_path: str) -> list:
             if not taken:
                 continue
 
-            question_text = (
-                process_image(f"{work_dir}/questions/{image_file_name}.jpg")
-                .lower()
-                .strip()
-            )
+            question_text = question_texts.get(question_number, "").lower().strip()
             formatted_text = formatText(question_text)
 
             level, chapter_num = get_level_and_chapter(

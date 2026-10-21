@@ -7,12 +7,11 @@ import os
 from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
 import re
+import logging
 import json
-import cv2
 from joblib import load
 import warnings
 from sklearn.exceptions import InconsistentVersionWarning
-import easyocr
 import numpy as np
 import shutil
 import threading
@@ -22,21 +21,11 @@ warnings.filterwarnings("ignore", category=InconsistentVersionWarning)
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../..", "src"))
 outputPath = f"{BASE_PATH}/resources/images/test_images"
-CUSTOM_CONFIG = r"--oem 3 --psm 6"
-READER = easyocr.Reader(["en"])
-# EasyOCR isn't safe to call from several threads at once, so all OCR goes through read_text()
-OCR_LOCK = threading.Lock()
 # pypdfium2 isn't safe to call from several threads at once either (PDFs are processed in parallel, see PDF_WORKERS),
 # so every use of it goes through this lock. Re-entrant, as the text-layer functions call each other
 PDFIUM_LOCK = threading.RLock()
 # Number of PDFs processed at the same time (override with the PDF_WORKERS environment variable)
 PDF_WORKERS = int(os.environ.get("PDF_WORKERS", 4))
-
-
-def read_text(image, **kwargs) -> list:
-    """Thread-safe wrapper around READER.readtext, takes the same arguments."""
-    with OCR_LOCK:
-        return READER.readtext(image, **kwargs)
 
 
 def load_json_db(path: str) -> list:
@@ -86,21 +75,6 @@ def predict(data: str, model: str) -> str:
 def _load_pipeline(model: str):
     # Loading a joblib pipeline from disk is slow, so each model is only loaded once per run
     return load(f"{BASE_PATH}/resources/sci-kit/{model}")
-
-
-def process_image(image_path: str) -> str:
-    """Takes an image path, processes the image using OCR, and returns the extracted text.
-
-    Args:
-        image_path (str): The path to the image file.
-
-    Returns:
-        str: The extracted text from the image (using easyocr).
-
-    """
-    img = cv2.imread(image_path)
-    results = read_text(img, detail=0)
-    return "\n".join(results)
 
 
 def select_files() -> list:
@@ -855,36 +829,155 @@ def get_question_texts(pdf_path: str) -> list:
 
         texts = []
         for (start_page, start_y), (end_page, end_y) in zip(boundaries, boundaries[1:]):
-            pieces = []
-            for page_index in kept_pages:
-                if not start_page <= page_index <= end_page:
-                    continue
-                page = document[page_index]
-                textpage = page.get_textpage()
-                page_width, page_height = page.get_size()
-                top = start_y if page_index == start_page else band_top
-                bottom = min(end_y if page_index == end_page else band_bottom, page_height)
-                footer = _footer_top(textpage, page_height)
-                # A few points above it, as the "[Turn over" on the same line is printed a little higher
-                if footer is not None and footer > page_height / 2:
-                    bottom = min(bottom, footer - 4)
-                for phrase in COPYRIGHT_NOTICES:
-                    notice = textpage.search(phrase).get_next()
-                    if notice:
-                        bottom = min(bottom, page_height - textpage.get_charbox(notice[0])[3] - 1)
-                if bottom <= top:
-                    continue
-                # From just left of the question numbers, leaving out the "DO NOT WRITE IN THIS MARGIN" strips 2024+
-                # papers print down the outer edge of each page (on the left or the right)
-                margin = max(0, _footer_x(textpage) - NUMBER_LINE_LOOKBACK)
-                # get_text_bounded takes PDF coordinates, with y measured up from the bottom of the page
-                pieces.append(
-                    textpage.get_text_bounded(margin, page_height - bottom, page_width - margin, page_height - top)
+            pieces = [
+                _region_text(
+                    document[page_index],
+                    start_y if page_index == start_page else band_top,
+                    end_y if page_index == end_page else band_bottom,
                 )
-            texts.append(BARCODE_TEXT.sub("", "\n".join(pieces)))
+                for page_index in kept_pages
+                if start_page <= page_index <= end_page
+            ]
+            texts.append("\n".join(pieces))
     finally:
         document.close()
     return texts
+
+
+def _region_text(page, top: float, bottom: float) -> str:
+    """Reads the text of a question paper page between top and bottom (in points from the top of the page), leaving out
+    a "© UCLES" footer at the bottom of the page, the copyright notice, the "DO NOT WRITE IN THIS MARGIN" strips and
+    the barcode."""
+    textpage = page.get_textpage()
+    page_width, page_height = page.get_size()
+    bottom = min(bottom, page_height)
+    footer = _footer_top(textpage, page_height)
+    # A few points above it, as the "[Turn over" on the same line is printed a little higher
+    if footer is not None and footer > page_height / 2:
+        bottom = min(bottom, footer - 4)
+    for phrase in COPYRIGHT_NOTICES:
+        notice = textpage.search(phrase).get_next()
+        if notice:
+            bottom = min(bottom, page_height - textpage.get_charbox(notice[0])[3] - 1)
+    if bottom <= top:
+        return ""
+    # From just left of the question numbers, leaving out the "DO NOT WRITE IN THIS MARGIN" strips 2024+ papers print
+    # down the outer edge of each page (on the left or the right)
+    margin = max(0, _footer_x(textpage) - NUMBER_LINE_LOOKBACK)
+    # get_text_bounded takes PDF coordinates, with y measured up from the bottom of the page
+    text = textpage.get_text_bounded(margin, page_height - bottom, page_width - margin, page_height - top)
+    return BARCODE_TEXT.sub("", text)
+
+
+def extract_question_blocks(qp_path: str) -> list:
+    """Reads the text of each question of a question paper, from the same region its image is cropped from
+    (see get_question_texts), so questions without a "[Total: x]" marker get their own text too."""
+    try:
+        blocks = []
+        for question_text in get_question_texts(qp_path):
+            # Remove dotted lines (5 or more consecutive dots)
+            question_text = re.sub(r"\.{5,}", "", question_text)
+
+            # Remove lines like "Question x starts on page y." or "Question x is on page y."
+            question_text = re.sub(
+                r"Question\s+\d+\s+(starts on|is on)\s+page\s+\d+\.",
+                "",
+                question_text,
+                flags=re.IGNORECASE,
+            )
+
+            # Remove "Turn over" with starting bracket (case-insensitive, no ending bracket)
+            question_text = re.sub(
+                r"\[Turn over", "", question_text, flags=re.IGNORECASE
+            )
+
+            # Remove "blank page" (case-insensitive)
+            question_text = re.sub(
+                r"blank page", "", question_text, flags=re.IGNORECASE
+            )
+
+            # Remove lines that are now empty or contain only whitespace after removing dots
+            question_text = "\n".join(
+                line for line in question_text.splitlines() if line.strip()
+            )
+            blocks.append(question_text.strip())
+        return blocks
+    except Exception as e:
+        # Surface the underlying error with context so callers can handle it upstream
+        raise RuntimeError(f"Error reading {os.path.basename(qp_path)}: {e}") from e
+
+
+def check_json_validity(json_object, pdf_dir) -> json:
+    """Fills in each record's questionText (and marks, from its "[Total: x]") from its question paper in pdf_dir.
+    Records can number their question with questionNum (question DBs) or questionNumber (final DBs)."""
+    # Read every question paper up front (reading the text layer takes a fraction of a second per paper)
+    pdf_names = list(dict.fromkeys(f"{record['pdfName']}.pdf" for record in json_object))
+    found = [name for name in pdf_names if os.path.exists(os.path.join(pdf_dir, name))]
+    blocks_by_pdf = {name: extract_question_blocks(os.path.join(pdf_dir, name)) for name in found}
+
+    current_pdf_name = None
+    split_questions = []
+    for record in json_object:
+        qp_pdf_name = f"{record['pdfName']}.pdf"
+        if qp_pdf_name != current_pdf_name:
+            print(f"Reading PDF: {qp_pdf_name}")
+            current_pdf_name = qp_pdf_name
+            if qp_pdf_name not in blocks_by_pdf:
+                logging.warning(f"QP PDF not found: {qp_pdf_name}")
+                split_questions = []
+                continue
+            split_questions = blocks_by_pdf[qp_pdf_name]
+
+            num_questions_in_json = sum(
+                1 for rec in json_object if rec["pdfName"] == record["pdfName"]
+            )
+            num_questions_in_pdf = len(split_questions)
+            if num_questions_in_json != num_questions_in_pdf:
+                if num_questions_in_json > num_questions_in_pdf:
+                    logging.warning(
+                        f"Mismatch in question count for {qp_pdf_name}: "
+                        f"{num_questions_in_pdf} questions found in PDF, "
+                        f"but {num_questions_in_json} in JSON."
+                    )
+                else:
+                    logging.warning(
+                        f"More questions in PDF ({num_questions_in_pdf}) than in JSON ({num_questions_in_json}) for {qp_pdf_name}. Continuing..."
+                    )
+        # Replace the current record's questionText with our extracted question text
+        qnum = record.get("questionNum", record.get("questionNumber"))
+        if qnum - 1 < len(split_questions):
+            block_text = split_questions[qnum - 1]
+            # Clean the text: remove non-ASCII chars and replace newlines
+            block_text = re.sub(r"\(cid:\d+\)", "", block_text)
+            block_text = re.sub(
+                r"AM SIHT NI ETIRW TON OD NIGRAM", "", block_text, flags=re.IGNORECASE
+            )
+            block_text = re.sub(r"\b[A-Z][A-Z\s]{3,}\b", "", block_text)
+            block_text = (
+                block_text.encode("ascii", "ignore")
+                .decode("ascii")
+                .replace("\n", " ")
+                .strip()
+            )
+            block_text = re.sub(r" {2,}", " ", block_text)
+            record["questionText"] = block_text
+            # Extract the marks from the trailing [Total: X] within this block
+            m = re.search(
+                r"\[\s*Total\s*:?\s*([0-9]+\+?)\s*\]", block_text, flags=re.IGNORECASE
+            )
+            if m:
+                record["marks"] = int(m.group(1))
+            else:
+                # Some questions have no [Total: X] (e.g. 9702 paper 5 Q1), so add up the marks of its parts ([2], [1],
+                # ...). On questions that do have one, this sum equals it 99.8% of the time
+                part_marks = [int(n) for n in re.findall(r"\[\s*(\d{1,2})\s*\]", block_text)]
+                if part_marks:
+                    record["marks"] = sum(part_marks)
+        else:
+            # The expected question index was not found in the parsed blocks
+            # logging.debug(question_text)
+            pass
+    return json_object
 
 
 def _part_labels(textpage, page_height: float) -> list:
@@ -1298,6 +1391,29 @@ def get_mcq_text_coordinates(pdf_path: str) -> dict:
             (question_number, max(0, int(y * SCALE) - STRIP_TOP - PADDING_PX))
         )
     return coordinates
+
+
+@_pdfium_locked
+def get_mcq_question_texts(pdf_path: str) -> dict:
+    """Reads each MCQ's text from the region its image is cropped from (see get_mcq_text_coordinates): from its number
+    down to the next question on its page, or to the bottom of the page.
+
+    Returns:
+        dict: {question_number: text}, with empty lines left out.
+    """
+    starts = find_mcq_question_starts(pdf_path)
+    document = pdfium.PdfDocument(pdf_path)
+    try:
+        padding = PADDING_PX / SCALE
+        texts = {}
+        for i, (question_number, page_index, y) in enumerate(starts):
+            next_on_page = i + 1 < len(starts) and starts[i + 1][1] == page_index
+            bottom = starts[i + 1][2] - padding if next_on_page else TEXT_BOTTOM
+            text = _region_text(document[page_index], max(TEXT_TOP, y - padding), bottom)
+            texts[question_number] = "\n".join(line.strip() for line in text.splitlines() if line.strip())
+    finally:
+        document.close()
+    return texts
 
 
 def split_mcq_paper_from_text(pdf_path: str, out_dir: str) -> list:
