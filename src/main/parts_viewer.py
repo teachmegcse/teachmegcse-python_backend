@@ -1,16 +1,32 @@
 import json
 import os
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, font as tkfont, messagebox, ttk
 
 from PIL import Image, ImageTk
+
+# Dark colour scheme shared by the ttk styles, the tk widgets and the canvas
+BG = "#16181d"
+SURFACE = "#1e2128"
+SURFACE_ALT = "#262a33"
+BORDER = "#323743"
+TEXT = "#e6e8ee"
+MUTED = "#8b93a5"
+ACCENT = "#5b8cff"
+ACCENT_HOVER = "#7aa2ff"
+CANVAS_BG = "#101216"
+
+# Each part gets its own colour, used for its box on the image and its entry in the parts list
+PART_COLOURS = ["#4ade80", "#60a5fa", "#f472b6", "#facc15", "#a78bfa", "#fb923c", "#2dd4bf"]
 
 
 class PartsViewer(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("Question Parts Viewer")
-        self.geometry("1200x900")
+        self.geometry("1280x900")
+        self.minsize(900, 600)
+        self.configure(bg=BG)
 
         self.data = []
         self.images_dir = ""
@@ -25,81 +41,155 @@ class PartsViewer(tk.Tk):
         self.pan_offset = (0, 0)
         self.drag_start = None
 
+        self._build_fonts()
+        self._build_styles()
         self._build_ui()
         self._bind_keys()
 
+    def _build_fonts(self) -> None:
+        base = tkfont.nametofont("TkDefaultFont").actual()["family"]
+        self.font_body = tkfont.Font(family=base, size=10)
+        self.font_bold = tkfont.Font(family=base, size=10, weight="bold")
+        self.font_title = tkfont.Font(family=base, size=15, weight="bold")
+        self.font_heading = tkfont.Font(family=base, size=9, weight="bold")
+        mono = tkfont.nametofont("TkFixedFont").actual()["family"]
+        self.font_mono = tkfont.Font(family=mono, size=9)
+
+    def _build_styles(self) -> None:
+        style = ttk.Style(self)
+        style.theme_use("clam")
+        style.configure(".", background=BG, foreground=TEXT, font=self.font_body,
+                        bordercolor=BORDER, lightcolor=BORDER, darkcolor=BORDER)
+        style.configure("TFrame", background=BG)
+        style.configure("Card.TFrame", background=SURFACE, relief=tk.FLAT)
+        style.configure("TLabel", background=BG, foreground=TEXT)
+        style.configure("Card.TLabel", background=SURFACE, foreground=MUTED)
+        style.configure("Title.TLabel", background=BG, foreground=TEXT, font=self.font_title)
+        style.configure("Subtitle.TLabel", background=BG, foreground=MUTED)
+        style.configure("Heading.TLabel", background=SURFACE, foreground=MUTED, font=self.font_heading)
+        style.configure("Status.TLabel", background=SURFACE, foreground=MUTED, padding=(12, 6))
+
+        style.configure("TEntry", fieldbackground=SURFACE_ALT, foreground=TEXT, insertcolor=TEXT,
+                        bordercolor=BORDER, lightcolor=SURFACE_ALT, darkcolor=SURFACE_ALT, padding=6)
+        style.map("TEntry", bordercolor=[("focus", ACCENT)], lightcolor=[("focus", ACCENT)])
+
+        style.configure("TButton", background=SURFACE_ALT, foreground=TEXT, borderwidth=0,
+                        focusthickness=0, padding=(12, 6))
+        style.map("TButton", background=[("pressed", BORDER), ("active", BORDER)])
+        style.configure("Accent.TButton", background=ACCENT, foreground="#ffffff", font=self.font_bold)
+        style.map("Accent.TButton", background=[("pressed", ACCENT), ("active", ACCENT_HOVER)])
+
+        style.configure("Vertical.TScrollbar", background=SURFACE_ALT, troughcolor=SURFACE,
+                        bordercolor=SURFACE, arrowcolor=MUTED, lightcolor=SURFACE_ALT, darkcolor=SURFACE_ALT)
+
     def _build_ui(self) -> None:
-        controls = ttk.Frame(self, padding=8)
-        controls.pack(side=tk.TOP, fill=tk.X)
+        header = ttk.Frame(self, padding=(16, 14, 16, 6))
+        header.pack(side=tk.TOP, fill=tk.X)
+        ttk.Label(header, text="Question Parts Viewer", style="Title.TLabel").pack(side=tk.LEFT)
+        ttk.Label(
+            header,
+            text="←/→ navigate   +/− zoom   0 reset   drag to pan",
+            style="Subtitle.TLabel",
+        ).pack(side=tk.RIGHT)
 
-        ttk.Label(controls, text="JSON path:").pack(side=tk.LEFT)
+        controls = ttk.Frame(self, padding=(16, 10), style="Card.TFrame")
+        controls.pack(side=tk.TOP, fill=tk.X, padx=16, pady=(0, 10))
+        controls.columnconfigure(1, weight=3)
+        controls.columnconfigure(4, weight=2)
+
+        ttk.Label(controls, text="JSON", style="Card.TLabel").grid(row=0, column=0, sticky=tk.W)
         self.json_entry = ttk.Entry(controls, width=60)
-        self.json_entry.pack(side=tk.LEFT, padx=6)
-        ttk.Button(controls, text="Browse", command=self._browse_json).pack(
-            side=tk.LEFT
-        )
+        self.json_entry.grid(row=0, column=1, sticky=tk.EW, padx=(8, 6))
+        ttk.Button(controls, text="Browse…", command=self._browse_json).grid(row=0, column=2)
 
-        ttk.Label(controls, text="Images folder:").pack(side=tk.LEFT, padx=(12, 0))
+        ttk.Label(controls, text="Images", style="Card.TLabel").grid(row=0, column=3, sticky=tk.W, padx=(18, 0))
         self.images_entry = ttk.Entry(controls, width=40)
-        self.images_entry.pack(side=tk.LEFT, padx=6)
-        ttk.Button(controls, text="Browse", command=self._browse_images).pack(
-            side=tk.LEFT
+        self.images_entry.grid(row=0, column=4, sticky=tk.EW, padx=(8, 6))
+        ttk.Button(controls, text="Browse…", command=self._browse_images).grid(row=0, column=5)
+
+        ttk.Button(controls, text="Load", style="Accent.TButton", command=self._load_data).grid(
+            row=0, column=6, padx=(14, 0)
         )
 
-        ttk.Button(controls, text="Load", command=self._load_data).pack(
-            side=tk.LEFT, padx=12
-        )
+        content = ttk.Frame(self)
+        content.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=16, pady=(0, 10))
 
-        content = ttk.Frame(self, padding=8)
-        content.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        right = ttk.Frame(content)
+        right.pack(side=tk.RIGHT, fill=tk.Y, padx=(10, 0))
 
-        left = ttk.Frame(content)
+        left = ttk.Frame(content, style="Card.TFrame")
         left.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        self.canvas = tk.Canvas(left, bg="#1f1f1f", highlightthickness=0)
-        self.canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        self.canvas = tk.Canvas(left, bg=CANVAS_BG, highlightthickness=0, cursor="fleur")
+        self.canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=1, pady=1)
         self.canvas.bind("<Configure>", self._on_canvas_resize)
         self.canvas.bind("<ButtonPress-1>", self._start_pan)
         self.canvas.bind("<B1-Motion>", self._pan)
 
-        nav = ttk.Frame(left, padding=(0, 8, 0, 0))
+        nav = ttk.Frame(left, padding=10, style="Card.TFrame")
         nav.pack(side=tk.BOTTOM, fill=tk.X)
-        ttk.Button(nav, text="Prev", command=self._prev_question).pack(side=tk.LEFT)
-        ttk.Button(nav, text="Next", command=self._next_question).pack(
-            side=tk.LEFT, padx=6
-        )
-        ttk.Button(nav, text="Zoom -", command=self._zoom_out).pack(
-            side=tk.LEFT, padx=6
-        )
-        ttk.Button(nav, text="Zoom +", command=self._zoom_in).pack(side=tk.LEFT)
-        ttk.Button(nav, text="Reset Zoom", command=self._reset_zoom).pack(
-            side=tk.LEFT, padx=6
-        )
-        self.status_label = ttk.Label(nav, text="No data loaded")
-        self.status_label.pack(side=tk.RIGHT)
+        ttk.Button(nav, text="‹ Prev", command=self._prev_question).pack(side=tk.LEFT)
+        ttk.Button(nav, text="Next ›", command=self._next_question).pack(side=tk.LEFT, padx=(6, 18))
+        ttk.Button(nav, text="−", width=3, command=self._zoom_out).pack(side=tk.LEFT)
+        self.zoom_label = ttk.Label(nav, text="100%", width=6, anchor=tk.CENTER, style="Card.TLabel")
+        self.zoom_label.pack(side=tk.LEFT, padx=4)
+        ttk.Button(nav, text="+", width=3, command=self._zoom_in).pack(side=tk.LEFT)
+        ttk.Button(nav, text="Reset Zoom", command=self._reset_zoom).pack(side=tk.LEFT, padx=6)
 
-        right = ttk.Frame(content, width=360)
-        right.pack(side=tk.RIGHT, fill=tk.Y)
-
-        ttk.Label(right, text="Questions").pack(anchor=tk.W)
-        self.listbox = tk.Listbox(right, height=12)
-        self.listbox.pack(fill=tk.X, pady=(0, 8))
+        self.listbox = self._card_listbox(right, "QUESTIONS", height=12)
         self.listbox.bind("<<ListboxSelect>>", self._on_listbox_select)
 
-        ttk.Label(right, text="Metadata").pack(anchor=tk.W)
-        self.meta_text = tk.Text(right, height=8, wrap=tk.WORD)
-        self.meta_text.pack(fill=tk.BOTH, expand=False, pady=(0, 8))
-        self.meta_text.configure(state=tk.DISABLED)
+        self.meta_text = self._card_text(right, "METADATA", height=8)
+        self.meta_text.tag_configure("key", foreground=MUTED)
+        self.meta_text.tag_configure("value", foreground=TEXT)
 
-        ttk.Label(right, text="Question text").pack(anchor=tk.W)
-        self.question_text = tk.Text(right, height=14, wrap=tk.WORD)
-        self.question_text.pack(fill=tk.BOTH, expand=False, pady=(0, 8))
-        self.question_text.configure(state=tk.DISABLED)
+        self.question_text = self._card_text(right, "QUESTION TEXT", height=12)
 
-        ttk.Label(right, text="Parts").pack(anchor=tk.W)
-        self.parts_text = tk.Text(right, height=16, wrap=tk.WORD)
-        self.parts_text.pack(fill=tk.BOTH, expand=True)
-        self.parts_text.configure(state=tk.DISABLED)
+        self.parts_text = self._card_text(right, "PARTS", height=14, expand=True)
+        self.parts_text.tag_configure("index", foreground=MUTED)
+        self.parts_text.tag_configure("coords", foreground=MUTED, font=self.font_mono)
+        self.parts_text.tag_configure("empty", foreground=MUTED)
+        for colour in PART_COLOURS:
+            self.parts_text.tag_configure(colour, foreground=colour, font=self.font_bold)
+
+        self.status_label = ttk.Label(self, text="No data loaded", style="Status.TLabel")
+        self.status_label.pack(side=tk.BOTTOM, fill=tk.X, before=content)
+
+    def _card(self, parent: tk.Widget, title: str, expand: bool) -> ttk.Frame:
+        card = ttk.Frame(parent, padding=(12, 10), style="Card.TFrame")
+        card.pack(side=tk.TOP, fill=tk.BOTH, expand=expand, pady=(0, 10) if not expand else 0)
+        ttk.Label(card, text=title, style="Heading.TLabel").pack(anchor=tk.W, pady=(0, 6))
+        return card
+
+    def _card_listbox(self, parent: tk.Widget, title: str, height: int) -> tk.Listbox:
+        card = self._card(parent, title, expand=False)
+        body = ttk.Frame(card, style="Card.TFrame")
+        body.pack(fill=tk.X)
+        listbox = tk.Listbox(
+            body, height=height, width=42, bg=SURFACE_ALT, fg=TEXT, selectbackground=ACCENT,
+            selectforeground="#ffffff", highlightthickness=0, borderwidth=0,
+            activestyle="none", font=self.font_body,
+        )
+        scrollbar = ttk.Scrollbar(body, orient=tk.VERTICAL, command=listbox.yview)
+        listbox.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        listbox.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        return listbox
+
+    def _card_text(self, parent: tk.Widget, title: str, height: int, expand: bool = False) -> tk.Text:
+        card = self._card(parent, title, expand=expand)
+        body = ttk.Frame(card, style="Card.TFrame")
+        body.pack(fill=tk.BOTH, expand=True)
+        text = tk.Text(
+            body, height=height, width=42, wrap=tk.WORD, bg=SURFACE_ALT, fg=TEXT, insertbackground=TEXT,
+            highlightthickness=0, borderwidth=0, padx=8, pady=6, font=self.font_body,
+            selectbackground=ACCENT, spacing1=1, spacing3=1,
+        )
+        scrollbar = ttk.Scrollbar(body, orient=tk.VERTICAL, command=text.yview)
+        text.configure(yscrollcommand=scrollbar.set, state=tk.DISABLED)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        return text
 
     def _bind_keys(self) -> None:
         self.bind("<Left>", lambda _event: self._prev_question())
@@ -166,7 +256,7 @@ class PartsViewer(tk.Tk):
         for question in self.data:
             name = question.get("questionName", "(no name)")
             number = question.get("questionNum", "?")
-            self.listbox.insert(tk.END, f"{number}: {name}")
+            self.listbox.insert(tk.END, f"  Q{number}   {name}")
 
     def _on_listbox_select(self, _event: tk.Event) -> None:
         selection = self.listbox.curselection()
@@ -193,6 +283,7 @@ class PartsViewer(tk.Tk):
         self.listbox.selection_clear(0, tk.END)
         self.listbox.selection_set(index)
         self.listbox.activate(index)
+        self.listbox.see(index)
         question = self.data[index]
 
         self._update_question_text(question)
@@ -201,7 +292,10 @@ class PartsViewer(tk.Tk):
         self._render_image()
 
         name = question.get("questionName", "(no name)")
-        self.status_label.configure(text=f"{index + 1}/{len(self.data)} - {name}")
+        parts = len(question.get("questionParts", []))
+        self.status_label.configure(
+            text=f"{index + 1} / {len(self.data)}   ·   {name}   ·   {parts} part{'s' if parts != 1 else ''}"
+        )
 
     def _update_question_text(self, question: dict) -> None:
         self.meta_text.configure(state=tk.NORMAL)
@@ -210,7 +304,8 @@ class PartsViewer(tk.Tk):
             if key in {"questionText", "questionParts"}:
                 continue
             value = question.get(key)
-            self.meta_text.insert(tk.END, f"{key}: {value}\n")
+            self.meta_text.insert(tk.END, f"{key}: ", "key")
+            self.meta_text.insert(tk.END, f"{value}\n", "value")
         self.meta_text.configure(state=tk.DISABLED)
 
         text = question.get("questionText", "")
@@ -226,9 +321,13 @@ class PartsViewer(tk.Tk):
             for idx, part in enumerate(parts, start=1):
                 coords = part.get("coordinates", [])
                 label = part.get("text", "")
-                self.parts_text.insert(tk.END, f"{idx}. {label}  {coords}\n")
+                colour = PART_COLOURS[(idx - 1) % len(PART_COLOURS)]
+                self.parts_text.insert(tk.END, f"{idx:>2}  ", "index")
+                self.parts_text.insert(tk.END, "■ ", colour)
+                self.parts_text.insert(tk.END, f"{label}  ", colour)
+                self.parts_text.insert(tk.END, f"{coords}\n", "coords")
         else:
-            self.parts_text.insert(tk.END, "No parts found.")
+            self.parts_text.insert(tk.END, "No parts found.", "empty")
         self.parts_text.configure(state=tk.DISABLED)
 
     def _load_image(self, question: dict) -> None:
@@ -264,6 +363,7 @@ class PartsViewer(tk.Tk):
 
     def _set_zoom(self, value: float) -> None:
         self.zoom_factor = max(self.min_zoom, min(self.max_zoom, value))
+        self.zoom_label.configure(text=f"{self.zoom_factor:.0%}")
         self._render_image()
 
     def _on_mousewheel(self, event: tk.Event) -> None:
@@ -295,18 +395,19 @@ class PartsViewer(tk.Tk):
 
     def _render_image(self) -> None:
         self.canvas.delete("all")
+        canvas_width = max(self.canvas.winfo_width(), 1)
+        canvas_height = max(self.canvas.winfo_height(), 1)
         if self.current_image is None:
+            message = "No image loaded" if self.data else "Choose a JSON file and images folder, then press Load"
             self.canvas.create_text(
-                20,
-                20,
-                anchor=tk.NW,
-                fill="#ffffff",
-                text="No image loaded",
+                canvas_width // 2,
+                canvas_height // 2,
+                fill=MUTED,
+                font=self.font_body,
+                text=message,
             )
             return
 
-        canvas_width = max(self.canvas.winfo_width(), 1)
-        canvas_height = max(self.canvas.winfo_height(), 1)
         image_width, image_height = self.current_image.size
 
         scale = (
@@ -316,8 +417,8 @@ class PartsViewer(tk.Tk):
             )
             * self.zoom_factor
         )
-        scaled_width = int(image_width * scale)
-        scaled_height = int(image_height * scale)
+        scaled_width = max(int(image_width * scale), 1)
+        scaled_height = max(int(image_height * scale), 1)
         offset_x = (canvas_width - scaled_width) // 2
         offset_y = (canvas_height - scaled_height) // 2
         if offset_x < 0:
@@ -328,40 +429,59 @@ class PartsViewer(tk.Tk):
         offset_x += pan_x
         offset_y += pan_y
 
-        resized = self.current_image.resize((scaled_width, scaled_height))
+        resized = self.current_image.resize((scaled_width, scaled_height), Image.LANCZOS)
         self.current_photo = ImageTk.PhotoImage(resized)
 
         self.current_scale = scale
         self.current_offset = (offset_x, offset_y)
 
+        # Soft drop shadow so the page stands out from the canvas
+        for spread, shade in ((6, "#0b0c0f"), (3, "#08090b")):
+            self.canvas.create_rectangle(
+                offset_x - spread + 3, offset_y - spread + 5,
+                offset_x + scaled_width + spread + 3, offset_y + scaled_height + spread + 5,
+                fill=shade, outline="",
+            )
         self.canvas.create_image(
             offset_x, offset_y, anchor=tk.NW, image=self.current_photo
         )
 
         question = self.data[self.current_index]
         parts = question.get("questionParts", [])
-        label_size = max(8, int(12 * self.zoom_factor))
-        label_padding = max(2, int(4 * self.zoom_factor))
-        for part in parts:
+        family = self.font_bold.actual()["family"]
+        for idx, part in enumerate(parts):
             coords = part.get("coordinates", [])
             if len(coords) != 4:
                 continue
+            colour = PART_COLOURS[idx % len(PART_COLOURS)]
             x1, y1, x2, y2 = coords
             sx1 = offset_x + x1 * scale
             sy1 = offset_y + y1 * scale
             sx2 = offset_x + x2 * scale
             sy2 = offset_y + y2 * scale
-            self.canvas.create_rectangle(sx1, sy1, sx2, sy2, outline="#00ff66", width=2)
+            self.canvas.create_rectangle(sx1, sy1, sx2, sy2, outline=colour, width=2)
             label = part.get("text", "")
             if label:
-                self.canvas.create_text(
+                # Badge text scales with the box, so labels don't swamp a zoomed-out page
+                label_size = max(7, min(14, int((sy2 - sy1) * 0.55)))
+                label_padding = max(1, label_size // 4)
+                label_font = (family, label_size, "bold")
+                # Label badge sits just above the box's top-left corner
+                text_id = self.canvas.create_text(
                     sx1 + label_padding,
-                    sy1 + label_padding,
-                    anchor=tk.NW,
-                    fill="#ffd200",
-                    font=("TkDefaultFont", label_size),
+                    sy1 - label_padding,
+                    anchor=tk.SW,
+                    fill="#111318",
+                    font=label_font,
                     text=label,
                 )
+                bx1, by1, bx2, by2 = self.canvas.bbox(text_id)
+                badge = self.canvas.create_rectangle(
+                    bx1 - label_padding, by1 - label_padding // 2,
+                    bx2 + label_padding, by2 + label_padding // 2,
+                    fill=colour, outline="",
+                )
+                self.canvas.tag_lower(badge, text_id)
 
 
 if __name__ == "__main__":
