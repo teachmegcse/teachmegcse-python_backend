@@ -5,7 +5,7 @@ import json
 # Add the directory two levels up to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from main.utils import check_json_validity, load_json_db
+from main.utils import load_json_db
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -66,6 +66,8 @@ def process_entry(args):
         "paperNumber": qp_entry["paperNumber"],
         "questionText": qp_entry["questionText"],
         "questionParts": qp_entry.get("questionParts", []),
+        # Read from the question paper along with questionText (see check_json_validity in main/utils.py)
+        **({"marks": qp_entry["marks"]} if qp_entry.get("marks") is not None else {}),
     }
 
 
@@ -94,14 +96,9 @@ def combine_and_validate_json(MSjson, QPjson, jsonDirectory):
     totalData = list(filter(None, results))
     print(f"Processed {len(totalData)} valid entries")
 
-    # Now validate and update questionText from PDFs
-    if totalData:
-        paper_code = totalData[0]["pdfName"].split("_")[0]  # e.g., "9700"
-        pdf_dir = os.path.join(BASE_PATH, "resources", "full_pdfs", paper_code)
-        print(f"Validating question text from PDFs in {pdf_dir}...")
-        totalData = check_json_validity(totalData, pdf_dir)
-
-    print("Saving combined and validated data...")
+    # questionText and marks come from the question DB, where makep4-ai.py read them from the question papers, so the
+    # PDFs aren't read again here
+    print("Saving combined data...")
     with open(jsonDirectory, "w") as totalJson:
         json.dump(totalData, totalJson, indent=1)
 

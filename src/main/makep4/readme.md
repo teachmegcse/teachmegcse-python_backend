@@ -9,6 +9,7 @@ python makep4-ai.py                    # qp -> ms -> combine
 python makep4-ai.py --steps qp         # debug: only split the question papers
 python makep4-ai.py --steps qp,ms      # skip combine
 python makep4-ai.py --steps combine    # only re-pair the DBs of the selected subjects
+python makep4-ai.py --steps combine --refresh-text   # re-read the text, marks and chapters of the questions already in the DBs, then re-pair
 ```
 
 Select the question papers **and** their mark schemes in the same dialog. Files with `ms` in their name go to the

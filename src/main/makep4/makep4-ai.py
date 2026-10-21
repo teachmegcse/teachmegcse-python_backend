@@ -170,12 +170,15 @@ def split_question_paper(file_path: str) -> dict:
 
 def process_question_papers(files: list) -> None:
     """Splits the selected question papers into question images (with their parts) using the PDFs' text layer, adds
-    them to each subject's long_db_path DB, then fills in their text, level and chapter."""
+    them to each subject's long_db_path DB, then fills in their text, marks, level and chapter (see fill_question_text).
+    Only the papers split now are read; the questions already in the DBs keep theirs."""
     for dir_path in [outputPath, f"{outputPath}/final", f"{outputPath}/questions"]:
         os.makedirs(dir_path, exist_ok=True)
 
     # Split the question papers in parallel, then name and save their questions in the order the files were selected
     processed_db_paths = set()
+    # The papers split in this run, whose questions need their text, marks, level and chapter
+    new_pdf_names = set()
     qp_files = [file_path for file_path in files if "ms" not in os.path.basename(file_path).lower()]
     if not qp_files:
         print("No question papers selected")
@@ -195,6 +198,7 @@ def process_question_papers(files: list) -> None:
 
             subject = result["subject"]
             paper_num = result["paperNumber"]
+            new_pdf_names.add(result["pdfName"])
             images_dir = f"{BASE_PATH}/resources/images/{result['paperType']}/{subject}/long"
             os.makedirs(images_dir, exist_ok=True)
 
@@ -224,50 +228,57 @@ def process_question_papers(files: list) -> None:
             save_question_db(db_path, db_records)
 
     for db_path in processed_db_paths:
-        # Fill in every question's text and marks from its question paper, then its level and chapter from the text
-        print(f"Reading question text for {os.path.basename(db_path)}...")
-        updated_questions = load_question_db(db_path)
-        if updated_questions:
-            paper_code = updated_questions[0]["pdfName"].split("_")[0]
-            check_json_validity(updated_questions, f"{BASE_PATH}/resources/full_pdfs/{paper_code}")
+        fill_question_text(db_path, new_pdf_names)
 
-            for q in updated_questions:
-                question_text = q.get("questionText", "")
-                if not question_text:
-                    continue
 
-                formatted_text = formatText(question_text)
-                paper_num = q.get("paperNumber")
-                paper_code = q.get("pdfName", "").split("_")[0]
-                if not paper_code or paper_code not in definitionsData:
-                    print(f"[WARN] Missing definitions for {q.get('pdfName')}")
-                    continue
-                if paper_num is None:
-                    print(f"[WARN] Missing paper number for {q.get('questionName')}")
-                    continue
-                paper_type = "IGCSE" if paper_code.startswith("0") else "A-level"
-                try:
-                    level, chapter_num = get_level_and_chapter(
-                        formatted_text,
-                        int(paper_num),
-                        paper_type,
-                        definitionsData[paper_code],
-                    )
-                except Exception as exc:
-                    print(
-                        f"[WARN] Chapter extraction failed for {q.get('questionName')}: {exc}"
-                    )
-                    continue
-                q["Level"] = level
-                q["Chapter"] = chapter_num
+def fill_question_text(db_path: str, pdf_names: set | None = None) -> None:
+    """Fills in the text and marks of a long-question DB's questions from their question papers, then their level and
+    chapter from the text. Only the questions of pdf_names are read, or all of them when it's None (e.g. after a
+    change to how question text is read)."""
+    all_questions = load_question_db(db_path)
+    updated_questions = [q for q in all_questions if pdf_names is None or q.get("pdfName") in pdf_names]
+    print(f"Reading question text for {len(updated_questions)} questions in {os.path.basename(db_path)}...")
+    if updated_questions:
+        paper_code = updated_questions[0]["pdfName"].split("_")[0]
+        # check_json_validity updates the records in place, so all_questions gets the new values too
+        check_json_validity(updated_questions, f"{BASE_PATH}/resources/full_pdfs/{paper_code}")
 
-            save_question_db(db_path, updated_questions)
-            print(f"[DONE] Question text and chapters updated for {os.path.basename(db_path)}")
+        for q in updated_questions:
+            question_text = q.get("questionText", "")
+            if not question_text:
+                continue
+
+            formatted_text = formatText(question_text)
+            paper_num = q.get("paperNumber")
+            paper_code = q.get("pdfName", "").split("_")[0]
+            if not paper_code or paper_code not in definitionsData:
+                print(f"[WARN] Missing definitions for {q.get('pdfName')}")
+                continue
+            if paper_num is None:
+                print(f"[WARN] Missing paper number for {q.get('questionName')}")
+                continue
+            paper_type = "IGCSE" if paper_code.startswith("0") else "A-level"
+            try:
+                level, chapter_num = get_level_and_chapter(
+                    formatted_text,
+                    int(paper_num),
+                    paper_type,
+                    definitionsData[paper_code],
+                )
+            except Exception as exc:
+                print(
+                    f"[WARN] Chapter extraction failed for {q.get('questionName')}: {exc}"
+                )
+                continue
+            q["Level"] = level
+            q["Chapter"] = chapter_num
+
+        save_question_db(db_path, all_questions)
+        print(f"[DONE] Question text and chapters updated for {os.path.basename(db_path)}")
 
 
 def combine_paper_codes(paper_codes: set) -> None:
-    """Pairs each subject's questions with their mark schemes and validates them against the PDFs, writing the
-    subject's long_final_db_path DB."""
+    """Pairs each subject's questions with their mark schemes, writing the subject's long_final_db_path DB."""
     for code in sorted(paper_codes):
         definitions = definitionsData.get(code, {})
         if not all(key in definitions for key in ["long_db_path", "long_ms_db_path", "long_final_db_path"]):
@@ -292,6 +303,13 @@ if __name__ == "__main__":
         default=",".join(STEPS),
         help="Comma-separated steps to run, e.g. --steps qp to only split question papers (default: qp,ms,combine)",
     )
+    parser.add_argument(
+        "--refresh-text",
+        action="store_true",
+        help="Read the text, marks, level and chapter of every question already in the long-question DBs of the "
+        "selected files' subjects again (e.g. after a change to how question text is read), before the combine step. "
+        "Can be used with --steps combine to refresh without splitting anything",
+    )
     args = parser.parse_args()
     steps = [step.strip() for step in args.steps.split(",") if step.strip()]
     unknown = [step for step in steps if step not in STEPS]
@@ -310,5 +328,9 @@ if __name__ == "__main__":
         process_question_papers(files)
     if "ms" in steps:
         process_mark_schemes(files)
+    if args.refresh_text:
+        for code in sorted({os.path.basename(file).split("_")[0] for file in files}):
+            if "long_db_path" in definitionsData.get(code, {}):
+                fill_question_text(f"{BASE_PATH}/resources/json/{definitionsData[code]['long_db_path']}")
     if "combine" in steps:
         combine_paper_codes({os.path.basename(file).split("_")[0] for file in files})
