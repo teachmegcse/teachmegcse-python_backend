@@ -35,6 +35,10 @@ and marks against the PDFs in `resources/full_pdfs/<code>/`.
 
 ## `question_numbers.py`
 
+- Command-line wrapper; the text-layer functions below (`find_question_starts`, `get_text_coordinates`,
+  `find_question_parts`, `find_ms_question_starts`, `get_ms_text_coordinates`, `split_question_paper_from_text`,
+  `split_mark_scheme_from_text`) are in `main/utils.py`. MCQ papers (in `mcqPapers`) are split with
+  `split_mcq_paper_from_text`, see `../makep1/readme.md`.
 - Finds where each question starts from the PDF's text layer (pypdfium2) instead of the YOLO detection server: the
   numbers 1, 2, 3, ... in the left margin, at the question-number position and size. No GPU or server needed.
 - Uses the same page handling as `makep4-ai.py` (pages skipped by `page_skip_reason`, `strip_images`, merged canvas),
