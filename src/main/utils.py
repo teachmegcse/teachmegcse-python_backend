@@ -39,6 +39,16 @@ def read_text(image, **kwargs) -> list:
         return READER.readtext(image, **kwargs)
 
 
+def load_json_db(path: str) -> list:
+    """Reads a JSON DB (a list of records), treating a missing or empty file as an empty DB, e.g. one cleared to start
+    over."""
+    if not os.path.exists(path):
+        return []
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read()
+    return json.loads(content) if content.strip() else []
+
+
 def make_work_dir(name: str) -> str:
     """Creates an empty scratch folder (with currentPdfImages and questions subfolders) for processing a single PDF,
     so PDFs processed in parallel never read or overwrite each other's page or question images.

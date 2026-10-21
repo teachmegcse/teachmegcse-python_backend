@@ -6,6 +6,7 @@ import json
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from main.read_question_text import check_json_validity
+from main.utils import load_json_db
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -74,10 +75,8 @@ def combine_and_validate_json(MSjson, QPjson, jsonDirectory):
 
     # Load the JSON files
     print("Loading JSON files...")
-    with open(MSjson, "r") as f:
-        MSData = json.load(f)
-    with open(QPjson, "r") as f:
-        QPData = json.load(f)
+    MSData = load_json_db(MSjson)
+    QPData = load_json_db(QPjson)
 
     print(f"Found {len(MSData)} mark scheme entries")
     print(f"Found {len(QPData)} question paper entries")

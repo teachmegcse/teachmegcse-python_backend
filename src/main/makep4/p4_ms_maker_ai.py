@@ -19,6 +19,7 @@ from main.utils import (
     clean_image_file,
     make_work_dir,
     get_ms_text_coordinates,
+    load_json_db,
     PDF_WORKERS,
 )
 
@@ -34,13 +35,10 @@ def next_ms_num(db_paths: set) -> int:
     so a new run never reuses (and overwrites) the image of a mark scheme already in one of the DBs."""
     highest = 0
     for db_path in db_paths:
-        if not os.path.exists(db_path):
-            continue
-        with open(db_path, "r") as f:
-            for record in json.load(f):
-                match = re.search(r"_ms_(\d+)_\d+\.jpg$", record.get("fileName", ""))
-                if match:
-                    highest = max(highest, int(match.group(1)))
+        for record in load_json_db(db_path):
+            match = re.search(r"_ms_(\d+)_\d+\.jpg$", record.get("fileName", ""))
+            if match:
+                highest = max(highest, int(match.group(1)))
     return highest + 1
 
 
@@ -117,13 +115,7 @@ def process_mark_schemes(files: list) -> None:
             db_name = currentDefintionsData["long_ms_db_path"]
 
             JSON_FILE_LOCATION = f"{BASE_PATH}/resources/json/{db_name}"
-            if not os.path.exists(JSON_FILE_LOCATION):
-                with open(JSON_FILE_LOCATION, "w") as f:
-                    json.dump([], f)  # Use [] if you expect a list
-
-            # Load the file
-            with open(JSON_FILE_LOCATION, "r") as json_file:
-                ms_data = json.load(json_file)
+            ms_data = load_json_db(JSON_FILE_LOCATION)
 
             if split is None:
                 continue
