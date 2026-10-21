@@ -44,6 +44,11 @@ and marks against the PDFs in `resources/full_pdfs/<code>/`.
   question has no marker, e.g. 9701 s21 41/43 Q9).
 - Run on its own to save question images: `python question_numbers.py paper.pdf ... [--out DIR]`
   (default `resources/images/test_images/text_questions/`, named `<pdf name>_q<number>.jpg`). Doesn't touch the DBs.
+- Mark schemes have separate functions: `find_ms_question_starts(pdf)` finds the first row of each question in the
+  table's Question column ("2", "2(a)", "2(a)(i)", ...), and `get_ms_text_coordinates(pdf)` turns them into the stacked
+  page coordinates `split_mark_scheme` in `p4_ms_maker_ai.py` crops from (pages 1300px apart). When a question's table
+  starts with its own header row, the header goes with that question. The command line splits files with `ms` in their
+  name as mark schemes.
 - Needs a text layer: scanned papers or papers whose text can't be extracted find no questions.
 
 ## Supporting files
