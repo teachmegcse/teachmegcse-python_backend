@@ -107,6 +107,12 @@ def check_json_validity(json_object, pdf_dir) -> json:
             )
             if m:
                 record["marks"] = int(m.group(1))
+            else:
+                # Some questions have no [Total: X] (e.g. 9702 paper 5 Q1), so add up the marks of its parts ([2], [1],
+                # ...). On questions that do have one, this sum equals it 99.8% of the time
+                part_marks = [int(n) for n in re.findall(r"\[\s*(\d{1,2})\s*\]", block_text)]
+                if part_marks:
+                    record["marks"] = sum(part_marks)
         else:
             # The expected question index was not found in the parsed blocks
             # logging.debug(question_text)
