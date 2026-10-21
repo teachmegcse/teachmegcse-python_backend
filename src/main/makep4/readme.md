@@ -22,14 +22,15 @@ and marks against the PDFs in `resources/full_pdfs/<code>/`.
 
 - Selects one or more PDFs (question papers) through the Tk dialog.
 - Converts each page to an image and trims headers/footers via `strip_images`.
-- Calls the YOLO detection API (`coordinates.py`) for every page, then merges all pages into a single tall canvas so questions spanning multiple pages stitch cleanly.
+- Finds where each question starts from the PDF's text layer (`get_text_coordinates`, see `question_numbers.py` below), then merges all pages into a single tall canvas so questions spanning multiple pages stitch cleanly.
+- Reads each question's parts ((a), (i), ...) from the text layer too (`find_question_parts`) and stores them in `questionParts`.
 - Generates a sorted list of Y coordinates, crops each question using `take_screenshot(..., type="long")`, and copies it into `resources/images/<level>/<subject>/long/`.
 - OCRs + normalizes the cropped text, classifies chapter + level using the syllabus models, and appends a record to the configured `long_db_path` JSON.
 
 ## `p4_ms_maker_ai.py`
 
 - Mirrors the question workflow but operates on mark-scheme PDFs.
-- Uses the same detection API to locate answer boundaries and saves the resulting crops into the MS image folder.
+- Finds where each question's rows start from the mark scheme's text layer (`get_ms_text_coordinates`) and saves the resulting crops into the MS image folder.
 - Filenames continue from the highest number already in the MS DB, so a new run never overwrites earlier MS images.
 - Each cropped MS entry is paired with its question by the combine step (`combine_and_validate_json.py`).
 
@@ -62,7 +63,7 @@ and marks against the PDFs in `resources/full_pdfs/<code>/`.
 
 ## Prerequisites
 
-- YOLO server: started automatically in the background (and stopped when the script ends); an already running `python src/main/coordinates.py` is reused instead. Its output goes to `resources/images/test_images/coordinates.log`.
+- PDFs with a text layer: questions are found from the text, so no YOLO detection server or GPU is needed. Scanned papers find no questions.
 - PDFs are processed in parallel, `PDF_WORKERS` in `main/utils.py` sets how many at once (default 4, override with the `PDF_WORKERS` environment variable).
 - `definitions.json` entries with valid `longPapers`, `long_db_path`, `long_ms_db_path` and (for the combine step) `long_final_db_path` values.
 - Destination directories under `resources/images/<level>/<subject>/long/` and `.../ms/` (auto-created if missing).

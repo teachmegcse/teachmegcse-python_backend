@@ -12,16 +12,11 @@ import cv2
 from joblib import load
 import warnings
 from sklearn.exceptions import InconsistentVersionWarning
-import requests
 import easyocr
 import numpy as np
 import shutil
 import threading
-import subprocess
-import sys
-import atexit
-import time
-from functools import lru_cache
+from functools import lru_cache, wraps
 
 warnings.filterwarnings("ignore", category=InconsistentVersionWarning)
 
@@ -31,14 +26,11 @@ CUSTOM_CONFIG = r"--oem 3 --psm 6"
 READER = easyocr.Reader(["en"])
 # EasyOCR isn't safe to call from several threads at once, so all OCR goes through read_text()
 OCR_LOCK = threading.Lock()
+# pypdfium2 isn't safe to call from several threads at once either (PDFs are processed in parallel, see PDF_WORKERS),
+# so every use of it goes through this lock. Re-entrant, as the text-layer functions call each other
+PDFIUM_LOCK = threading.RLock()
 # Number of PDFs processed at the same time (override with the PDF_WORKERS environment variable)
 PDF_WORKERS = int(os.environ.get("PDF_WORKERS", 4))
-# Where coordinates.py serves the YOLO models
-DETECTION_SERVER_URL = "http://127.0.0.1:8000"
-# The coordinates.py process started by start_detection_server(), if any
-_detection_server = None
-# One requests session per thread, reused across API calls so each request doesn't open a new TCP connection
-_thread_local = threading.local()
 
 
 def read_text(image, **kwargs) -> list:
@@ -184,26 +176,29 @@ def makeImages(pdf_path: str, work_dir: str = outputPath) -> None:
     current_index = 1
 
     # pypdfium2 rather than pdfplumber, as pdfplumber can't read the text of some recent papers (it comes out as "(cid:44)...")
-    document = pdfium.PdfDocument(pdf_path)
-    try:
-        for x in range(1, number_of_pages):
-            try:
-                text = document[x].get_textpage().get_text_range()
-            except Exception as exc:
-                print(f"[WARN] Page {x + 1} → text extraction failed: {exc}")
-                text = ""
+    with PDFIUM_LOCK:
+        document = pdfium.PdfDocument(pdf_path)
+        try:
+            texts = []
+            for x in range(number_of_pages):
+                try:
+                    texts.append(document[x].get_textpage().get_text_range())
+                except Exception as exc:
+                    print(f"[WARN] Page {x + 1} → text extraction failed: {exc}")
+                    texts.append("")
+        finally:
+            document.close()
 
-            reason = page_skip_reason(text)
-            if reason:
-                print(f"[SKIPPED] Page {x + 1} → {reason}")
-                continue
+    for x in range(1, number_of_pages):
+        reason = page_skip_reason(texts[x])
+        if reason:
+            print(f"[SKIPPED] Page {x + 1} → {reason}")
+            continue
 
-            images[x].save(f"{path}/{current_index}.jpg", "JPEG")
-            print(f"[SAVED] Page {x + 1} → image {current_index}.jpg")
+        images[x].save(f"{path}/{current_index}.jpg", "JPEG")
+        print(f"[SAVED] Page {x + 1} → image {current_index}.jpg")
 
-            current_index += 1
-    finally:
-        document.close()
+        current_index += 1
 
 
 def formatText(text: str) -> str:
@@ -487,90 +482,8 @@ def extract_paper_number(filename: str) -> int | None:
     return None
 
 
-def _detection_server_is_up() -> bool:
-    try:
-        return requests.get(f"{DETECTION_SERVER_URL}/docs", timeout=1).status_code == 200
-    except requests.RequestException:
-        return False
-
-
-def _stop_detection_server() -> None:
-    if _detection_server and _detection_server.poll() is None:
-        print("Stopping detection server...")
-        _detection_server.terminate()
-        try:
-            _detection_server.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            _detection_server.kill()
-
-
-def start_detection_server() -> None:
-    """Starts coordinates.py in the background, unless a detection server is already running (then that one is reused).
-    A server started here is stopped automatically when the script exits. Call it early (e.g. before select_files)
-    so the models load while files are being picked, then call wait_for_detection_server() before using it.
-    The server's output goes to resources/images/test_images/coordinates.log.
-    """
-    global _detection_server
-    if _detection_server or _detection_server_is_up():
-        return
-    print("Starting detection server (coordinates.py)...")
-    os.makedirs(outputPath, exist_ok=True)
-    with open(f"{outputPath}/coordinates.log", "w") as log:
-        _detection_server = subprocess.Popen(
-            [sys.executable, "coordinates.py"],
-            cwd=f"{BASE_PATH}/main",
-            stdout=log,
-            stderr=subprocess.STDOUT,
-        )
-    atexit.register(_stop_detection_server)
-
-
-def wait_for_detection_server(timeout: int = 300) -> None:
-    """Blocks until the detection server answers, raising an error if it exits or doesn't start within timeout seconds."""
-    deadline = time.time() + timeout
-    while not _detection_server_is_up():
-        if _detection_server and _detection_server.poll() is not None:
-            raise RuntimeError(
-                f"coordinates.py exited with code {_detection_server.returncode}, see {outputPath}/coordinates.log"
-            )
-        if time.time() > deadline:
-            raise RuntimeError(f"Detection server didn't start within {timeout}s, see {outputPath}/coordinates.log")
-        time.sleep(0.5)
-
-
-def get_dimensions_from_api(image_path: str, mode: str = "long-double-p3") -> list:
-    """Takes an image path and sends it to the local YOLO model running from coordinates.py
-      to get the predicted bounding box coordinates for the question regions in the image.
-
-    Args:
-    image_path (str): The path to the image file to be processed by the API.
-    Returns:
-        list: A list of bounding box coordinates for the question regions in the image,
-          where each bounding box is represented as a list of four integers [x1, y1, x2, y2].
-
-    """
-    try:
-        with open(image_path, "rb") as img:
-            files = {"file": img}
-            if not hasattr(_thread_local, "session"):
-                _thread_local.session = requests.Session()
-            response = _thread_local.session.post(
-                f"{DETECTION_SERVER_URL}/predict?mode={mode}", files=files
-            )
-            if response.status_code == 200:
-                coordinates = response.json()
-                return coordinates
-            print(f"API response text: {response.text}")
-            raise Exception(
-                f"API request failed with status code {response.status_code}"
-            )
-    except Exception as exc:
-        print(f"[WARN] API request failed for {image_path}: {exc}")
-        return []
-
-
 def cleanup() -> None:
-    """Cleans up the output directories by deleting all files in the currentPdfImages, final, questions, and vision_output_images folders.
+    """Cleans up the output directories by deleting all files in the currentPdfImages, final and questions folders.
         This is used to reset the state before processing a new PDF to avoid any interference from previous runs.
 
     Args:        None: The function does not take any arguments, but it processes the files in the specified output directories.
@@ -581,10 +494,11 @@ def cleanup() -> None:
         f"{outputPath}/currentPdfImages",
         f"{outputPath}/final",
         f"{outputPath}/questions",
-        f"{BASE_PATH}/resources/images/vision_output_images",
     ]
 
     for d in dirs:
+        if not os.path.isdir(d):
+            continue
         for filename in os.listdir(d):
             file_path = os.path.join(d, filename)
             if os.path.isfile(file_path):
@@ -710,6 +624,15 @@ STRIP_TOP, STRIP_BOTTOM = 150, 2200
 PADDING_PX = 14
 # take_screenshot crops question images from x = 100
 CROP_LEFT = 100
+# get_question_texts reads from here down (in points), below most of the barcode 2024+ papers print at the top of
+# each page, and stops above the copyright notice on the last page (found by position, as its text can come first)
+TEXT_TOP = 59
+COPYRIGHT_NOTICES = ["Permission to reproduce items", "To avoid the issue of disclosure"]
+# ... and down to here, a little below the band strip_images keeps, as a question's "[Total: N]" is sometimes printed
+# just below it (e.g. 0625 s24 32 Q5 at 793pt), but never into a "© UCLES" footer at the bottom of the page
+TEXT_BOTTOM = 800
+# The barcode's text (",\x01\x01\x01\x01\t\x01...,") and any other control characters
+BARCODE_TEXT = re.compile(r",[\x00-\x1f]+,|[\x00-\x09\x0b\x0c\x0e-\x1f]")
 
 # Part labels: letters start 63-76pt from the left edge (usually 71-73), roman numerals (right-aligned) 80-100pt, so "(i)" in the
 # letter column is the letter after (h). Inline references like "... in (b)(i)." in the instructions start further right
@@ -739,6 +662,18 @@ MS_HEADER_GAP = 40
 # to look for text that would mean a number isn't the first thing on its line
 MS_DIGIT_GAP = 4
 MS_LINE_LOOKBACK = 30
+
+
+
+def _pdfium_locked(func):
+    """Runs func while holding PDFIUM_LOCK (see there)."""
+
+    @wraps(func)
+    def locked(*args, **kwargs):
+        with PDFIUM_LOCK:
+            return func(*args, **kwargs)
+
+    return locked
 
 
 def _numbers(textpage, max_gap: float = 3) -> list:
@@ -771,6 +706,17 @@ def _footer_x(textpage) -> float:
     return DEFAULT_FOOTER_X
 
 
+def _footer_top(textpage, page_height: float) -> float | None:
+    """Returns how far the "© UCLES" footer is from the top of the page (None when there's none). Papers from 2024
+    print it at the top of the page, older ones at the bottom."""
+    searcher = textpage.search("UCLES")
+    while (match := searcher.get_next()) is not None:
+        if match[0] >= 2 and textpage.get_text_range(match[0] - 2, 1) == "©":
+            return page_height - textpage.get_charbox(match[0] - 2)[3]
+    return None
+
+
+@_pdfium_locked
 def find_question_starts(pdf_path: str) -> tuple[list, int]:
     """Finds the question numbers 1, 2, 3, ... in a question paper.
 
@@ -843,8 +789,9 @@ def _page_offsets(document) -> tuple[dict, int]:
     return page_offsets, current_height
 
 
+@_pdfium_locked
 def get_text_coordinates(pdf_path: str) -> tuple[list, int]:
-    """Same output as get_all_page_coordinates in makep4-ai.py, but from the text layer: the y coordinate of each
+    """Where each question starts, as split_question_paper in makep4-ai.py crops them: the y coordinate of each
     question's start in the merged image of the stripped pages, followed by the merged image's height.
 
     Returns:
@@ -862,6 +809,65 @@ def get_text_coordinates(pdf_path: str) -> tuple[list, int]:
     ]
     coordinates.append(merged_height)
     return coordinates, totals
+
+
+@_pdfium_locked
+def get_question_texts(pdf_path: str) -> list:
+    """Reads each question's text from the region its image is cropped from (see get_text_coordinates): from its
+    start to the next question's start (or the end of the paper), on the pages kept by makeImages, within the band
+    strip_images keeps. Unlike splitting the paper's text at its "[Total: N]" markers, this also works for questions
+    without a marker (e.g. 9701 s21 43 Q9, the planning question 1 of 9702 paper 5).
+
+    Returns:
+        list: The text of each question, in question order (the same order as find_question_starts).
+    """
+    starts, _ = find_question_starts(pdf_path)
+    document = pdfium.PdfDocument(pdf_path)
+    try:
+        kept_pages = [
+            page_index
+            for page_index in range(1, len(document))
+            if not page_skip_reason(document[page_index].get_textpage().get_text_range())
+        ]
+        band_top, band_bottom = max(STRIP_TOP / SCALE, TEXT_TOP), TEXT_BOTTOM
+        padding = PADDING_PX / SCALE
+        # Where each question starts and the next one (or the end of the last kept page) begins, as (page, y)
+        boundaries = [(page_index, max(band_top, y - padding)) for page_index, y in starts]
+        if kept_pages:
+            boundaries.append((kept_pages[-1], band_bottom))
+
+        texts = []
+        for (start_page, start_y), (end_page, end_y) in zip(boundaries, boundaries[1:]):
+            pieces = []
+            for page_index in kept_pages:
+                if not start_page <= page_index <= end_page:
+                    continue
+                page = document[page_index]
+                textpage = page.get_textpage()
+                page_width, page_height = page.get_size()
+                top = start_y if page_index == start_page else band_top
+                bottom = min(end_y if page_index == end_page else band_bottom, page_height)
+                footer = _footer_top(textpage, page_height)
+                # A few points above it, as the "[Turn over" on the same line is printed a little higher
+                if footer is not None and footer > page_height / 2:
+                    bottom = min(bottom, footer - 4)
+                for phrase in COPYRIGHT_NOTICES:
+                    notice = textpage.search(phrase).get_next()
+                    if notice:
+                        bottom = min(bottom, page_height - textpage.get_charbox(notice[0])[3] - 1)
+                if bottom <= top:
+                    continue
+                # From just left of the question numbers, leaving out the "DO NOT WRITE IN THIS MARGIN" strips 2024+
+                # papers print down the outer edge of each page (on the left or the right)
+                margin = max(0, _footer_x(textpage) - NUMBER_LINE_LOOKBACK)
+                # get_text_bounded takes PDF coordinates, with y measured up from the bottom of the page
+                pieces.append(
+                    textpage.get_text_bounded(margin, page_height - bottom, page_width - margin, page_height - top)
+                )
+            texts.append(BARCODE_TEXT.sub("", "\n".join(pieces)))
+    finally:
+        document.close()
+    return texts
 
 
 def _part_labels(textpage, page_height: float) -> list:
@@ -905,8 +911,9 @@ def _part_labels(textpage, page_height: float) -> list:
     return labels
 
 
+@_pdfium_locked
 def find_question_parts(pdf_path: str) -> list:
-    """Finds the part labels of every question, in the same format add_question_parts in makep4-ai.py stores in
+    """Finds the part labels of every question, in the format makep4-ai.py stores in
     questionParts: [{"coordinates": [x1, y1, x2, y2], "text": "(a)"}, ...] in pixels of the question image
     (as saved by split_question_paper_from_text, before clean_image_file trims its bottom).
 
@@ -1066,6 +1073,7 @@ def _ms_header_tops(page, textpage) -> list:
     return tops
 
 
+@_pdfium_locked
 def find_ms_question_starts(pdf_path: str) -> list:
     """Finds where each question's rows start in a mark scheme: the first row of the Question column whose number
     is the next question (1, 2, 3, ...), whether it's written "2", "2(a)" or "2(a)(i)".
@@ -1115,6 +1123,7 @@ def find_ms_question_starts(pdf_path: str) -> list:
     return starts
 
 
+@_pdfium_locked
 def get_ms_text_coordinates(pdf_path: str) -> list:
     """The y coordinate of each question's start in the stacked image of the stripped mark scheme pages that
     split_mark_scheme in p4_ms_maker_ai.py crops from (page j starts at j * 1300), followed by its height.
@@ -1193,6 +1202,7 @@ MCQ_PAGE_END = 2050
 MCQ_REMOVED = re.compile(r"Question\s+(\d+)\b[^.]{0,60}\bremoved", re.I)
 
 
+@_pdfium_locked
 def find_mcq_question_starts(pdf_path: str) -> list:
     """Finds the question numbers 1, 2, 3, ... in an MCQ question paper.
 
@@ -1245,9 +1255,9 @@ def find_mcq_question_starts(pdf_path: str) -> list:
     return starts
 
 
+@_pdfium_locked
 def get_mcq_text_coordinates(pdf_path: str) -> dict:
-    """Same coordinates as makep1Final.py gets from the YOLO "mcq" model: where each question starts in the stripped
-    page image it's on.
+    """Where each question starts in the stripped page image it's on, as makep1Final.py crops them.
 
     Returns:
         dict: {page image number (as named by makeImages, 1.jpg, 2.jpg, ...): [(question_number, y), ...]}, each page's

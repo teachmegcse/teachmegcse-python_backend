@@ -1,6 +1,4 @@
-import PIL
 import os
-import numpy as np
 import json
 import re
 import sys
@@ -19,11 +17,8 @@ from main.utils import (
     extract_paper_number,
     cleanup,
     clean_image_file,
-    get_dimensions_from_api,
     make_work_dir,
-    read_text,
-    start_detection_server,
-    wait_for_detection_server,
+    get_ms_text_coordinates,
     PDF_WORKERS,
 )
 
@@ -49,62 +44,6 @@ def next_ms_num(db_paths: set) -> int:
     return highest + 1
 
 
-def extract_question_number(im, current_question_num, output_path):
-    returnArray = []
-    try:
-        ocr_corrections = {
-            "|": "1",
-            "@": "1",
-            "M": "1",
-            "l": "1",
-            "I": "1",
-            "[": "1",
-            "O": "0",
-            "o": "0",
-            "s": "5",
-            "S": "5",
-            "}": ")",
-        }
-
-        os.makedirs(f"{output_path}/questions", exist_ok=True)
-        temp_api_path = f"{output_path}/questions/temp_api.jpg"
-        im.save(temp_api_path, format="JPEG")
-        bounding_boxes = get_dimensions_from_api(temp_api_path, mode="ms")
-
-        if not bounding_boxes:
-            return []
-        bounding_boxes.sort(key=lambda x: x[1])
-
-        for box in bounding_boxes:
-            current_box = im.crop((box[0], box[1], box[2], box[3])).convert("RGB")
-            text_in_box = read_text(np.asarray(current_box))
-
-            if text_in_box:
-                text_in_box = text_in_box[0][1]  # Extract text from OCR result
-                text_in_box = "".join([ocr_corrections.get(c, c) for c in text_in_box])
-
-                isPaperCode = re.match(r"\d{4}/\d{2}", text_in_box)
-                # Extract leading digits manually (no regex)
-                digits_only = ""
-                for c in text_in_box:
-                    if c.isdigit():
-                        digits_only += c
-                    else:
-                        break  # stop at first non-digit character
-
-                if digits_only and (not isPaperCode):
-                    number = int(digits_only)
-                    if number > current_question_num:
-                        returnArray.append(int(box[1]))
-                        current_question_num += 1
-
-        return returnArray
-
-    except Exception as e:
-        print(f"Error extracting question regions: {e}")
-        return returnArray
-
-
 def split_mark_scheme(file_path: str) -> tuple[str, list] | None:
     """Splits one mark scheme into cleaned question images inside its own work_dir, so several mark schemes can be
     split at the same time. Final filenames depend on how many questions earlier mark schemes had, so they're given
@@ -126,14 +65,17 @@ def split_mark_scheme(file_path: str) -> tuple[str, list] | None:
     strip_images(mode="ms", work_dir=work_dir)
     # Kept in memory since final.jpg would be shared between mark schemes
     merged = merge_all_images(mode="ms", work_dir=work_dir, save=False)
-    currentQuestionNum = 1
-    previous_y = 0
+    # Where each question starts, read from the PDF's text layer (the first row of the table's Question column
+    # numbered with it), followed by the merged image's height
+    coordinates = get_ms_text_coordinates(file_path)
+    if len(coordinates) == 1:
+        print(f"[WARN] {filename}: no question numbers found in the text layer")
     questions = []
-
-    def save_question(y1: int, y2: int) -> None:
+    for i in range(len(coordinates) - 1):
+        currentQuestionNum = i + 1
         local_filename = f"q{currentQuestionNum}"
         take_screenshot(
-            y1, y2, local_filename, "long", "", mode="ms", work_dir=work_dir, merged=merged
+            coordinates[i], coordinates[i + 1], local_filename, "long", "", mode="ms", work_dir=work_dir, merged=merged
         )
         image_path = f"{work_dir}/questions/{local_filename}.jpg"
         # sometimes the screenshot fails if the size is too small or for other random reasons, this prevents a breaking error
@@ -142,34 +84,12 @@ def split_mark_scheme(file_path: str) -> tuple[str, list] | None:
             questions.append((image_path, currentQuestionNum))
         else:
             questions.append((None, currentQuestionNum))
-
-    # Sort pages numerically
-    number_of_pages = sorted(
-        os.listdir(f"{work_dir}/currentPdfImages"),
-        key=lambda x: int(x.split(".")[0]),
-    )
-
-    for j in range(len(number_of_pages)):
-        image_path = f"{work_dir}/currentPdfImages/{number_of_pages[j]}"
-        with PIL.Image.open(image_path) as im:
-            y_coordinates = extract_question_number(
-                im, currentQuestionNum, work_dir
-            )
-            if y_coordinates:
-                # Loop through each detected question Y-coordinate
-                for y1 in y_coordinates:
-                    # Include a small buffer below
-                    save_question(previous_y, y1 + (j) * 1300 + 10)
-                    previous_y = y1 + (j) * 1300
-                    currentQuestionNum += 1
-
-    save_question(previous_y, (len(number_of_pages)) * 1300)
     return work_dir, questions
 
 
 def process_mark_schemes(files: list) -> None:
-    """Splits the selected mark schemes into question images and adds them to each subject's long_ms_db_path DB.
-    The detection server must already be running (see start_detection_server/wait_for_detection_server)."""
+    """Splits the selected mark schemes into question images using the PDFs' text layer and adds them to each
+    subject's long_ms_db_path DB."""
     files = [file for file in files if "ms" in os.path.basename(file).lower()]
     if not files:
         print("No mark schemes selected")
@@ -236,7 +156,5 @@ def process_mark_schemes(files: list) -> None:
 
 
 if __name__ == "__main__":
-    start_detection_server()
     files = select_files()
-    wait_for_detection_server()
     process_mark_schemes(files)

@@ -1,10 +1,7 @@
-from PIL import Image
 import os
 import json
 import shutil
 import sys
-from pathlib import Path
-import numpy as np
 import subprocess
 import re
 import argparse
@@ -22,13 +19,11 @@ from main.utils import (
     take_screenshot,
     merge_all_images,
     extract_paper_number,
-    get_dimensions_from_api,
     cleanup,
     clean_image_file,
     make_work_dir,
-    read_text,
-    start_detection_server,
-    wait_for_detection_server,
+    get_text_coordinates,
+    find_question_parts,
     PDF_WORKERS,
 )
 from main.combine_and_validate_json import combine_and_validate_json
@@ -80,65 +75,6 @@ def next_unique_num(db_paths: set) -> int:
     return highest + 1
 
 
-def get_all_page_coordinates(work_dir: str):
-    print("Getting coordinates for all pages...")
-    pages = os.listdir(f"{work_dir}/currentPdfImages")
-    pages = sorted(pages, key=lambda x: int(x.split(".")[0]))
-    all_coordinates = []
-    raw_coordinates = []  # For debugging purposes
-    current_height = 0
-
-    for page_file in pages:
-        page_path = f"{work_dir}/currentPdfImages/{page_file}"
-
-        # Get coordinates for this page
-        try:
-            bounding_boxes = get_dimensions_from_api(page_path, mode="long-double-p3")
-
-            if not bounding_boxes:  # Skip if no questions found
-                # Still need to account for page height!
-                with Image.open(page_path) as im:
-                    current_height += im.height
-                continue
-
-            # Take first box
-            bounding_boxes.sort(key=lambda box: box[0])
-            first_box = bounding_boxes[0]
-            x1, y1, x2, y2 = first_box[0], first_box[1], first_box[2], first_box[3]
-
-            # Adjust coordinate
-            adjusted_y = int(y1 + current_height)
-            if x1 <= 150:
-                raw_coordinates.append(adjusted_y)  # Store adjusted coordinate for debugging
-            # Skip based on x threshold
-            if (x1 > 150) or (x2 - x1 > 100):
-                with Image.open(page_path) as im:
-                    current_height += im.height
-                continue
-            all_coordinates.append(adjusted_y)
-
-            # Update current height based on page height
-            with Image.open(page_path) as im:
-                current_height += im.height
-
-        except Exception as e:
-            print(f"Error processing page {page_file}: {str(e)}")
-            continue
-
-    # Remove duplicates + sort
-    all_coordinates = sorted(set(all_coordinates))
-    raw_coordinates = sorted(set(raw_coordinates))
-    if all_coordinates and all_coordinates[0] >= 500:
-        all_coordinates.insert(0, 0)
-
-    # Add ending coordinate
-    all_coordinates.append(current_height)
-
-    print(f"Raw coordinates (for debugging): {raw_coordinates}")
-
-    return all_coordinates
-
-
 def split_question_paper(file_path: str) -> dict:
     """Splits one question paper into cleaned question images inside its own work_dir, so several papers can be
     split at the same time. Final filenames depend on how many questions earlier papers had, so they're given
@@ -185,16 +121,19 @@ def split_question_paper(file_path: str) -> dict:
     print(f"Stripping images ({current_file})...")
     strip_images(mode="qp", work_dir=work_dir)
 
-    # Get coordinates from individual pages first
-    coordinates = get_all_page_coordinates(work_dir)
+    # Where each question starts, read from the PDF's text layer (a 9701 paper 3 "Qualitative analysis" heading
+    # starts the question below it), and each question's parts ((a), (i), ...)
+    coordinates, totals = get_text_coordinates(file_path)
+    question_parts = find_question_parts(file_path)
     print(f"Got all coordinates for {current_file}: {coordinates}")
+    if len(coordinates) - 1 != totals:
+        print(f"[WARN] {current_file}: {len(coordinates) - 1} question numbers found, but {totals} [Total] markers")
 
     # Merge images after getting coordinates, kept in memory since final.jpg would be shared between papers
     print(f"Merging images ({current_file})...")
     merged = merge_all_images(mode="qp", work_dir=work_dir, save=False)
 
     questions = []
-    transferred_tail = None
     # Process each question based on the adjusted coordinates
     for i in range(len(coordinates) - 1):
         y1 = coordinates[i]
@@ -210,31 +149,12 @@ def split_question_paper(file_path: str) -> dict:
         image_path = f"{work_dir}/questions/{local_filename}.jpg"
 
         if os.path.exists(image_path):
-            # Removes bottom 700px of Q2 and appends to Q3 for 9701 papers, to account for qualitative notes header
-            if paperCode == "9701" and paper_num == 3:
-                try:
-                    image = Image.open(image_path)
-                    width, height = image.size
-                    if current_question_num == 2 and height > 700:
-                        transferred_tail = image.crop(
-                            (0, height - 700, width, height)
-                        )
-                        image = image.crop((0, 0, width, height - 700))
-                        image.save(image_path)
-                    elif current_question_num == 3 and transferred_tail:
-                        new_height = transferred_tail.height + height
-                        combined = Image.new("RGB", (width, new_height))
-                        combined.paste(transferred_tail, (0, 0))
-                        combined.paste(image, (0, transferred_tail.height))
-                        combined.save(image_path)
-                        transferred_tail = None
-                except Exception as exc:
-                    print(
-                        f"[WARN] Failed to adjust Q2/Q3 for {image_path}: {exc}"
-                    )
-
             clean_image_file(image_path, mode="qp")
-            questions.append({"image_path": image_path, "questionNum": current_question_num})
+            questions.append({
+                "image_path": image_path,
+                "questionNum": current_question_num,
+                "questionParts": question_parts[i],
+            })
 
     print(f"Finished processing file: {file_path}")
     result.update(
@@ -248,92 +168,9 @@ def split_question_paper(file_path: str) -> dict:
     return result
 
 
-def add_question_parts(q: dict) -> dict:
-    """Detects the parts ((a), (i), ...) of one question image and OCRs their labels into q["questionParts"].
-    Each question is independent, so several run at the same time (see the parts stage in __main__)."""
-    image_filename = q.get("questionName")
-    if not image_filename:
-        print(f"[WARN] Skipping: no questionName")
-        return q
-
-    paper_code = q.get("pdfName", "").split("_")[0]
-    paper_type = "IGCSE" if paper_code.startswith("0") else "A-level"
-    subject = q["Subject"]
-    IMAGES_DIR = f"{BASE_PATH}/resources/images/{paper_type}/{subject}/long"
-    image_path = Path(IMAGES_DIR) / image_filename
-
-    if not image_path.exists():
-        print(f"[WARN] Image not found: {image_path}")
-        return q
-
-    print(f"Processing parts for {image_filename}...")
-
-    image = Image.open(image_path)
-    height = image.height
-
-    if height <= 3000:
-        parts = get_dimensions_from_api(str(image_path), mode="parts")
-    else:
-        parts = []
-        y_offset = 0
-        section_idx = 0
-        while y_offset < height:
-            y_end = min(y_offset + 3000, height)
-            section = image.crop((0, y_offset, image.width, y_end))
-            section_path = (
-                Path(IMAGES_DIR)
-                / f"temp_section_{image_filename}_{section_idx}.jpg"
-            )
-            section.save(section_path)
-            section_parts = get_dimensions_from_api(
-                str(section_path), mode="parts"
-            )
-            # Adjust coordinates
-            adjusted_parts = [
-                [x1, y1 + y_offset, x2, y2 + y_offset]
-                for x1, y1, x2, y2 in section_parts
-            ]
-            parts.extend(adjusted_parts)
-            os.remove(section_path)
-            y_offset = y_end
-            section_idx += 1
-
-    parts = [[int(v) for v in box] for box in parts]
-    parts_sorted = sorted(parts, key=lambda x: x[1])
-
-    question_parts = []
-    for idx, box in enumerate(parts_sorted):
-        x1, y1, x2, y2 = box
-        if x1 > 250:
-            continue
-        cropped = image.crop((x1, y1, x2, y2)).convert("RGB")
-        part_text = read_text(np.asarray(cropped))
-        if part_text:
-            pieces = []
-            for entry in part_text:
-                if isinstance(entry, (list, tuple)) and len(entry) > 1:
-                    pieces.append(str(entry[1]))
-                elif isinstance(entry, dict):
-                    text_value = entry.get("text")
-                    if text_value:
-                        pieces.append(str(text_value))
-            full_text = " ".join(pieces) if pieces else "(i)"
-        else:
-            full_text = "(i)"
-        if "(" not in full_text and ")" not in full_text:
-            continue
-        question_parts.append(
-            {"coordinates": [x1, y1, x2, y2], "text": full_text}
-        )
-
-    q["questionParts"] = question_parts
-    return q
-
-
 def process_question_papers(files: list) -> None:
-    """Splits the selected question papers into question images, adds them to each subject's long_db_path DB, then
-    detects their parts and fills in their text, level and chapter.
-    The detection server must already be running (see start_detection_server/wait_for_detection_server)."""
+    """Splits the selected question papers into question images (with their parts) using the PDFs' text layer, adds
+    them to each subject's long_db_path DB, then fills in their text, level and chapter."""
     for dir_path in [outputPath, f"{outputPath}/final", f"{outputPath}/questions"]:
         os.makedirs(dir_path, exist_ok=True)
 
@@ -379,28 +216,14 @@ def process_question_papers(files: list) -> None:
                     "pdfName": result["pdfName"],
                     "year": result["year"],
                     "paperNumber": paper_num,
+                    "questionParts": question["questionParts"],
                 }
                 db_records.append(answerObject)
 
                 unique_num += 1
             save_question_db(db_path, db_records)
 
-    # Now process parts for all questions in processed DBs
     for db_path in processed_db_paths:
-        print(f"Processing parts for {db_path}...")
-
-        updated_questions = load_question_db(db_path)
-        # Questions from earlier runs already have their parts, only the new ones need detecting.
-        # add_question_parts updates each question in place, several at the same time
-        new_questions = [q for q in updated_questions if "questionParts" not in q]
-        print(f"Detecting parts for {len(new_questions)} new questions...")
-        with ThreadPoolExecutor(max_workers=PDF_WORKERS) as pool:
-            list(pool.map(add_question_parts, new_questions))
-
-        save_question_db(db_path, updated_questions)
-
-        print(f"[DONE] Parts processing complete for {db_path}")
-
         # Now call read_question_text to update questionText from PDFs
         print(f"Running read_question_text on {os.path.basename(db_path)}...")
         result = subprocess.run(
@@ -489,17 +312,12 @@ if __name__ == "__main__":
         parser.error(f"Unknown steps {unknown}, choose from {STEPS}")
     print(f"Running steps: {', '.join(steps)}")
 
-    needs_detection = "qp" in steps or "ms" in steps
-    if needs_detection:
-        start_detection_server()
     print("Selecting files...")
     files = select_files()
     if not files:
         print("No files selected")
         exit()
     print(f"Selected files: {files}")
-    if needs_detection:
-        wait_for_detection_server()
 
     if "qp" in steps:
         process_question_papers(files)

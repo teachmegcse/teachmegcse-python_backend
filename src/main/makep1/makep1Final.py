@@ -20,13 +20,12 @@ from main.utils import (
     formatText,
     strip_images,
     take_screenshot,
-    get_dimensions_from_api,
     cleanup,
     extract_answers_from_pdf,
     extract_paper_number,
     make_work_dir,
-    start_detection_server,
-    wait_for_detection_server,
+    get_mcq_text_coordinates,
+    MCQ_PAGE_END,
     PDF_WORKERS,
 )
 
@@ -63,87 +62,69 @@ def process_pdf(currentFileIndex: int, file_path: str) -> list:
     makeImages(file_path, work_dir)
 
     strip_images(mode="qp", work_dir=work_dir)
-    pages = os.listdir(f"{work_dir}/currentPdfImages")
     answers = extract_answers_from_pdf(paperCode, current_file)
-    current_question_num = 1
-    for k in range(len(pages)):
-        y_coordinates = get_dimensions_from_api(
-            f"{work_dir}/currentPdfImages/{k + 1}.jpg",
-            mode="mcq"
-        )
-        # Filter boxes where x1 < 250 and extract their y2 (i.e. box[1])
-        raw_y2_list = sorted(box[1] for box in y_coordinates if box[0] < 160)
-        threshold = 10  # adjust as needed depending on your use case
-        y2_list = []
-        for y2 in raw_y2_list:
-            if not y2_list or abs(y2 - y2_list[-1]) > threshold:
-                y2_list.append(y2)
-        if len(y2_list):
-            for j in range(len(y2_list)):
-                image_file_name = f"{subject}_p{paper_number}_{current_question_num + (currentFileIndex * num_of_questions)}"
+    # Where each question starts on its page, read from the PDF's text layer: {page image number: [(question number, y)]}
+    coordinates = get_mcq_text_coordinates(file_path)
+    question_count = sum(len(questions) for questions in coordinates.values())
+    # Questions removed from the paper are left out of both, so the answers line up with the questions in order
+    if question_count != len(answers):
+        print(f"[WARN] {current_file}: {question_count} questions found, but {len(answers)} answers in the mark scheme")
+    answer_index = 0
+    for page_number, page_questions in sorted(coordinates.items()):
+        for j, (question_number, y1) in enumerate(page_questions):
+            # A question runs to the next one on its page, the page's last question to MCQ_PAGE_END
+            y2 = page_questions[j + 1][1] if j + 1 < len(page_questions) else MCQ_PAGE_END
+            answer = answers[answer_index] if answer_index < len(answers) else None
+            answer_index += 1
+            image_file_name = f"{subject}_p{paper_number}_{question_number + (currentFileIndex * num_of_questions)}"
+            taken = take_screenshot(
+                y1, y2, image_file_name, "mcq", f"{page_number}.jpg", mode="qp", work_dir=work_dir
+            )
+            if not taken:
+                continue
 
-                if j == len(y2_list) - 1:
-                    taken = take_screenshot(
-                        y2_list[j], 2050, image_file_name, "mcq", f"{k + 1}.jpg", mode="qp", work_dir=work_dir
-                    )
-                else:
-                    taken = take_screenshot(
-                        y2_list[j],
-                        y2_list[j + 1],
-                        image_file_name,
-                        "mcq",
-                        f"{k + 1}.jpg",
-                        mode="qp",
-                        work_dir=work_dir,
-                    )
-                if not taken:
-                    current_question_num -= 1
-                if os.path.exists(f"{work_dir}/questions/{image_file_name}.jpg"):
-                    question_text = (
-                        process_image(f"{work_dir}/questions/{image_file_name}.jpg")
-                        .lower()
-                        .strip()
-                    )
-                    formatted_text = formatText(question_text)
+            question_text = (
+                process_image(f"{work_dir}/questions/{image_file_name}.jpg")
+                .lower()
+                .strip()
+            )
+            formatted_text = formatText(question_text)
 
-                    level, chapter_num = get_level_and_chapter(
-                        formatted_text, paper_number, paperType, currentDefintionsData
-                    )
+            level, chapter_num = get_level_and_chapter(
+                formatted_text, paper_number, paperType, currentDefintionsData
+            )
 
-                    os.makedirs(
-                        f"{BASE_PATH}/resources/images/{paperType}/{subject}/mcq",
-                        exist_ok=True,
-                    )
+            os.makedirs(
+                f"{BASE_PATH}/resources/images/{paperType}/{subject}/mcq",
+                exist_ok=True,
+            )
 
-                    shutil.copy(
-                        f"{work_dir}/questions/{image_file_name}.jpg",
-                        f"{BASE_PATH}/resources/images/{paperType}/{subject}/mcq/{image_file_name}.jpg",
-                    )
+            shutil.copy(
+                f"{work_dir}/questions/{image_file_name}.jpg",
+                f"{BASE_PATH}/resources/images/{paperType}/{subject}/mcq/{image_file_name}.jpg",
+            )
 
-                    clean_image(paperType, subject, "mcq", f"{image_file_name}.jpg", mode="qp")
+            clean_image(paperType, subject, "mcq", f"{image_file_name}.jpg", mode="qp")
 
-                    answer_object = {
-                        "questionName": f"{image_file_name}.jpg",
-                        "Answer": answers[current_question_num - 1],
-                        "pdfName": current_file,
-                        "questionText": question_text,
-                        "Chapter": chapter_num,
-                        "Level": level,
-                        "paperNumber": paper_number,
-                        "Subject": subject,
-                        "year": "20" + current_file.split("_")[1][1:3],
-                    }
-                    questionObjects.append(answer_object)
-                current_question_num += 1
+            answer_object = {
+                "questionName": f"{image_file_name}.jpg",
+                "Answer": answer,
+                "pdfName": current_file,
+                "questionText": question_text,
+                "Chapter": chapter_num,
+                "Level": level,
+                "paperNumber": paper_number,
+                "Subject": subject,
+                "year": "20" + current_file.split("_")[1][1:3],
+            }
+            questionObjects.append(answer_object)
 
     print(f"Finished processing {file_path}...")
     shutil.rmtree(work_dir, ignore_errors=True)
     return questionObjects
 
 
-start_detection_server()
 files = select_files()
-wait_for_detection_server()
 questionObjects = []
 
 # PDFs are processed in parallel, results are collected in the order the files were selected
