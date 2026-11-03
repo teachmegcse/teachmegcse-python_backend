@@ -10,7 +10,8 @@ Automates everything needed to convert paper-1 PDFs into cleaned MCQ images, que
   - Find where each MCQ starts on its page from the PDF's text layer (`get_mcq_text_coordinates`, see below).
   - Crop each question via `take_screenshot` and store it under `resources/images/test_images/questions`.
   - Read each question's text from the PDF's text layer (`get_mcq_question_texts`), normalize it (`formatText`), and classify it into the correct chapter through the syllabus model declared in `definitions.json`.
-  - Copy the cleaned image into `resources/images/<level>/<subject>/mcq/` and update the target JSON file (`mcq_db_path`).
+  - Copy the cleaned image into `resources/images/<level>/<subject>/p<paper number>/` (where `classified/api.py` and the website read it from) and add the question to the target JSON file (`mcq_db_path`), saved after every paper.
+- `--folder DIR` uses the question papers in `DIR` instead of the file picker. Filenames continue from the highest number already in the DB, so a new run never overwrites earlier images.
 
 ## Finding the questions from the text layer
 

@@ -3,7 +3,10 @@
 import os
 import shutil
 import json
+import math
+import re
 import sys
+import argparse
 from concurrent.futures import ThreadPoolExecutor
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "src"))
@@ -25,12 +28,28 @@ from main.utils import (
     make_work_dir,
     get_mcq_text_coordinates,
     get_mcq_question_texts,
+    get_mcq_page_ends,
+    load_json_db,
     MCQ_PAGE_END,
     PDF_WORKERS,
 )
 
 with open(definitionsPath, "r") as db:
     definitionsData = json.load(db)
+
+
+def next_file_index(codes: set, db_paths: dict) -> int:
+    """Returns the file index to continue from (filenames are {subject}_p{paper}_{question + index * questions per
+    paper}.jpg), so a new run never reuses (and overwrites) the image of a question already in one of the DBs."""
+    index = 0
+    for code in codes:
+        highest = 0
+        for record in load_json_db(db_paths[code]):
+            match = re.search(r"_(\d+)\.jpg$", record.get("questionName", ""))
+            if match:
+                highest = max(highest, int(match.group(1)))
+        index = max(index, math.ceil(highest / definitionsData[code]["mcqNumberOfQuestions"]))
+    return index
 
 
 def process_pdf(currentFileIndex: int, file_path: str) -> list:
@@ -67,17 +86,19 @@ def process_pdf(currentFileIndex: int, file_path: str) -> list:
     coordinates = get_mcq_text_coordinates(file_path)
     # Each question's text, read from the same region of the PDF's text layer its image is cropped from
     question_texts = get_mcq_question_texts(file_path)
-    question_count = sum(len(questions) for questions in coordinates.values())
-    # Questions removed from the paper are left out of both, so the answers line up with the questions in order
-    if question_count != len(answers):
-        print(f"[WARN] {current_file}: {question_count} questions found, but {len(answers)} answers in the mark scheme")
-    answer_index = 0
+    page_ends = get_mcq_page_ends(file_path)
+    if len(answers) != num_of_questions:
+        print(f"[WARN] {current_file}: {len(answers)} rows in the mark scheme, expected {num_of_questions}")
     for page_number, page_questions in sorted(coordinates.items()):
         for j, (question_number, y1) in enumerate(page_questions):
-            # A question runs to the next one on its page, the page's last question to MCQ_PAGE_END
-            y2 = page_questions[j + 1][1] if j + 1 < len(page_questions) else MCQ_PAGE_END
-            answer = answers[answer_index] if answer_index < len(answers) else None
-            answer_index += 1
+            # A question runs to the next one on its page, the page's last question to the page's end (above its
+            # footer and copyright notice, see get_mcq_page_ends)
+            y2 = page_questions[j + 1][1] if j + 1 < len(page_questions) else page_ends.get(page_number, MCQ_PAGE_END)
+            answer = answers[question_number - 1] if question_number <= len(answers) else None
+            # Discounted or removed in the mark scheme, so it has no correct answer
+            if answer is None:
+                print(f"[WARN] {current_file}: question {question_number} has no answer in the mark scheme, left out")
+                continue
             image_file_name = f"{subject}_p{paper_number}_{question_number + (currentFileIndex * num_of_questions)}"
             taken = take_screenshot(
                 y1, y2, image_file_name, "mcq", f"{page_number}.jpg", mode="qp", work_dir=work_dir
@@ -92,17 +113,19 @@ def process_pdf(currentFileIndex: int, file_path: str) -> list:
                 formatted_text, paper_number, paperType, currentDefintionsData
             )
 
+            # classified/api.py and the website read MCQ images from p<paper number>
+            paper_folder = f"p{paper_number}"
             os.makedirs(
-                f"{BASE_PATH}/resources/images/{paperType}/{subject}/mcq",
+                f"{BASE_PATH}/resources/images/{paperType}/{subject}/{paper_folder}",
                 exist_ok=True,
             )
 
             shutil.copy(
                 f"{work_dir}/questions/{image_file_name}.jpg",
-                f"{BASE_PATH}/resources/images/{paperType}/{subject}/mcq/{image_file_name}.jpg",
+                f"{BASE_PATH}/resources/images/{paperType}/{subject}/{paper_folder}/{image_file_name}.jpg",
             )
 
-            clean_image(paperType, subject, "mcq", f"{image_file_name}.jpg", mode="qp")
+            clean_image(paperType, subject, paper_folder, f"{image_file_name}.jpg", mode="qp")
 
             answer_object = {
                 "questionName": f"{image_file_name}.jpg",
@@ -122,18 +145,25 @@ def process_pdf(currentFileIndex: int, file_path: str) -> list:
     return questionObjects
 
 
-files = select_files()
-questionObjects = []
+parser = argparse.ArgumentParser(description="Split MCQ question papers into one image per question.")
+parser.add_argument("--folder", help="Folder of PDFs to process instead of selecting them in the file dialog")
+args = parser.parse_args()
 
-# PDFs are processed in parallel, results are collected in the order the files were selected
+# The answers are read from each paper's mark scheme, so mark schemes (and inserts) in a folder aren't processed
+files = [file for file in select_files(args.folder) if "_qp_" in os.path.basename(file)]
+codes = {os.path.basename(file).split("_")[0] for file in files}
+db_paths = {code: f"{BASE_PATH}/resources/json/{definitionsData[code]['mcq_db_path']}" for code in codes}
+first_file_index = next_file_index(codes, db_paths)
+
+# PDFs are processed in parallel, results are saved in the order the files were selected, after every paper so a
+# crash loses at most one paper
 with ThreadPoolExecutor(max_workers=PDF_WORKERS) as pool:
-    for file_objects in pool.map(process_pdf, range(len(files)), files):
-        questionObjects.extend(file_objects)
+    file_indexes = range(first_file_index, first_file_index + len(files))
+    for file_path, file_objects in zip(files, pool.map(process_pdf, file_indexes, files)):
+        if file_objects:
+            db_path = db_paths[os.path.basename(file_path).split("_")[0]]
+            db_records = load_json_db(db_path)
+            db_records.extend(file_objects)
+            with open(db_path, "w") as f:
+                json.dump(db_records, f, indent=1)
 cleanup()
-
-
-with open(f"{BASE_PATH}/resources/json/test_images.json", "w") as f:
-    f.write("[\n")
-    for obj in questionObjects:
-        f.write(json.dumps(obj) + ",\n")
-    f.write("]")
