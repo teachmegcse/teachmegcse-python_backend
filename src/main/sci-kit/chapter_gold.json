@@ -1,0 +1,1501 @@
+{
+ "0610_s23_qp_42": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Plant nutrition",
+    "Transport in plants"
+   ],
+   "2": [
+    "Inheritance"
+   ],
+   "3": [
+    "Drugs",
+    "Variation and selection"
+   ],
+   "4": [
+    "Organisms and their environment"
+   ],
+   "5": [
+    "Organisation of the organism",
+    "Respiration"
+   ],
+   "6": [
+    "Coordination and response"
+   ],
+   "7": [
+    "Enzymes"
+   ]
+  }
+ },
+ "9700_s23_qp_22": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Transport in mammals"
+   ],
+   "2": [
+    "The mitotic cell cycle"
+   ],
+   "3": [
+    "Immunity"
+   ],
+   "4": [
+    "Infectious diseases",
+    "Cell structure"
+   ],
+   "5": [
+    "Nucleic acids and protein synthesis"
+   ],
+   "6": [
+    "Gas exchange"
+   ]
+  }
+ },
+ "9700_s23_qp_42": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Energy and respiration"
+   ],
+   "2": [
+    "Inheritance"
+   ],
+   "3": [
+    "Selection and evolution"
+   ],
+   "4": [
+    "Genetic technology"
+   ],
+   "5": [
+    "Selection and evolution"
+   ],
+   "6": [
+    "Homeostasis"
+   ],
+   "7": [
+    "Control and coordination"
+   ],
+   "8": [
+    "Photosynthesis"
+   ]
+  }
+ },
+ "0620_s23_qp_42": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "The Periodic Table",
+    "Acids, bases and salts"
+   ],
+   "2": [
+    "The Periodic Table"
+   ],
+   "3": [
+    "Chemical reactions",
+    "Acids, bases and salts"
+   ],
+   "4": [
+    "Acids, bases and salts"
+   ],
+   "5": [
+    "Organic chemistry"
+   ],
+   "6": [
+    "Organic chemistry"
+   ]
+  }
+ },
+ "9701_s23_qp_22": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Chemical bonding",
+    "States of matter",
+    "The Periodic Table: chemical periodicity"
+   ],
+   "2": [
+    "The Periodic Table: chemical periodicity",
+    "Group 17"
+   ],
+   "3": [
+    "Halogen compounds",
+    "Hydroxy compounds",
+    "Carbonyl compounds",
+    "Organic synthesis"
+   ],
+   "4": [
+    "Equilibria",
+    "Hydrocarbons",
+    "Hydroxy compounds"
+   ],
+   "5": [
+    "introduction to AS Level organic chemistry",
+    "Carbonyl compounds"
+   ]
+  }
+ },
+ "9701_s23_qp_42": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Group 2",
+    "Chemical energetics"
+   ],
+   "2": [
+    "Chemistry of transition elements"
+   ],
+   "3": [
+    "Chemical energetics"
+   ],
+   "4": [
+    "Reaction kinetics"
+   ],
+   "5": [
+    "Hydrocarbons"
+   ],
+   "6": [
+    "An introduction to A Level organic chemistry",
+    "Organic synthesis",
+    "Nitrogen compounds"
+   ],
+   "7": [
+    "Hydroxy compounds"
+   ],
+   "8": [
+    "Halogen compounds"
+   ]
+  }
+ },
+ "0625_s23_qp_42": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Motion, forces and energy"
+   ],
+   "2": [
+    "Motion, forces and energy"
+   ],
+   "3": [
+    "Motion, forces and energy"
+   ],
+   "4": [
+    "Thermal physics"
+   ],
+   "5": [
+    "Thermal physics"
+   ],
+   "6": [
+    "Waves"
+   ],
+   "7": [
+    "Waves"
+   ],
+   "8": [
+    "Electricity and magnetism"
+   ]
+  }
+ },
+ "9702_s23_qp_22": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Physical quantities and units",
+    "Forces, density and pressure"
+   ],
+   "2": [
+    "Forces, density and pressure"
+   ],
+   "3": [
+    "Dynamics"
+   ],
+   "4": [
+    "Deformation of solids"
+   ],
+   "5": [
+    "Waves"
+   ],
+   "6": [
+    "Electricity"
+   ],
+   "7": [
+    "D.C. circuits"
+   ],
+   "8": [
+    "Particle physics"
+   ]
+  }
+ },
+ "9702_s23_qp_42": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Gravitational fields"
+   ],
+   "2": [
+    "Ideal gases"
+   ],
+   "3": [
+    "Thermodynamics"
+   ],
+   "4": [
+    "Oscillations"
+   ],
+   "5": [
+    "Capacitance"
+   ],
+   "6": [
+    "Magnetic fields"
+   ],
+   "7": [
+    "Alternating currents"
+   ],
+   "8": [
+    "Quantum physics"
+   ]
+  }
+ },
+ "0455_s23_qp_22": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Economic development"
+   ],
+   "2": [
+    "Microeconomic decision makers"
+   ],
+   "3": [
+    "Microeconomic decision makers",
+    "The allocation of resources"
+   ],
+   "4": [
+    "Microeconomic decision makers"
+   ],
+   "5": [
+    "Government and the macroeconomy",
+    "Economic development"
+   ]
+  }
+ },
+ "9708_s23_qp_22": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Aggregate Demand and Aggregate Supply",
+    "Economic Growth, Unemployment and Price stability",
+    "Government Policies",
+    "Balance of Payments and Exchange rates"
+   ],
+   "2": [
+    "The interaction of demand and supply, Surpluses"
+   ],
+   "3": [
+    "Demand and Supply, elasticities",
+    "The interaction of demand and supply, Surpluses"
+   ],
+   "4": [
+    "International trade and Protectionism"
+   ],
+   "5": [
+    "Economic Growth, Unemployment and Price stability"
+   ]
+  }
+ },
+ "9708_s23_qp_42": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Economic growth and sustainability",
+    "Economic development"
+   ],
+   "2": [
+    "Private costs and benefits, externalities and social costs and benefits ",
+    "Government policies to achieve efficient resource allocation",
+    "Efficiency and market failure"
+   ],
+   "3": [
+    "market structures",
+    "Growth and survival of firms"
+   ],
+   "4": [
+    "balance of payments",
+    "Economic growth and sustainability"
+   ],
+   "5": [
+    "Money and banking",
+    "Government macroeconomic policy objectives"
+   ]
+  }
+ },
+ "0478_s23_qp_12": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Hardware"
+   ],
+   "2": [
+    "Data representation"
+   ],
+   "3": [
+    "Data representation"
+   ],
+   "4": [
+    "Data transmission"
+   ],
+   "5": [
+    "Software"
+   ],
+   "6": [
+    "The internet and its uses"
+   ],
+   "7": [
+    "The internet and its uses"
+   ],
+   "8": [
+    "The internet and its uses",
+    "Hardware"
+   ]
+  }
+ },
+ "9618_s23_qp_12": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Communication"
+   ],
+   "2": [
+    "Databases"
+   ],
+   "3": [
+    "Processor Fundamentals"
+   ],
+   "4": [
+    "Information representation"
+   ],
+   "5": [
+    "Processor Fundamentals",
+    "Hardware"
+   ],
+   "6": [
+    "Hardware"
+   ],
+   "7": [
+    "System Software",
+    "Software Development"
+   ]
+  }
+ },
+ "9618_s23_qp_32": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Data Representation"
+   ],
+   "2": [
+    "Data Representation"
+   ],
+   "3": [
+    "System Software",
+    "Computational thinking and Problem-solving"
+   ],
+   "4": [
+    "Further Programming"
+   ],
+   "5": [
+    "Security"
+   ],
+   "6": [
+    "Data Representation"
+   ],
+   "7": [
+    "Communication and internet technologies"
+   ],
+   "8": [
+    "Hardware and Virtual Machines"
+   ]
+  }
+ },
+ "0450_s23_qp_11": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "External influences on business activity",
+    "Operations management"
+   ],
+   "2": [
+    "Understanding business activity",
+    "Financial information and decisions"
+   ],
+   "3": [
+    "People in business",
+    "Operations management"
+   ],
+   "4": [
+    "Marketing"
+   ]
+  }
+ },
+ "0450_s23_qp_22": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Understanding business activity"
+   ],
+   "2": [
+    "Understanding business activity"
+   ],
+   "3": [
+    "Financial information and decisions"
+   ],
+   "4": [
+    "People in business"
+   ]
+  }
+ },
+ "9609_s23_qp_11": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Finance and accounting"
+   ],
+   "2": [
+    "Marketing"
+   ],
+   "3": [
+    "Human resource management"
+   ],
+   "4": [
+    "Business and its environment",
+    "Human resource management"
+   ],
+   "5": [
+    "Operations management"
+   ],
+   "6": [
+    "Business and its environment"
+   ]
+  }
+ },
+ "9609_s23_qp_42": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Human resource management"
+   ],
+   "2": [
+    "Marketing"
+   ]
+  }
+ },
+ "9609_s24_qp_31": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Human resource management"
+   ],
+   "2": [
+    "Human resource management"
+   ],
+   "3": [
+    "Finance and accounting"
+   ],
+   "4": [
+    "Marketing"
+   ],
+   "5": [
+    "Business and its environment"
+   ]
+  }
+ },
+ "0580_s23_qp_42": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Geometry"
+   ],
+   "2": [
+    "Number"
+   ],
+   "3": [
+    "Geometry",
+    "Algebra and graphs",
+    "Trigonometry"
+   ],
+   "4": [
+    "Statistics"
+   ],
+   "5": [
+    "Mensuration"
+   ],
+   "6": [
+    "Algebra and graphs"
+   ],
+   "7": [
+    "Trigonometry"
+   ],
+   "8": [
+    "Algebra and graphs"
+   ],
+   "9": [
+    "Algebra and graphs"
+   ]
+  }
+ },
+ "0580_s23_qp_11": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Number"
+   ],
+   "2": [
+    "Number"
+   ],
+   "3": [
+    "Number"
+   ],
+   "4": [
+    "Geometry"
+   ],
+   "5": [
+    "Statistics"
+   ],
+   "6": [
+    "Number"
+   ],
+   "7": [
+    "Number"
+   ],
+   "8": [
+    "Number"
+   ],
+   "9": [
+    "Algebra and graphs"
+   ]
+  }
+ },
+ "9709_s23_qp_12": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Integration"
+   ],
+   "2": [
+    "Series"
+   ],
+   "3": [
+    "Quadratics",
+    "Functions"
+   ],
+   "4": [
+    "Quadratics"
+   ],
+   "5": [
+    "Integration",
+    "Differentiation"
+   ],
+   "6": [
+    "Circular measure",
+    "Differentiation"
+   ],
+   "7": [
+    "Trigonometry"
+   ],
+   "8": [
+    "Trigonometry"
+   ],
+   "9": [
+    "Series"
+   ],
+   "10": [
+    "Coordinate geometry"
+   ],
+   "11": [
+    "Differentiation"
+   ]
+  }
+ },
+ "9709_s23_qp_22": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Trigonometry"
+   ],
+   "2": [
+    "Logarithmic and exponential functions"
+   ],
+   "3": [
+    "Integration"
+   ],
+   "4": [
+    "Logarithmic and exponential functions",
+    "Algebra"
+   ],
+   "5": [
+    "Differentiation"
+   ],
+   "6": [
+    "Trigonometry"
+   ],
+   "7": [
+    "Differentiation"
+   ]
+  }
+ },
+ "9709_s23_qp_31": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Logarithmic and exponential functions"
+   ],
+   "2": [
+    "Algebra"
+   ],
+   "3": [
+    "Algebra"
+   ],
+   "4": [
+    "Trigonometry"
+   ],
+   "5": [
+    "Differentiation"
+   ],
+   "6": [
+    "Vectors"
+   ],
+   "7": [
+    "Differential equations"
+   ],
+   "8": [
+    "Algebra",
+    "Integration"
+   ],
+   "9": [
+    "Integration",
+    "Numerical solution of equations"
+   ],
+   "10": [
+    "Complex numbers"
+   ]
+  }
+ },
+ "9709_s23_qp_42": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Energy, work and power"
+   ],
+   "2": [
+    "Momentum"
+   ],
+   "3": [
+    "Forces and equilibrium"
+   ],
+   "4": [
+    "Energy, work and power"
+   ],
+   "5": [
+    "Newton's laws of motion",
+    "Forces and equilibrium"
+   ],
+   "6": [
+    "Kinematics of motion in a straight line"
+   ],
+   "7": [
+    "Newton's laws of motion"
+   ]
+  }
+ },
+ "9709_s23_qp_51": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Representation of data"
+   ],
+   "2": [
+    "Permutations and combinations"
+   ],
+   "3": [
+    "Permutations and combinations"
+   ],
+   "4": [
+    "The normal distribution"
+   ],
+   "5": [
+    "Representation of data"
+   ],
+   "6": [
+    "Discrete random variables",
+    "Probability"
+   ],
+   "7": [
+    "Discrete random variables",
+    "Probability"
+   ]
+  }
+ },
+ "9709_s23_qp_62": {
+  "split": "dev",
+  "questions": {
+   "1": [
+    "Sampling and estimation",
+    "Hypothesis tests"
+   ],
+   "2": [
+    "The Poisson distribution"
+   ],
+   "3": [
+    "Sampling and estimation",
+    "Hypothesis tests"
+   ],
+   "4": [
+    "The Poisson distribution"
+   ],
+   "5": [
+    "Linear combinations of random variables"
+   ],
+   "6": [
+    "The Poisson distribution",
+    "Hypothesis tests"
+   ],
+   "7": [
+    "Continuous random variables"
+   ]
+  }
+ },
+ "0610_w21_qp_42": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "Human nutrition"
+   ],
+   "2": [
+    "Reproduction"
+   ],
+   "3": [
+    "Reproduction"
+   ],
+   "4": [
+    "Coordination and response"
+   ],
+   "5": [
+    "Excretion in humans",
+    "Human influences on ecosystems",
+    "Organisms and their environment"
+   ],
+   "6": [
+    "Enzymes"
+   ]
+  }
+ },
+ "9700_w21_qp_22": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "Cell structure"
+   ],
+   "2": [
+    "Transport in mammals"
+   ],
+   "3": [
+    "Infectious diseases",
+    "Cell structure",
+    "Nucleic acids and protein synthesis"
+   ],
+   "4": [
+    "Transport in plants"
+   ],
+   "5": [
+    "Infectious diseases",
+    "Immunity"
+   ],
+   "6": [
+    "Enzymes"
+   ]
+  }
+ },
+ "9700_w21_qp_42": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "Homeostasis"
+   ],
+   "2": [
+    "Photosynthesis",
+    "Classification, biodiversity and conservation"
+   ],
+   "3": [
+    "Control and coordination"
+   ],
+   "4": [
+    "Genetic technology"
+   ],
+   "5": [
+    "Classification, biodiversity and conservation"
+   ],
+   "6": [
+    "Energy and respiration"
+   ],
+   "7": [
+    "Inheritance"
+   ],
+   "8": [
+    "Selection and evolution"
+   ]
+  }
+ },
+ "0620_w21_qp_42": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "States of matter"
+   ],
+   "2": [
+    "Acids, bases and salts"
+   ],
+   "3": [
+    "Atoms, elements and compounds"
+   ],
+   "4": [
+    "Chemical reactions",
+    "Chemical energetics"
+   ],
+   "5": [
+    "Metals",
+    "The Periodic Table",
+    "Atoms, elements and compounds"
+   ],
+   "6": [
+    "Organic chemistry"
+   ]
+  }
+ },
+ "9701_w21_qp_22": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "Group 17",
+    "Chemical bonding"
+   ],
+   "2": [
+    "The Periodic Table: chemical periodicity"
+   ],
+   "3": [
+    "Hydrocarbons",
+    "introduction to AS Level organic chemistry"
+   ]
+  }
+ },
+ "9701_w21_qp_42": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "Chemical energetics"
+   ],
+   "2": [
+    "Equilibria"
+   ],
+   "3": [
+    "Electrochemistry"
+   ],
+   "4": [
+    "Group 2"
+   ],
+   "5": [
+    "Chemistry of transition elements"
+   ],
+   "6": [
+    "Chemistry of transition elements"
+   ],
+   "7": [
+    "Carboxylic acids and derivatives",
+    "Hydrocarbons"
+   ],
+   "8": [
+    "Nitrogen compounds"
+   ]
+  }
+ },
+ "0625_w21_qp_42": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "Motion, forces and energy"
+   ],
+   "2": [
+    "Motion, forces and energy"
+   ],
+   "3": [
+    "Motion, forces and energy"
+   ],
+   "4": [
+    "Motion, forces and energy"
+   ],
+   "5": [
+    "Thermal physics"
+   ],
+   "6": [
+    "Waves"
+   ],
+   "7": [
+    "Waves"
+   ],
+   "8": [
+    "Electricity and magnetism"
+   ]
+  }
+ },
+ "9702_w21_qp_22": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "Physical quantities and units"
+   ],
+   "2": [
+    "Forces, density and pressure",
+    "Dynamics"
+   ],
+   "3": [
+    "Work, energy and power"
+   ],
+   "4": [
+    "Kinematics",
+    "Waves"
+   ],
+   "5": [
+    "Superposition"
+   ],
+   "6": [
+    "D.C. circuits",
+    "Electricity"
+   ],
+   "7": [
+    "Particle physics"
+   ]
+  }
+ },
+ "9702_w21_qp_42": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "Motion in a circle"
+   ],
+   "2": [
+    "Gravitational fields"
+   ],
+   "3": [
+    "Ideal gases"
+   ],
+   "4": [
+    "Oscillations"
+   ],
+   "6": [
+    "Electric fields",
+    "Capacitance"
+   ],
+   "8": [
+    "Magnetic fields"
+   ]
+  }
+ },
+ "0455_w22_qp_22": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "Microeconomic decision makers",
+    "The allocation of resources"
+   ],
+   "2": [
+    "The basic economic problem"
+   ],
+   "3": [
+    "Government and the macroeconomy"
+   ],
+   "4": [
+    "The allocation of resources"
+   ],
+   "5": [
+    "International trade and globalisation"
+   ]
+  }
+ },
+ "0455_s22_qp_22": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "Economic development",
+    "Government and the macroeconomy"
+   ],
+   "2": [
+    "Government and the macroeconomy"
+   ],
+   "3": [
+    "The basic economic problem",
+    "The allocation of resources",
+    "International trade and globalisation"
+   ],
+   "4": [
+    "International trade and globalisation"
+   ],
+   "5": [
+    "Economic development",
+    "Government and the macroeconomy",
+    "The allocation of resources"
+   ]
+  }
+ },
+ "9708_w21_qp_22": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "Aggregate Demand and Aggregate Supply",
+    "Economic Growth, Unemployment and Price stability"
+   ],
+   "2": [
+    "Resource allocation in different economic systems, PPC, goods and services"
+   ],
+   "3": [
+    "The interaction of demand and supply, Surpluses",
+    "Demand and Supply, elasticities",
+    "Government microeconomic intervention"
+   ],
+   "4": [
+    "Economic Growth, Unemployment and Price stability",
+    "Aggregate Demand and Aggregate Supply"
+   ]
+  }
+ },
+ "9708_w21_qp_42": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "market structures",
+    "Growth and survival of firms"
+   ],
+   "2": [
+    "Efficiency and market failure",
+    "Government policies to achieve efficient resource allocation"
+   ],
+   "3": [
+    "Utility",
+    "Indifference curves and budget lines"
+   ],
+   "4": [
+    "Types of cost, revenue and profit, short-run and long-run production"
+   ],
+   "5": [
+    "Economic development",
+    "levels of development"
+   ],
+   "6": [
+    "Employment/unemployment"
+   ],
+   "7": [
+    "Money and banking",
+    "Equity and redistribution of income and wealth",
+    "Government macroeconomic policy objectives"
+   ]
+  }
+ },
+ "0478_w23_qp_12": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "The internet and its uses"
+   ],
+   "2": [
+    "Data representation"
+   ],
+   "3": [
+    "Hardware"
+   ],
+   "4": [
+    "Hardware"
+   ],
+   "5": [
+    "Data representation"
+   ],
+   "6": [
+    "Data transmission"
+   ],
+   "7": [
+    "Automated and emerging technologies",
+    "Hardware"
+   ],
+   "8": [
+    "The internet and its uses"
+   ]
+  }
+ },
+ "9618_w23_qp_12": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "Hardware"
+   ],
+   "2": [
+    "Databases"
+   ],
+   "3": [
+    "Information representation"
+   ],
+   "4": [
+    "Hardware"
+   ],
+   "5": [
+    "Security, privacy and data integrity"
+   ],
+   "6": [
+    "Information representation",
+    "Communication"
+   ],
+   "7": [
+    "Communication"
+   ],
+   "8": [
+    "System Software"
+   ]
+  }
+ },
+ "9618_w23_qp_32": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "Data Representation"
+   ],
+   "2": [
+    "Data Representation"
+   ],
+   "3": [
+    "Data Representation"
+   ],
+   "4": [
+    "Communication and internet technologies"
+   ],
+   "5": [
+    "System Software"
+   ],
+   "6": [
+    "System Software",
+    "Computational thinking and Problem-solving"
+   ],
+   "7": [
+    "Hardware and Virtual Machines"
+   ],
+   "8": [
+    "Artificial Intelligence (AI)"
+   ]
+  }
+ },
+ "0450_w23_qp_12": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "Understanding business activity",
+    "Marketing",
+    "Financial information and decisions"
+   ],
+   "2": [
+    "Operations management"
+   ],
+   "3": [
+    "Understanding business activity"
+   ],
+   "4": [
+    "People in business",
+    "Marketing",
+    "Financial information and decisions"
+   ]
+  }
+ },
+ "0450_w23_qp_22": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "Understanding business activity",
+    "Operations management"
+   ],
+   "2": [
+    "Financial information and decisions"
+   ],
+   "3": [
+    "People in business"
+   ],
+   "4": [
+    "Operations management"
+   ]
+  }
+ },
+ "9609_w23_qp_12": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "Human resource management"
+   ],
+   "2": [
+    "Business and its environment"
+   ],
+   "3": [
+    "Finance and accounting"
+   ],
+   "4": [
+    "Operations management"
+   ],
+   "5": [
+    "Human resource management"
+   ],
+   "6": [
+    "Marketing"
+   ]
+  }
+ },
+ "9609_w23_qp_32": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "Business and its environment"
+   ],
+   "2": [
+    "Human resource management"
+   ],
+   "3": [
+    "Operations management"
+   ],
+   "4": [
+    "Finance and accounting"
+   ],
+   "5": [
+    "Marketing"
+   ]
+  }
+ },
+ "0580_w21_qp_42": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "Number"
+   ],
+   "2": [
+    "Statistics"
+   ],
+   "3": [
+    "Trigonometry",
+    "Geometry"
+   ],
+   "4": [
+    "Transformations and vectors"
+   ],
+   "5": [
+    "Algebra and graphs"
+   ],
+   "6": [
+    "Algebra and graphs"
+   ],
+   "7": [
+    "Mensuration"
+   ],
+   "8": [
+    "Algebra and graphs"
+   ]
+  }
+ },
+ "0580_w21_qp_11": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "Number"
+   ],
+   "2": [
+    "Mensuration"
+   ],
+   "3": [
+    "Geometry"
+   ],
+   "4": [
+    "Geometry"
+   ],
+   "5": [
+    "Statistics"
+   ],
+   "6": [
+    "Number"
+   ],
+   "7": [
+    "Number"
+   ],
+   "8": [
+    "Algebra and graphs"
+   ]
+  }
+ },
+ "9709_w23_qp_12": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "Series"
+   ],
+   "2": [
+    "Trigonometry"
+   ],
+   "3": [
+    "Integration",
+    "Differentiation"
+   ],
+   "4": [
+    "Circular measure"
+   ],
+   "5": [
+    "Series"
+   ],
+   "6": [
+    "Functions",
+    "Quadratics"
+   ],
+   "7": [
+    "Trigonometry"
+   ],
+   "8": [
+    "Functions"
+   ]
+  }
+ },
+ "9709_w23_qp_22": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "Algebra"
+   ],
+   "2": [
+    "Trigonometry"
+   ],
+   "3": [
+    "Integration"
+   ],
+   "4": [
+    "Algebra",
+    "Logarithmic and exponential functions"
+   ],
+   "5": [
+    "Algebra",
+    "Integration"
+   ],
+   "6": [
+    "Differentiation"
+   ],
+   "7": [
+    "Trigonometry",
+    "Integration"
+   ]
+  }
+ },
+ "9709_w23_qp_32": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "Algebra"
+   ],
+   "2": [
+    "Differentiation"
+   ],
+   "3": [
+    "Algebra"
+   ],
+   "4": [
+    "Complex numbers"
+   ],
+   "5": [
+    "Integration"
+   ],
+   "6": [
+    "Numerical solution of equations"
+   ],
+   "7": [
+    "Trigonometry"
+   ],
+   "8": [
+    "Complex numbers"
+   ]
+  }
+ },
+ "9709_w23_qp_42": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "Energy, work and power"
+   ],
+   "2": [
+    "Forces and equilibrium"
+   ],
+   "3": [
+    "Forces and equilibrium"
+   ],
+   "4": [
+    "Forces and equilibrium",
+    "Newton's laws of motion"
+   ],
+   "5": [
+    "Kinematics of motion in a straight line",
+    "Energy, work and power"
+   ],
+   "6": [
+    "Newton's laws of motion",
+    "Energy, work and power"
+   ],
+   "7": [
+    "Kinematics of motion in a straight line"
+   ]
+  }
+ },
+ "9709_w23_qp_52": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "Discrete random variables"
+   ],
+   "2": [
+    "Probability",
+    "Discrete random variables"
+   ],
+   "3": [
+    "The normal distribution"
+   ],
+   "4": [
+    "Representation of data"
+   ],
+   "5": [
+    "The normal distribution"
+   ],
+   "6": [
+    "Probability"
+   ],
+   "7": [
+    "Permutations and combinations"
+   ]
+  }
+ },
+ "9709_w23_qp_62": {
+  "split": "test",
+  "questions": {
+   "1": [
+    "The Poisson distribution"
+   ],
+   "2": [
+    "Sampling and estimation"
+   ],
+   "3": [
+    "Hypothesis tests"
+   ],
+   "4": [
+    "Hypothesis tests"
+   ],
+   "5": [
+    "Continuous random variables"
+   ],
+   "6": [
+    "Linear combinations of random variables"
+   ],
+   "7": [
+    "The Poisson distribution"
+   ]
+  }
+ }
+}

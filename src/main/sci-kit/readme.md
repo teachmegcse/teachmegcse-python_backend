@@ -4,7 +4,8 @@ Scripts and artifacts in this folder build the `.joblib` classifiers referenced 
 
 ## Directory contents
 
-- `trainModels.py` – shared helper that trains a `CountVectorizer + MultinomialNB` pipeline and writes the result to `resources/sci-kit/<name>.joblib`.
+- `trainModels.py` – shared helper that trains a `TfidfVectorizer + ComplementNB` pipeline and writes the result to `resources/sci-kit/<name>.joblib`. Mathematics splits its syllabus text into 12-line pieces first (`chunk_lines`).
+- `chapter_gold.json` / `evaluate_chapters.py` – questions from real papers labelled by hand, and a script that scores the models against them. `dev` papers are for trying changes, `test` papers for the final check: `python evaluate_chapters.py --split test --misses`.
 - `trainWithSyllabus<Subject><Level>.py` – subject/level-specific scripts that:
   1. Define chapter labels (`allLabels`).
   2. Provide raw syllabus text snippets per chapter (copied from Cambridge PDFs).
@@ -26,5 +27,5 @@ python src/main/sci-kit/trainWithSyllabusChemAS.py
 
 ## Notes
 
-- All trainers depend on `main.utils.formatText`; keep that function stable to avoid drift between training and inference.
+- All trainers depend on `main.utils.formatText`. After changing it, run every `trainWithSyllabus*.py` again so training and prediction clean text the same way, then `makep4-ai.py --steps combine --refresh-text` to update the stored chapters.
 - Some scripts reference large multiline strings copied from official syllabi; ensure licensing requirements are respected before distributing those files publicly.

@@ -79,7 +79,67 @@
     "IGmodel" : "igeco.joblib",
     "board" : "cie",
     "mcq_db_path" : "ig_eco_mcq.json",
+    "long_db_path" : "ig_eco_theory.json",
+    "long_ms_db_path" : "ig_eco_ms.json",
+    "long_final_db_path" : "ig_eco_final_long.json",
     "mcqNumberOfQuestions" : 30
+  },
+
+
+  "0478": {
+    "level": "IGCSE",
+    "subjectName": "computer-science",
+    "mcqPapers": [],
+    "longPapers": [1, 2],
+    "chapters": [
+        "Data representation", "Data transmission",
+        "Hardware", "Software", "The internet and its uses",
+        "Automated and emerging technologies", "Algorithm design and problem-solving",
+        "Programming", "Databases", "Boolean logic"
+    ],
+    "IGmodel" : "igcs.joblib",
+    "board" : "cie",
+    "long_db_path" : "ig_cs_theory.json",
+    "long_ms_db_path" : "ig_cs_ms.json",
+    "long_final_db_path" : "ig_cs_final_long.json",
+    "mcqNumberOfQuestions" : 0
+  },
+
+
+  "0450": {
+    "level": "IGCSE",
+    "subjectName": "business",
+    "mcqPapers": [],
+    "longPapers": [1, 2],
+    "chapters": [
+        "Understanding business activity", "People in business", "Marketing",
+        "Operations management", "Financial information and decisions",
+        "External influences on business activity"
+    ],
+    "IGmodel" : "igbus.joblib",
+    "board" : "cie",
+    "long_db_path" : "ig_bus_theory.json",
+    "long_ms_db_path" : "ig_bus_ms.json",
+    "long_final_db_path" : "ig_bus_final_long.json",
+    "mcqNumberOfQuestions" : 0
+  },
+
+
+  "0580": {
+    "level": "IGCSE",
+    "subjectName": "mathematics",
+    "mcqPapers": [],
+    "longPapers": [1, 2, 3, 4],
+    "chapters": [
+        "Number", "Algebra and graphs", "Coordinate geometry", "Geometry", "Mensuration",
+        "Trigonometry", "Transformations and vectors", "Probability", "Statistics"
+    ],
+    "IGmodel" : "igmath.joblib",
+    "board" : "cie",
+    "long_db_path" : "ig_math_theory.json",
+    "long_ms_db_path" : "ig_math_ms.json",
+    "long_final_db_path" : "ig_math_final_long.json",
+    "mcqNumberOfQuestions" : 0
   },
 
 
@@ -220,6 +280,126 @@
     "A2Model" : "a2eco.joblib",
     "board" : "cie",
     "mcq_db_path" : "a_eco_mcq.json",
+    "long_db_path" : "a_eco_theory.json",
+    "long_ms_db_path" : "a_eco_ms.json",
+    "long_final_db_path" : "a_eco_final_long.json",
     "mcqNumberOfQuestions" : 30
+  },
+
+
+  "9618": {
+    "level": "A-Level",
+    "subjectName": "computer-science",
+    "mcqPapers": [],
+    "longPapers": [1, 2, 3, 4],
+    "ASpapers" : [1, 2],
+    "A2papers" : [3, 4],
+    "ASChapters": [
+        "Information representation", "Communication",
+        "Hardware", "Processor Fundamentals", "System Software",
+        "Security, privacy and data integrity", "Ethics and Ownership",
+        "Databases", "Algorithm Design and Problem-solving",
+        "Data Types and Structures", "Programming", "Software Development"
+    ],
+    "A2Chapters" : [
+        "Data Representation", "Communication and internet technologies",
+        "Hardware and Virtual Machines", "System Software", "Security",
+        "Artificial Intelligence (AI)", "Computational thinking and Problem-solving",
+        "Further Programming"
+    ],
+    "ASModel" : "ascs.joblib",
+    "A2Model" : "a2cs.joblib",
+    "board" : "cie",
+    "long_db_path" : "a_cs_theory.json",
+    "long_ms_db_path" : "a_cs_ms.json",
+    "long_final_db_path" : "a_cs_final_long.json",
+    "mcqNumberOfQuestions" : 0
+  },
+
+
+  "9608": {
+    "level": "A-Level",
+    "subjectName": "computer-science",
+    "mcqPapers": [],
+    "longPapers": [1, 2, 3, 4],
+    "ASpapers" : [1, 2],
+    "A2papers" : [3, 4],
+    "ASChapters": [
+        "Information representation", "Communication",
+        "Hardware", "Processor Fundamentals", "System Software",
+        "Security, privacy and data integrity", "Ethics and Ownership",
+        "Databases", "Algorithm Design and Problem-solving",
+        "Data Types and Structures", "Programming", "Software Development"
+    ],
+    "A2Chapters" : [
+        "Data Representation", "Communication and internet technologies",
+        "Hardware and Virtual Machines", "System Software", "Security",
+        "Artificial Intelligence (AI)", "Computational thinking and Problem-solving",
+        "Further Programming"
+    ],
+    "ASModel" : "ascs.joblib",
+    "A2Model" : "a2cs.joblib",
+    "board" : "cie",
+    "long_db_path" : "a_cs_theory.json",
+    "long_ms_db_path" : "a_cs_ms.json",
+    "long_final_db_path" : "a_cs_final_long.json",
+    "mcqNumberOfQuestions" : 0
+  },
+
+
+  "9609": {
+    "level": "A-Level",
+    "subjectName": "business",
+    "mcqPapers": [],
+    "longPapers": [1, 2, 3, 4],
+    "ASpapers" : [1, 2],
+    "A2papers" : [3, 4],
+    "ASChapters": [
+        "Business and its environment", "Human resource management", "Marketing",
+        "Operations management", "Finance and accounting"
+    ],
+    "A2Chapters" : [
+        "Business and its environment", "Human resource management", "Marketing",
+        "Operations management", "Finance and accounting"
+    ],
+    "ASModel" : "asbus.joblib",
+    "A2Model" : "a2bus.joblib",
+    "board" : "cie",
+    "long_db_path" : "a_bus_theory.json",
+    "long_ms_db_path" : "a_bus_ms.json",
+    "long_final_db_path" : "a_bus_final_long.json",
+    "mcqNumberOfQuestions" : 0
+  },
+
+
+  "9709": {
+    "level": "A-Level",
+    "subjectName": "mathematics",
+    "mcqPapers": [],
+    "longPapers": [1, 2, 3, 4, 5, 6, 7],
+    "ASpapers" : [1, 2, 4, 5],
+    "A2papers" : [3, 6],
+    "oldPaperNumbers" : {"before": 2020, "papers": {"5": 4, "6": 5, "7": 6}},
+    "ASChapters": [
+        "Quadratics", "Functions", "Coordinate geometry", "Circular measure", "Trigonometry",
+        "Series", "Differentiation", "Integration", "Algebra", "Logarithmic and exponential functions",
+        "Numerical solution of equations", "Forces and equilibrium",
+        "Kinematics of motion in a straight line", "Momentum", "Newton's laws of motion",
+        "Energy, work and power", "Representation of data", "Permutations and combinations",
+        "Probability", "Discrete random variables", "The normal distribution"
+    ],
+    "A2Chapters" : [
+        "Algebra", "Logarithmic and exponential functions", "Trigonometry", "Differentiation",
+        "Integration", "Numerical solution of equations", "Vectors", "Differential equations",
+        "Complex numbers", "The Poisson distribution", "Linear combinations of random variables",
+        "Continuous random variables", "Sampling and estimation", "Hypothesis tests"
+    ],
+    "ASModel" : "asmath.joblib",
+    "A2Model" : "a2math.joblib",
+    "board" : "cie",
+    "long_db_path" : "a_math_theory.json",
+    "long_ms_db_path" : "a_math_ms.json",
+    "long_final_db_path" : "a_math_final_long.json",
+    "mcqNumberOfQuestions" : 0
   }
 }

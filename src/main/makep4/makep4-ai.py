@@ -239,9 +239,11 @@ def fill_question_text(db_path: str, pdf_names: set | None = None) -> None:
     updated_questions = [q for q in all_questions if pdf_names is None or q.get("pdfName") in pdf_names]
     print(f"Reading question text for {len(updated_questions)} questions in {os.path.basename(db_path)}...")
     if updated_questions:
-        paper_code = updated_questions[0]["pdfName"].split("_")[0]
-        # check_json_validity updates the records in place, so all_questions gets the new values too
-        check_json_validity(updated_questions, f"{BASE_PATH}/resources/full_pdfs/{paper_code}")
+        # A DB can hold more than one paper code (9608 and 9618). check_json_validity updates the records in place, so
+        # all_questions gets the new values too
+        for paper_code in sorted({q["pdfName"].split("_")[0] for q in updated_questions}):
+            code_questions = [q for q in updated_questions if q["pdfName"].startswith(paper_code)]
+            check_json_validity(code_questions, f"{BASE_PATH}/resources/full_pdfs/{paper_code}")
 
         for q in updated_questions:
             question_text = q.get("questionText", "")
@@ -264,6 +266,7 @@ def fill_question_text(db_path: str, pdf_names: set | None = None) -> None:
                     int(paper_num),
                     paper_type,
                     definitionsData[paper_code],
+                    int(q["year"]),
                 )
             except Exception as exc:
                 print(
@@ -310,6 +313,10 @@ if __name__ == "__main__":
         "selected files' subjects again (e.g. after a change to how question text is read), before the combine step. "
         "Can be used with --steps combine to refresh without splitting anything",
     )
+    parser.add_argument(
+        "--folder",
+        help="Folder of PDFs to process (question papers and mark schemes) instead of selecting them in the file dialog",
+    )
     args = parser.parse_args()
     steps = [step.strip() for step in args.steps.split(",") if step.strip()]
     unknown = [step for step in steps if step not in STEPS]
@@ -318,7 +325,7 @@ if __name__ == "__main__":
     print(f"Running steps: {', '.join(steps)}")
 
     print("Selecting files...")
-    files = select_files()
+    files = select_files(args.folder)
     if not files:
         print("No files selected")
         exit()

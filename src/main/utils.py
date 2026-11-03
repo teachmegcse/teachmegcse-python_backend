@@ -59,14 +59,13 @@ def predict(data: str, model: str) -> str:
     """Takes a text string from a question and a model name that references the level and subject, and returns a predicted chapter label.
 
     Args:
-        data (str): The text string from the question.
+        data (str): The text string from the question, already cleaned with formatText as the training text was.
         model (str): The name of the model to use for prediction.
 
     Returns:
         str: The predicted chapter label.
     """
     pipeline = _load_pipeline(model)
-    data = formatText(data)
     predicted_labels = pipeline.predict([data])
     return predicted_labels[0]
 
@@ -77,14 +76,21 @@ def _load_pipeline(model: str):
     return load(f"{BASE_PATH}/resources/sci-kit/{model}")
 
 
-def select_files() -> list:
-    """Opens a file dialog for the user to select PDF files and returns a list of the selected past papers.
+def select_files(folder: str = None) -> list:
+    """Returns the PDFs in folder if one is given, otherwise opens a file dialog for the user to select PDF files.
 
     Args:
+        folder (str): Optional folder whose PDFs are used instead of asking with the file dialog.
     Returns:
         list: A list of past paper paths for the selected PDF files.
 
     """
+    if folder:
+        if not os.path.isdir(folder):
+            raise NotADirectoryError(f"{folder} is not a folder")
+        return sorted(
+            os.path.join(os.path.abspath(folder), name) for name in os.listdir(folder) if name.lower().endswith(".pdf")
+        )
     root = Tk()
     filetypes = [("PDF Files", "*.pdf")]
     files = filedialog.askopenfilenames(filetypes=filetypes)
@@ -101,7 +107,9 @@ SKIP_STRINGS = [
     "next page",
     "marking principle",
     "correct answer only",
+    "use this table to give marks",
     "use this page for any rough working",
+    "additional page if you use the following",
     "test and test result",
     "reactions of cations",
     "reactions of anions",
@@ -111,8 +119,14 @@ SKIP_STRINGS = [
     "the periodic table of elements",
     "the periodic table of the elements",
 ]
-# Mark scheme guidance pages can show marks like "[1]" in their examples, so these skip a page even with marks on it
-MARK_SCHEME_GUIDANCE = {"marking principle", "correct answer only", "guidance for chemical equations"}
+# Mark scheme guidance pages can show marks like "[1]" in their examples, so these skip a page even with marks on it.
+# "use this table to give marks" is the generic levels tables of 9708, whose numbered rows look like questions
+MARK_SCHEME_GUIDANCE = {
+    "marking principle",
+    "correct answer only",
+    "guidance for chemical equations",
+    "use this table to give marks",
+}
 # A mark like "[2]" or "[Total: 7]", only ever printed next to a question. A page with one is kept even when it also
 # has a skip string, e.g. the end of a question on the same page as the "Important values" box (9701 s23 42) or the
 # copyright notice (0625 w22 53), or a page saying "... on the next page" (0620 m18 32)
@@ -130,7 +144,11 @@ def page_skip_reason(text: str) -> str | None:
     """
     text = " ".join(text.lower().split())
     has_marks = MARK_BRACKET.search(text) is not None
+    # A page with the answers table isn't only guidance, even with guidance above it: the abbreviations list
+    # ("cao - correct answer only") comes straight before the table on the same page in 0580 papers 1 to 3
     matched = [s for s in SKIP_STRINGS if s in text]
+    if matched and "question answer mark" in text:
+        matched = [s for s in matched if s not in MARK_SCHEME_GUIDANCE]
     if matched and (not has_marks or any(s in MARK_SCHEME_GUIDANCE for s in matched)):
         return f"matched: {', '.join(matched)}"
     # Some papers end with a page holding only the copyright acknowledgements. Question pages can have the same
@@ -192,6 +210,14 @@ def makeImages(pdf_path: str, work_dir: str = outputPath) -> None:
         current_index += 1
 
 
+# Words that say what to do in a question rather than what it's about, removed before chapter prediction
+COMMAND_WORDS = re.compile(
+    r"\b(?:analyse|assess|calculate|comment|compare|consider|contrast|define|describe|develop|discuss|evaluate|explain"
+    r"|give|gives|given|identify|justify|outline|predict|sketch|state|states|stated|suggest|summarise|benefit|drawback"
+    r"|advantage|disadvantage|understand|understanding|use|uses|used|using|show|shows|shown)\b"
+)
+
+
 def formatText(text: str) -> str:
     """Takes a text string, processes it by converting to lowercase, removing punctuation and digits,
       removing Cambridge command words, tokenizing, and stemming the words.
@@ -213,39 +239,10 @@ def formatText(text: str) -> str:
     text = re.sub(r"[^\w\s]", "", text)
     text = re.sub(r"\d+", "", text)
 
-    # Remove Cambridge command words
-    text = text.replace("analyse", "")
-    text = text.replace("assess", "")
-    text = text.replace("calculate", "")
-    text = text.replace("comment", "")
-    text = text.replace("compare", "")
-    text = text.replace("consider", "")
-    text = text.replace("contrast", "")
-    text = text.replace("define", "")
-    text = text.replace("describe", "")
-    text = text.replace("develop", "")
-    text = text.replace("discuss", "")
-    text = text.replace("evaluate", "")
-    text = text.replace("explain", "")
-    text = text.replace("give", "")
-    text = text.replace("identify", "")
-    text = text.replace("justify", "")
-    text = text.replace("outline", "")
-    text = text.replace("predict", "")
-    text = text.replace("sketch", "")
-    text = text.replace("state", "")
-    text = text.replace("suggest", "")
-    text = text.replace("summarise", "")
-    text = text.replace("benefit", "")
-    text = text.replace("drawback", "")
-    text = text.replace("advantage", "")
-    text = text.replace("disadvantage", "")
-    text = text.replace("understand", "")
-    text = text.replace("use", "")
+    # Remove Cambridge command words, as whole words so that e.g. "because" and "statement" are left alone
     text = text.replace("notes and guidance", "")
     text = text.replace("candidates should be able to", "")
-    text = text.replace("show", "")
-    text = text.replace("understanding", "")
+    text = COMMAND_WORDS.sub("", text)
 
     # Tokenize text into words
     words = word_tokenize(text)
@@ -254,6 +251,12 @@ def formatText(text: str) -> str:
 
     # Join the processed words back into a single string
     return " ".join(words)
+
+
+def ms_page_height(rendered_height: int) -> int:
+    """How much of a mark scheme page strip_images keeps. Most mark schemes are landscape, but some are portrait (e.g.
+    0580 papers 1 to 3), with their answers further down the page."""
+    return 1300 if rendered_height < 2000 else min(2200, rendered_height) - 200
 
 
 def strip_images(mode: str, work_dir: str = outputPath) -> None:
@@ -275,7 +278,7 @@ def strip_images(mode: str, work_dir: str = outputPath) -> None:
             if mode == "qp":
                 im_crop = im.crop((0, 150, 1654, 2200))
             else:
-                im_crop = im.crop((100, 200, 2300, 1500))
+                im_crop = im.crop((100, 200, min(2300, im.width), 200 + ms_page_height(im.height)))
             im_crop.save(f"{work_dir}/currentPdfImages/{pages[i]}")
 
 
@@ -292,8 +295,9 @@ def take_screenshot(
     """Takes the y1 and y2 coordinates of the question region (x coordinates are fixed),
       a unique filename for the question image, the type of question (either "mcq" or "long"), and the page number to crop the question from.
       It crops the corresponding region from the correct image (based on type) and saves it to the questions folder with the unique filename.
-      It also checks if the height of the cropped region is above a certain threshold (300 pixels for long questions and 100 pixels for MCQs)
-        before saving, to filter out any mistakes (they're height is like 30 pixels so obviously wrong).
+      It also checks if the height of the cropped region is above a certain threshold (40 pixels for long questions and 100 pixels for MCQs)
+        before saving, to filter out any mistakes (they're height is like 30 pixels so obviously wrong). Long questions can be short, a
+        one-line economics essay question is about 70 pixels.
 
     Args:
     y1 (int): The y-coordinate of the top of the question region to be cropped.
@@ -312,7 +316,7 @@ def take_screenshot(
     # type can either be mcq or long
     height = y2 - y1
 
-    if type == "long" and height <= 300:
+    if type == "long" and height <= 40:
         print(f"Skipping question {unique_filename} - too small ({height} pixels)")
         return False
 
@@ -396,11 +400,12 @@ def clean_image(
 def clean_image_file(image_path: str, mode: str) -> None:
     """Same as clean_image, but takes the path of the image to clean directly (e.g. a question still in a work_dir)."""
     im = PIL.Image.open(image_path)
-    y = _last_content_row(im)
+    # Not past the image's height, as PIL fills anything beyond it with black
+    y = min(_last_content_row(im) + 10, im.height)
     if mode == "qp":
-        cleaned_image = im.crop((0, 0, 1500, y + 10))
+        cleaned_image = im.crop((0, 0, 1500, y))
     else:
-        cleaned_image = im.crop((0, 0, 2300, y + 10))
+        cleaned_image = im.crop((0, 0, 2300, y))
     cleaned_image.save(image_path)
 
 
@@ -497,7 +502,7 @@ def cleanup() -> None:
 
 
 def get_level_and_chapter(
-    formatted_text: str, paper_num: int, paperType: str, currentDefinitionsData: dict
+    formatted_text: str, paper_num: int, paperType: str, currentDefinitionsData: dict, year: int | None = None
 ) -> tuple[str, int]:
     """Takes the formatted text of a question, the paper number, the paper type (either "IGCSE" or "A-level"),
       and the current definitions data loaded from the JSON file.
@@ -508,6 +513,8 @@ def get_level_and_chapter(
         paperType (str): The type of paper, either "IGCSE" or "A-level", used to determine which model and labels to use for chapter prediction.
         currentDefinitionsData (dict): The definitions data loaded from the JSON file for the current paper code, which contains information about the models and
             labels for chapter prediction based on the paper type and number.
+        year (int | None): The year of the paper, for subjects whose papers were numbered differently in the past (oldPaperNumbers in
+            definitions.json): before 2020, 9709's papers 5, 6 and 7 are Mechanics 2, Statistics 1 and 2, now papers 4 (nearest), 5 and 6.
 
     Returns:
         tuple: A tuple containing the predicted level (e.g., "IGCSE", "AS", "A2")
@@ -522,6 +529,9 @@ def get_level_and_chapter(
         chapter = predict(formatted_text, IGModel)
         chapter_num = ALL_LABELS.index(chapter) + 1 if chapter in ALL_LABELS else 0
     else:
+        old_numbers = currentDefinitionsData.get("oldPaperNumbers")
+        if old_numbers and year is not None and year < old_numbers["before"]:
+            paper_num = old_numbers["papers"].get(str(paper_num), paper_num)
         ASModel = currentDefinitionsData["ASModel"]
         A2Model = currentDefinitionsData["A2Model"]
         ASpapers = currentDefinitionsData["ASpapers"]
@@ -544,6 +554,9 @@ def get_level_and_chapter(
     return level, chapter_num
 
 
+MS_NO_ANSWER = re.compile(r"question\s+discounted|issue\s+with\s+question|removed", re.I)
+
+
 def extract_answers_from_pdf(code: str, pdfName: str) -> list:
     """This function is only for mcq as the answers are like A, B etc while in long the answers are images from the mark scheme
       Takes the paper code and the PDF name, constructs the path to the corresponding mark scheme PDF,
@@ -556,8 +569,8 @@ def extract_answers_from_pdf(code: str, pdfName: str) -> list:
     pdfName (str): The name of the PDF file for which the answers are to be extracted, used to determine the corresponding mark scheme PDF name by replacing "qp" with "ms".
 
     Returns:
-        list: A list of answers (30 if economics and 40 otherwise) extracted from the mark scheme PDF, where each answer corresponds to a question in the question paper,
-          and the answers are extracted based on the expected format of the mark
+        list: The answers (30 if economics and 40 otherwise) extracted from the mark scheme PDF. answers[i] is the answer to question i + 1,
+          or None for a question the mark scheme discounts or says was removed.
     """
     pdfName = pdfName.replace("qp", "ms")
     pdfPath = f"{BASE_PATH}/resources/full_pdfs/{code}/{pdfName}"
@@ -581,6 +594,10 @@ def extract_answers_from_pdf(code: str, pdfName: str) -> list:
         ):
             answer = parts[1]
             answers.append(answer)
+        # "6 Question Discounted 0" or "22 Due to an issue with question 22, the question has been removed ...",
+        # kept as a row so the answers after it stay at their question's position
+        elif parts and parts[0].isdigit() and MS_NO_ANSWER.search(line):
+            answers.append(None)
 
     return answers
 
@@ -619,6 +636,8 @@ CROP_LEFT = 100
 # each page, and stops above the copyright notice on the last page (found by position, as its text can come first)
 TEXT_TOP = 59
 COPYRIGHT_NOTICES = ["Permission to reproduce items", "To avoid the issue of disclosure"]
+# How far above the notice's first line to end a crop (in points), to leave out the rule printed over it
+COPYRIGHT_RULE_GAP = 15
 # ... and down to here, a little below the band strip_images keeps, as a question's "[Total: N]" is sometimes printed
 # just below it (e.g. 0625 s24 32 Q5 at 793pt), but never into a "© UCLES" footer at the bottom of the page
 TEXT_BOTTOM = 800
@@ -639,7 +658,10 @@ KEY_LINE_WIDTH = 2000
 
 # Mark schemes: question numbers like "1", "1(a)" or "10(b)(ii)" start the rows of the table's Question column.
 # Must match how strip_images ("ms": y 200 to 1500) and split_mark_scheme in p4_ms_maker_ai.py stack the pages
-MS_STRIP_TOP, MS_PAGE_HEIGHT = 200, 1300
+MS_STRIP_TOP = 200
+# Space left above a mark scheme question's first row: enough to include the border over its table, about 25px above
+# the text, which would otherwise be left at the bottom of the question before it
+MS_PADDING_PX = 30
 # Question numbers start 0-20pt right of the "Question" header's left edge, the Answer
 # column's text (including numbered marking points like "1 globular protein ;") starts 55pt or more right of it
 MS_COLUMN_FROM_HEADER = (-10, 35)
@@ -792,13 +814,27 @@ def get_text_coordinates(pdf_path: str) -> tuple[list, int]:
     document = pdfium.PdfDocument(pdf_path)
     try:
         page_offsets, merged_height = _page_offsets(document)
+        coordinates = [
+            page_offsets[page_index] + max(0, int(y * SCALE) - STRIP_TOP - PADDING_PX) for page_index, y in starts
+        ]
+        # The last question ends at the end of the paper, or above the copyright notice on its page or a later one
+        end = merged_height
+        for page_index, offset in page_offsets.items():
+            if not starts or page_index < starts[-1][0]:
+                continue
+            textpage = document[page_index].get_textpage()
+            page_height = document[page_index].get_size()[1]
+            notices = [textpage.search(phrase).get_next() for phrase in COPYRIGHT_NOTICES]
+            tops = [page_height - textpage.get_charbox(notice[0])[3] - COPYRIGHT_RULE_GAP for notice in notices if notice]
+            if tops:
+                notice_y = offset + int(min(tops) * SCALE) - STRIP_TOP
+                if notice_y > coordinates[-1]:
+                    end = min(end, notice_y)
+                break
     finally:
         document.close()
 
-    coordinates = [
-        page_offsets[page_index] + max(0, int(y * SCALE) - STRIP_TOP - PADDING_PX) for page_index, y in starts
-    ]
-    coordinates.append(merged_height)
+    coordinates.append(end)
     return coordinates, totals
 
 
@@ -1219,14 +1255,15 @@ def find_ms_question_starts(pdf_path: str) -> list:
                 # Numbered rows of a table inside an answer ("1 KMnO4 ...", "2 AgNO3 ...", ...) look like questions
                 # without parts, so a bare number is part of such a list when every bare number from 1 up to it
                 # already came after the current question's first row. A lone repeated heading row ("3 Tests on
-                # solid O") isn't a list
-                in_list = bare and expected > 1 and set(range(1, expected)) <= bare_since_start
+                # solid O") isn't a list, nor is a number right under a table header: a question continuing on a new
+                # page repeats its number there (9609 papers 3 and 4), and the next question's first row can be there
+                header_above = [header for header in header_tops if 0 < top - header < MS_HEADER_GAP]
+                in_list = bare and expected > 1 and not header_above and set(range(1, expected)) <= bare_since_start
                 if number == expected and not in_list:
-                    header_above = [header for header in header_tops if 0 < top - header < MS_HEADER_GAP]
                     starts.append((page_index, header_above[0] if header_above else top))
                     expected += 1
                     bare_since_start = set()
-                elif bare:
+                elif bare and not header_above:
                     bare_since_start.add(number)
     finally:
         document.close()
@@ -1236,7 +1273,7 @@ def find_ms_question_starts(pdf_path: str) -> list:
 @_pdfium_locked
 def get_ms_text_coordinates(pdf_path: str) -> list:
     """The y coordinate of each question's start in the stacked image of the stripped mark scheme pages that
-    split_mark_scheme in p4_ms_maker_ai.py crops from (page j starts at j * 1300), followed by its height.
+    split_mark_scheme in p4_ms_maker_ai.py crops from, followed by its height.
 
     Returns:
         list: The coordinates, one per question in order, then the stacked image's height.
@@ -1244,20 +1281,22 @@ def get_ms_text_coordinates(pdf_path: str) -> list:
     starts = find_ms_question_starts(pdf_path)
     document = pdfium.PdfDocument(pdf_path)
     try:
-        kept_pages = [
-            page_index
-            for page_index in range(1, len(document))
-            if not page_skip_reason(document[page_index].get_textpage().get_text_range())
-        ]
+        page_offsets, band_heights, current_height = {}, {}, 0
+        for page_index in range(1, len(document)):
+            if page_skip_reason(document[page_index].get_textpage().get_text_range()):
+                continue
+            band_heights[page_index] = ms_page_height(round(document[page_index].get_size()[1] * SCALE))
+            page_offsets[page_index] = current_height
+            current_height += band_heights[page_index]
     finally:
         document.close()
-    page_position = {page_index: j for j, page_index in enumerate(kept_pages)}
 
     coordinates = [
-        page_position[page_index] * MS_PAGE_HEIGHT + max(0, int(y * SCALE) - MS_STRIP_TOP - PADDING_PX)
+        # A row printed below the kept band starts where the next page does
+        page_offsets[page_index] + min(band_heights[page_index], max(0, int(y * SCALE) - MS_STRIP_TOP - MS_PADDING_PX))
         for page_index, y in starts
     ]
-    coordinates.append(len(kept_pages) * MS_PAGE_HEIGHT)
+    coordinates.append(current_height)
     return coordinates
 
 
@@ -1394,6 +1433,42 @@ def get_mcq_text_coordinates(pdf_path: str) -> dict:
 
 
 @_pdfium_locked
+def get_mcq_page_ends(pdf_path: str) -> dict:
+    """Where the question area ends on each stripped page image: above the "© UCLES" footer (some papers print it high
+    enough to be inside the crop), and above the copyright notice and the rule printed over it if the page has one, so
+    the page's last question doesn't include them.
+
+    Returns:
+        dict: {page image number: y}, with y in pixels of the stripped page. Other pages end at MCQ_PAGE_END.
+    """
+    document = pdfium.PdfDocument(pdf_path)
+    try:
+        kept_pages = [
+            page_index
+            for page_index in range(1, len(document))
+            if not page_skip_reason(document[page_index].get_textpage().get_text_range())
+        ]
+        page_ends = {}
+        for j, page_index in enumerate(kept_pages):
+            textpage = document[page_index].get_textpage()
+            page_height = document[page_index].get_size()[1]
+            tops = []
+            footer = _footer_top(textpage, page_height)
+            # A few points above it, as the "[Turn over" on the same line is printed a little higher
+            if footer is not None and footer > page_height / 2:
+                tops.append(footer - 4)
+            for phrase in COPYRIGHT_NOTICES:
+                notice = textpage.search(phrase).get_next()
+                if notice:
+                    tops.append(page_height - textpage.get_charbox(notice[0])[3] - COPYRIGHT_RULE_GAP)
+            if tops:
+                page_ends[j + 1] = min(MCQ_PAGE_END, int(min(tops) * SCALE) - STRIP_TOP)
+    finally:
+        document.close()
+    return page_ends
+
+
+@_pdfium_locked
 def get_mcq_question_texts(pdf_path: str) -> dict:
     """Reads each MCQ's text from the region its image is cropped from (see get_mcq_text_coordinates): from its number
     down to the next question on its page, or to the bottom of the page.
@@ -1434,11 +1509,12 @@ def split_mcq_paper_from_text(pdf_path: str, out_dir: str) -> list:
     makeImages(pdf_path, work_dir)
     strip_images(mode="qp", work_dir=work_dir)
 
+    page_ends = get_mcq_page_ends(pdf_path)
     os.makedirs(out_dir, exist_ok=True)
     saved = []
     for page_number, questions in sorted(coordinates.items()):
         for i, (question_number, y1) in enumerate(questions):
-            y2 = questions[i + 1][1] if i + 1 < len(questions) else MCQ_PAGE_END
+            y2 = questions[i + 1][1] if i + 1 < len(questions) else page_ends.get(page_number, MCQ_PAGE_END)
             local_filename = f"q{question_number}"
             if not take_screenshot(y1, y2, local_filename, "mcq", f"{page_number}.jpg", mode="qp", work_dir=work_dir):
                 continue

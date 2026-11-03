@@ -36,7 +36,7 @@ Place raw PDFs under `src/resources/full_pdfs/<paper_code>/`. The ML classifiers
 ### 1. MCQ ingestion (`makep1`)
 - Run `python src/main/makep1/makep1Final.py` (requires a GUI session for the Tk file picker)
 - Questions are found from each PDF's text layer (`get_mcq_text_coordinates` in `main/utils.py`), no detection server or GPU needed
-- The script reads each MCQ's text from the PDF's text layer (`get_mcq_question_texts`), classifies it via the syllabus model, and copies cleaned images to `resources/images/<level>/<subject>/mcq`
+- The script reads each MCQ's text from the PDF's text layer (`get_mcq_question_texts`), classifies it via the syllabus model, and copies cleaned images to `resources/images/<level>/<subject>/p<paper number>`
 - Outputs JSON rows to `resources/json/<mcq_db_path>` as configured in `definitions.json`
 
 ### 2. Long question ingestion (`makep4`)

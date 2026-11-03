@@ -340,4 +340,4 @@ textarr = [text, text2, text3, text4, text5, text6, text7, text8]
 for i in range(len(textarr)):
     textarr[i] = formatText(textarr[i])
 
-trainModels.train(textarr, allLabels)
+trainModels.train(textarr, allLabels, f"{BASE_PATH}/resources/sci-kit/a2cs.joblib")

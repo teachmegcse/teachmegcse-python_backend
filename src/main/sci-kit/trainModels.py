@@ -1,21 +1,26 @@
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.naive_bayes import ComplementNB
+from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.pipeline import Pipeline
 from joblib import dump
 
 
-# Example training data and labels
-def train(data, label):
-    train_data = data
-    train_labels = label
+def chunk_lines(text, lines=12):
+    """Splits syllabus text into pieces of a few lines, each a separate training example. Helps when a chapter's text
+    is short and its wording is close to other chapters' (mathematics)."""
+    rows = [row for row in text.split("\n") if row.strip()]
+    return ["\n".join(rows[i : i + lines]) for i in range(0, len(rows), lines)]
 
-    # Create a pipeline that includes preprocessing, vectorization, and classification
+
+def train(data, label, output_path):
+    # Each chapter has about one document of syllabus text, and chapters differ a lot in length. Complement naive Bayes
+    # and TF-IDF cope with that much better than MultinomialNB on raw counts, see chapter_gold.json
     pipeline = Pipeline(
-        [("vectorizer", CountVectorizer()), ("classifier", MultinomialNB())]
+        [
+            ("vectorizer", TfidfVectorizer(sublinear_tf=True)),
+            ("classifier", ComplementNB()),
+        ]
     )
 
-    # Fit the pipeline to the training data and labels
-    pipeline.fit(train_data, train_labels)
+    pipeline.fit(data, label)
 
-    # Save the trained pipeline to disk
-    dump(pipeline, "IGphy.joblib")
+    dump(pipeline, output_path)
