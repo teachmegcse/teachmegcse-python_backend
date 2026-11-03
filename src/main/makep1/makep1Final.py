@@ -16,6 +16,7 @@ outputPath = f"{BASE_PATH}/resources/images/test_images"
 
 from main.utils import (
     select_files,
+    DEFAULT_FROM_YEAR,
     makeImages,
     get_level_and_chapter,
     clean_image,
@@ -147,10 +148,20 @@ def process_pdf(currentFileIndex: int, file_path: str) -> list:
 
 parser = argparse.ArgumentParser(description="Split MCQ question papers into one image per question.")
 parser.add_argument("--folder", help="Folder of PDFs to process instead of selecting them in the file dialog")
+parser.add_argument(
+    "--from-year",
+    type=int,
+    default=DEFAULT_FROM_YEAR,
+    help=f"Only process a folder's papers from this year onwards (default: {DEFAULT_FROM_YEAR})",
+)
 args = parser.parse_args()
 
 # The answers are read from each paper's mark scheme, so mark schemes (and inserts) in a folder aren't processed
-files = [file for file in select_files(args.folder) if "_qp_" in os.path.basename(file)]
+files = [
+    file
+    for file in select_files(args.folder, from_year=args.from_year, paper_types=("qp",))
+    if "_qp_" in os.path.basename(file)
+]
 codes = {os.path.basename(file).split("_")[0] for file in files}
 db_paths = {code: f"{BASE_PATH}/resources/json/{definitionsData[code]['mcq_db_path']}" for code in codes}
 first_file_index = next_file_index(codes, db_paths)

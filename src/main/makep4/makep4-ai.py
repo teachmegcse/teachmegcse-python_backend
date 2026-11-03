@@ -11,6 +11,7 @@ sys.path.append(BASE_PATH)
 
 from main.utils import (
     select_files,
+    DEFAULT_FROM_YEAR,
     makeImages,
     get_level_and_chapter,
     formatText,
@@ -317,6 +318,17 @@ if __name__ == "__main__":
         "--folder",
         help="Folder of PDFs to process (question papers and mark schemes) instead of selecting them in the file dialog",
     )
+    parser.add_argument(
+        "--from-year",
+        type=int,
+        default=DEFAULT_FROM_YEAR,
+        help=f"Only process a folder's papers from this year onwards (default: {DEFAULT_FROM_YEAR})",
+    )
+    parser.add_argument(
+        "--paper-types",
+        default="qp,ms",
+        help="Comma-separated paper types to process from a folder, e.g. --paper-types ms (default: qp,ms)",
+    )
     args = parser.parse_args()
     steps = [step.strip() for step in args.steps.split(",") if step.strip()]
     unknown = [step for step in steps if step not in STEPS]
@@ -325,7 +337,8 @@ if __name__ == "__main__":
     print(f"Running steps: {', '.join(steps)}")
 
     print("Selecting files...")
-    files = select_files(args.folder)
+    paper_types = tuple(paper_type.strip() for paper_type in args.paper_types.split(",") if paper_type.strip())
+    files = select_files(args.folder, from_year=args.from_year, paper_types=paper_types)
     if not files:
         print("No files selected")
         exit()

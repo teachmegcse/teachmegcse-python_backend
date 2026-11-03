@@ -10,6 +10,8 @@ python makep4-ai.py --steps qp         # debug: only split the question papers
 python makep4-ai.py --steps qp,ms      # skip combine
 python makep4-ai.py --steps combine    # only re-pair the DBs of the selected subjects
 python makep4-ai.py --steps combine --refresh-text   # re-read the text, marks and chapters of the questions already in the DBs, then re-pair
+python makep4-ai.py --folder ../../resources/full_pdfs/0620   # a folder instead of the dialog: its 2017+ question papers and mark schemes
+python makep4-ai.py --folder DIR --from-year 2020 --paper-types ms   # choose the years and paper types used from a folder
 ```
 
 Select the question papers **and** their mark schemes in the same dialog. Files with `ms` in their name go to the

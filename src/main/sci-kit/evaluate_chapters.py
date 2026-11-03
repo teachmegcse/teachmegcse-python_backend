@@ -45,7 +45,7 @@ if __name__ == "__main__":
             continue
         code = pdf_name[:4]
         paper = int(pdf_name.split("_")[3][0])
-        texts = get_question_texts(f"{BASE_PATH}/resources/Classified_pdfs/{code}/{pdf_name}.pdf")
+        texts = get_question_texts(f"{BASE_PATH}/resources/full_pdfs/{code}/{pdf_name}.pdf")
         for number, accepted in entry["questions"].items():
             label = predicted_label(texts[int(number) - 1], paper, definitionsData[code])
             key = f"{code} {definitionsData[code]['subjectName']}"

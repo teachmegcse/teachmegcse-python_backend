@@ -26,6 +26,10 @@ outputPath = f"{BASE_PATH}/resources/images/test_images"
 PDFIUM_LOCK = threading.RLock()
 # Number of PDFs processed at the same time (override with the PDF_WORKERS environment variable)
 PDF_WORKERS = int(os.environ.get("PDF_WORKERS", 4))
+# Oldest papers used when processing a whole folder (override with --from-year)
+DEFAULT_FROM_YEAR = 2017
+# <code>_<season><year>_<type>_<variant>.pdf, e.g. 0620_s18_qp_11.pdf. The variant is missing on some types (0620_s18_gt.pdf)
+PAPER_NAME = re.compile(r"^\d{4}_[msw](\d{2})_([a-z]+\d*)[_.]")
 
 
 def load_json_db(path: str) -> list:
@@ -76,11 +80,19 @@ def _load_pipeline(model: str):
     return load(f"{BASE_PATH}/resources/sci-kit/{model}")
 
 
-def select_files(folder: str = None) -> list:
+def _is_wanted_paper(name: str, from_year: int, paper_types: tuple) -> bool:
+    # Files not named like a past paper (e.g. notices) have no year or type to go by, so they're left out
+    match = PAPER_NAME.match(name)
+    return bool(match) and 2000 + int(match.group(1)) >= from_year and match.group(2) in paper_types
+
+
+def select_files(folder: str = None, from_year: int = DEFAULT_FROM_YEAR, paper_types: tuple = ("qp", "ms")) -> list:
     """Returns the PDFs in folder if one is given, otherwise opens a file dialog for the user to select PDF files.
 
     Args:
         folder (str): Optional folder whose PDFs are used instead of asking with the file dialog.
+        from_year (int): Only use a folder's papers from this year onwards. Doesn't apply to the file dialog.
+        paper_types (tuple): Only use a folder's papers of these types. Doesn't apply to the file dialog.
     Returns:
         list: A list of past paper paths for the selected PDF files.
 
@@ -88,9 +100,10 @@ def select_files(folder: str = None) -> list:
     if folder:
         if not os.path.isdir(folder):
             raise NotADirectoryError(f"{folder} is not a folder")
-        return sorted(
-            os.path.join(os.path.abspath(folder), name) for name in os.listdir(folder) if name.lower().endswith(".pdf")
-        )
+        pdfs = [name for name in os.listdir(folder) if name.lower().endswith(".pdf")]
+        names = [name for name in pdfs if _is_wanted_paper(name, from_year, paper_types)]
+        print(f"Using {len(names)} of the {len(pdfs)} PDFs in {folder} ({from_year} onwards, {', '.join(paper_types)})")
+        return sorted(os.path.join(os.path.abspath(folder), name) for name in names)
     root = Tk()
     filetypes = [("PDF Files", "*.pdf")]
     files = filedialog.askopenfilenames(filetypes=filetypes)
