@@ -10,6 +10,7 @@ APIs and helpers that bundle curated question datasets into printable PDFs + ZIP
   - Splits MCQ vs long-answer data so layouts stay consistent (MCQ images inline; long answers paginated and rotated when necessary).
   - Uses `resources/images/<level>/<subject>` to fetch question/answer JPEGs saved by `makep1` / `makep4` pipelines.
   - Stores the generated PDFs in `resources/pdfs/classified/` before zipping.
+  - Long questions can have parts cropped out with `selectedParts`. The request format is in `generate_pdf_request.md`, with an example in `generate_pdf_request.example.json`.
 - **Running locally**:
   ```bash
   uvicorn src.main.classified.p1_api:app --host 0.0.0.0 --port 8010
